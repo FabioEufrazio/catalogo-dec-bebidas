@@ -974,14 +974,13 @@
 
           <div class="form-group">
             <label for="prod-desc">Descrição / Nome do Produto *</label>
-            <input type="text" id="prod-desc" class="form-control" placeholder="Ex: VIN PORT DUETO 750ML" required>
+            <input type="text" id="prod-desc" class="form-control" placeholder="Ex: VIN PORT DUETO 750ML" required oninput="ProductStore.onDescriptionInput(this.value)">
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="prod-category">Categoria do Produto</label>
-              <select id="prod-category" class="form-control">
-                <option value="auto">⚡ Automático (Reconhecimento IA)</option>
+              <select id="prod-category" class="form-control" onchange="ProductStore.isCategoryManuallySet = true">
                 <option value="whisky">Whiskies</option>
                 <option value="vodka">Vodkas</option>
                 <option value="licor">Licores</option>
@@ -1243,7 +1242,6 @@
         <div class="form-group">
           <label>Nova Categoria</label>
           <select id="bulk-target-category" class="form-control">
-            <option value="auto">⚡ Automático (Reconhecimento IA)</option>
             <option value="whisky">Whiskies</option>
             <option value="vodka">Vodkas</option>
             <option value="licor">Licores</option>
@@ -1673,7 +1671,8 @@
       openAddProduct() {
         document.getElementById('product-form').reset();
         document.getElementById('prod-id').value = '';
-        document.getElementById('prod-category').value = 'auto';
+        ProductStore.isCategoryManuallySet = false;
+        document.getElementById('prod-category').value = 'outros';
         document.getElementById('product-modal-title').innerHTML = '<i class="fa-solid fa-box-open" style="color: var(--accent-blue);"></i> Cadastrar Produto';
         document.getElementById('photo-preview-container').innerHTML = `
           <div class="no-photo-placeholder">
@@ -1787,6 +1786,14 @@
       activePasteProductId: null,
       selectedCategory: 'all',
       selectedIds: new Set(),
+      isCategoryManuallySet: false,
+
+      onDescriptionInput(text) {
+        if (this.isCategoryManuallySet) return;
+        const detected = getProductCategory({ description: text });
+        const select = document.getElementById('prod-category');
+        if (select && detected) select.value = detected;
+      },
 
       toggleSelectProduct(id, checked) {
         if (checked) {
@@ -2229,7 +2236,8 @@
         document.getElementById('prod-price').value = p.unitPrice || 0;
         document.getElementById('prod-qty-box').value = p.qtyPerBox || 1;
         document.getElementById('prod-show-box').checked = p.showBoxTotal !== false;
-        document.getElementById('prod-category').value = p.category || 'auto';
+        this.isCategoryManuallySet = true;
+        document.getElementById('prod-category').value = getProductCategory(p);
 
         this.tempPhotoBase64 = p.imageBase64 || '';
         const preview = document.getElementById('photo-preview-container');
