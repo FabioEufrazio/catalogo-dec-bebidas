@@ -301,9 +301,11 @@
     }
 
     .product-card.inactive {
-      opacity: 0.65;
-      filter: grayscale(0.35);
-      border-color: rgba(248, 113, 113, 0.25);
+      opacity: 0.55;
+      filter: grayscale(100%);
+      border-color: rgba(248, 113, 113, 0.35);
+      border-style: dashed;
+      background: rgba(15, 23, 42, 0.6);
     }
 
     .card-photo-container {
@@ -855,13 +857,6 @@
         font-size: 0.98rem;
       }
     }
-
-    /* IMPRESSÃO PDF ISOLADA */
-    @media print {
-      body * { visibility: hidden; }
-      #pdf-print-area, #pdf-print-area * { visibility: visible; }
-      #pdf-print-area { position: absolute; left: 0; top: 0; width: 100%; }
-    }
   </style>
 </head>
 <body>
@@ -927,10 +922,6 @@
         </button>
         <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;" onchange="ExcelEngine.handleFile(event)">
         <input type="file" id="card-photo-input" accept="image/*" style="display: none;" onchange="ProductStore.handleCardPhotoSelect(event)">
-
-        <button class="btn btn-success" onclick="PDFEngine.generate()">
-          <i class="fa-solid fa-file-pdf"></i> Exportar PDF
-        </button>
 
         <button class="btn btn-primary" onclick="ModalEngine.openAddProduct()">
           <i class="fa-solid fa-plus"></i> Novo Produto
@@ -2046,7 +2037,7 @@
                 </div>
 
                 <div class="card-actions admin-only-ui">
-                  <button class="btn btn-secondary btn-icon" onclick="ProductStore.toggleActive('${safeId}')" title="${isActive ? 'Desativar item (NÃO irá para o PDF)' : 'Ativar item (será incluído no PDF)'}">
+                  <button class="btn btn-secondary btn-icon" onclick="ProductStore.toggleActive('${safeId}')" title="${isActive ? 'Inativar produto (ocultar no catálogo online do cliente)' : 'Ativar produto (exibir no catálogo online do cliente)'}">
                     <i class="fa-solid ${isActive ? 'fa-toggle-on' : 'fa-toggle-off'}" style="color: ${isActive ? 'var(--accent-green)' : 'var(--text-muted)'}; font-size: 1.15rem;"></i>
                   </button>
                   <button class="btn btn-secondary btn-icon" onclick="ProductStore.edit('${safeId}')" title="Editar">
@@ -2577,117 +2568,6 @@
         ProductStore.saveWithoutSnapshot();
         ModalEngine.close('preview-modal');
         showToast(`Importação concluída! ${updated} preços atualizados e ${created} novos produtos cadastrados.`);
-      }
-    };
-
-    /* --------------------------------------------------------------------------
-       MOTOR DE IMPRESSÃO PDF ISOLADA
-       -------------------------------------------------------------------------- */
-    const PDFEngine = {
-      generate() {
-        const activeProducts = ProductStore.products.filter(p => p.active !== false);
-
-        if (activeProducts.length === 0) {
-          showToast('Nenhum produto ativo para exportar o PDF!', 'error');
-          return;
-        }
-
-        showToast(`Gerando catálogo em PDF com ${activeProducts.length} produto(s)...`, 'info');
-        const dateStr = new Date().toLocaleDateString('pt-BR');
-
-        const sortedProducts = [...activeProducts].sort((a, b) => {
-          const catA = getProductCategory(a);
-          const catB = getProductCategory(b);
-          const idxA = CATEGORIES.findIndex(c => c.id === catA);
-          const idxB = CATEGORIES.findIndex(c => c.id === catB);
-          if (idxA !== idxB) return idxA - idxB;
-          return (a.description || '').localeCompare(b.description || '');
-        });
-
-        const gridHtml = sortedProducts.map(p => {
-          const showBox = p.showBoxTotal !== false && p.qtyPerBox > 1;
-          const boxTotal = (p.unitPrice || 0) * (p.qtyPerBox || 1);
-          const catInfo = getCategoryInfo(getProductCategory(p));
-
-          return `
-            <div class="pdf-card">
-              <div class="pdf-photo-box">
-                ${p.imageBase64 ? `<img src="${p.imageBase64}">` : `<span>SEM FOTO</span>`}
-              </div>
-              <div class="pdf-details">
-                <div>
-                  <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">
-                    <i class="fa-solid ${catInfo.icon}"></i> ${catInfo.name}
-                  </div>
-                  <div class="pdf-code">CÓD: ${p.code || 'S/N'}</div>
-                  <div class="pdf-title">${p.description}</div>
-                </div>
-
-                <div style="margin-top: 6px;">
-                  <div class="pdf-price-row">
-                    <span class="pdf-price-label">Preço Un:</span>
-                    <span class="pdf-price-val">${formatCurrency(p.unitPrice)}</span>
-                  </div>
-                  ${showBox ? `
-                    <div class="pdf-price-row">
-                      <span class="pdf-price-label">Caixa (${p.qtyPerBox} un):</span>
-                      <span class="pdf-price-val" style="color: #0284c7;">${formatCurrency(boxTotal)}</span>
-                    </div>
-                  ` : ''}
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
-
-        const win = window.open('', '_blank');
-        if (!win) {
-          showToast('Bloqueador de pop-ups ativo!', 'error');
-          return;
-        }
-
-        win.document.write(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Catálogo de Produtos - ${dateStr}</title>
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-            <style>
-              @page { size: A4; margin: 10mm; }
-              body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f172a; margin: 0; padding: 0; background: #fff; }
-              .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-bottom: 12px; }
-              .pdf-brand { font-size: 20px; font-weight: 800; color: #0284c7; display: flex; align-items: center; gap: 8px; }
-              .pdf-meta { font-size: 11px; color: #64748b; text-align: right; }
-              .pdf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-              .pdf-card { border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; display: flex; gap: 8px; page-break-inside: avoid; background: #fff; }
-              .pdf-photo-box { width: 70px; height: 85px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; font-size: 9px; color: #94a3b8; font-weight: 700; }
-              .pdf-photo-box img { width: 100%; height: 100%; object-fit: contain; }
-              .pdf-details { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-              .pdf-code { font-size: 9px; font-weight: 700; color: #0284c7; }
-              .pdf-title { font-size: 10.5px; font-weight: 700; color: #0f172a; line-height: 1.25; margin-top: 1px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-              .pdf-price-row { display: flex; justify-content: space-between; font-size: 9.5px; border-top: 1px dashed #e2e8f0; padding-top: 2px; margin-top: 2px; }
-              .pdf-price-label { color: #64748b; }
-              .pdf-price-val { font-weight: 700; color: #059669; }
-            </style>
-          </head>
-          <body>
-            <div class="pdf-header">
-              <div class="pdf-brand"><i class="fa-solid fa-boxes-stacked"></i> Catálogo de Produtos</div>
-              <div class="pdf-meta">
-                <div>Data de Emissão: ${dateStr}</div>
-                <div>Total de Itens: ${activeProducts.length}</div>
-              </div>
-            </div>
-            <div class="pdf-grid">${gridHtml}</div>
-            <script>
-              window.onload = () => {
-                setTimeout(() => { window.print(); window.close(); }, 500);
-              };
-            <\/script>
-          </body>
-          </html>
-        `);
-        win.document.close();
       }
     };
 
