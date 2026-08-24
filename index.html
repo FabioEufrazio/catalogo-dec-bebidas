@@ -301,11 +301,15 @@
     }
 
     .product-card.inactive {
-      opacity: 0.55;
-      filter: grayscale(100%);
-      border-color: rgba(248, 113, 113, 0.35);
-      border-style: dashed;
-      background: rgba(15, 23, 42, 0.6);
+      opacity: 0.45 !important;
+      filter: grayscale(100%) !important;
+      border: 2px dashed rgba(248, 113, 113, 0.4) !important;
+      background: rgba(15, 23, 42, 0.7) !important;
+    }
+
+    .product-card.inactive .card-photo {
+      filter: grayscale(100%) !important;
+      opacity: 0.4 !important;
     }
 
     .card-photo-container {
@@ -1810,7 +1814,7 @@
 
         let targetProducts = this.products;
         if (FirebaseEngine.isClientMode) {
-          targetProducts = targetProducts.filter(p => p.active !== false);
+          targetProducts = targetProducts.filter(p => p.active !== false && p.active !== 'false' && p.active !== 0);
         }
 
         counts['all'] = targetProducts.length;
@@ -1873,6 +1877,7 @@
       },
 
       init() {
+        FirebaseEngine.checkMode(); // Executa antes de qualquer renderizacao para que isClientMode seja 100% conhecido desde o milissegundo 0!
         try {
           const stored = localStorage.getItem('catalog_products_v1');
           if (stored) {
@@ -1924,9 +1929,9 @@
 
         let list = listToRender || this.products;
 
-        // No Modo Cliente (Visão Pública), exibe apenas produtos ativos!
+        // No Modo Cliente (Visão Pública), exibe APENAS produtos estritamente ativos!
         if (FirebaseEngine.isClientMode) {
-          list = list.filter(p => p.active !== false);
+          list = list.filter(p => p.active !== false && p.active !== 'false' && p.active !== 0);
         }
 
         if (this.selectedCategory && this.selectedCategory !== 'all') {
