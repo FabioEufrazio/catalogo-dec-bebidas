@@ -1472,6 +1472,39 @@
         }).catch(() => {
           showToast(`Link do cliente: ${clientUrl}`, 'info');
         });
+      },
+
+      async autoSyncProduct(product) {
+        if (!this.db || this.isClientMode || !product) return;
+        try {
+          let img = product.imageBase64 || '';
+          if (img && img.length > 150000) {
+            img = await compressBase64(img, 350);
+          }
+          const clean = {
+            id: String(product.id),
+            code: String(product.code || 'S/N'),
+            description: String(product.description || ''),
+            unitPrice: Number(product.unitPrice || 0),
+            qtyPerBox: Number(product.qtyPerBox || 1),
+            showBoxTotal: product.showBoxTotal !== false,
+            active: product.active !== false && product.active !== 'false',
+            category: product.category || 'auto',
+            imageBase64: img
+          };
+          await this.db.collection('products').doc(clean.id).set(clean);
+        } catch(e) {
+          console.error("Erro na auto sincronizacao do produto", e);
+        }
+      },
+
+      async deleteProductFromCloud(productId) {
+        if (!this.db || this.isClientMode || !productId) return;
+        try {
+          await this.db.collection('products').doc(String(productId)).delete();
+        } catch(e) {
+          console.error("Erro ao deletar produto da nuvem", e);
+        }
       }
     };
 
@@ -1753,7 +1786,8 @@
         HistoryStore.snapshot();
         p.active = p.active === false ? true : false;
         this.saveWithoutSnapshot();
-        const statusMsg = p.active !== false ? 'ATIVADO (será incluído no PDF)' : 'DESATIVADO (NÃO irá para o PDF)';
+        FirebaseEngine.autoSyncProduct(p);
+        const statusMsg = p.active !== false ? 'ATIVADO (incluído no catálogo online)' : 'INATIVADO (removido do catálogo online)';
         showToast(`Produto "${p.description}" ${statusMsg}!`, 'info');
       },
 
@@ -1766,9 +1800,11 @@
           message: `Tem certeza que deseja remover os ${count} produtos selecionados permanentemente do catálogo?`,
           onConfirm: () => {
             HistoryStore.snapshot();
+            const toDeleteIds = Array.from(ProductStore.selectedIds);
             ProductStore.products = ProductStore.products.filter(p => !ProductStore.selectedIds.has(String(p.id)));
             ProductStore.selectedIds.clear();
             ProductStore.saveWithoutSnapshot();
+            toDeleteIds.forEach(id => FirebaseEngine.deleteProductFromCloud(id));
             showToast(`${count} produtos removidos com sucesso!`);
           }
         });
@@ -2064,6 +2100,7 @@
             target.qtyPerBox = qtyPerBox;
             target.showBoxTotal = showBoxTotal;
             if (this.tempPhotoBase64) target.imageBase64 = this.tempPhotoBase64;
+            FirebaseEngine.autoSyncProduct(target);
           }
           showToast('Produto atualizado com sucesso!');
         } else {
@@ -2078,6 +2115,7 @@
             imageBase64: this.tempPhotoBase64 || ''
           };
           this.products.unshift(newProduct);
+          FirebaseEngine.autoSyncProduct(newProduct);
           showToast('Produto cadastrado com sucesso!');
         }
 
@@ -2127,6 +2165,7 @@
         };
         this.products.unshift(clone);
         this.saveWithoutSnapshot();
+        FirebaseEngine.autoSyncProduct(clone);
         showToast('Produto duplicado com sucesso!');
       },
 
@@ -2143,6 +2182,7 @@
             HistoryStore.snapshot();
             ProductStore.products = ProductStore.products.filter(item => String(item.id) !== String(id));
             ProductStore.saveWithoutSnapshot();
+            FirebaseEngine.deleteProductFromCloud(id);
             showToast('Produto removido com sucesso!');
           }
         });
