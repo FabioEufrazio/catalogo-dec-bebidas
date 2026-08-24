@@ -222,13 +222,40 @@
       background: var(--bg-card-hover);
     }
 
+    /* NAVEGAÇÃO FIXA INTELIGENTE NO SCROLL */
+    .sticky-nav-container {
+      position: sticky;
+      top: 0;
+      z-index: 95;
+      background: var(--bg-body);
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+      transition: transform 0.25s ease;
+    }
+
+    .sticky-search-box {
+      margin-bottom: 0.75rem;
+      transition: max-height 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
+      overflow: hidden;
+      max-height: 80px;
+      opacity: 1;
+    }
+
+    .sticky-nav-container.hide-search .sticky-search-box {
+      max-height: 0;
+      opacity: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+
     /* BARRA DE CATEGORIAS */
     .category-pills-bar {
       display: flex;
       gap: 0.5rem;
       overflow-x: auto;
-      padding-bottom: 0.5rem;
-      margin-bottom: 1.5rem;
+      padding-bottom: 0.35rem;
+      margin-bottom: 0;
       scrollbar-width: thin;
     }
 
@@ -891,42 +918,46 @@
 
   <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
-    <div class="toolbar">
-      <div class="search-box">
+
+    <!-- NAVEGAÇÃO FIXA INTELIGENTE (BUSCA REVEAL + CATEGORIAS STICKY) -->
+    <div class="sticky-nav-container" id="sticky-nav-container">
+      <div class="search-box sticky-search-box" id="sticky-search-wrapper">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="search-input" placeholder="Buscar por código ou descrição do produto..." oninput="ProductStore.filter(this.value)">
       </div>
 
-      <div class="action-buttons">
-        <button class="btn btn-secondary admin-only-ui" onclick="HistoryStore.undo()" title="Desfazer Ação (Ctrl+Z)">
+      <!-- BARRA DE CATEGORIAS -->
+      <div class="category-pills-bar" id="category-pills-bar"></div>
+    </div>
+
+    <div class="toolbar admin-only-ui" style="margin-bottom: 1.25rem;">
+      <div class="action-buttons" style="width: 100%; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="HistoryStore.undo()" title="Desfazer Ação (Ctrl+Z)">
           <i class="fa-solid fa-rotate-left"></i> Desfazer
         </button>
-        <button class="btn btn-secondary admin-only-ui" onclick="HistoryStore.redo()" title="Refazer Ação (Ctrl+Y)">
+        <button class="btn btn-secondary" onclick="HistoryStore.redo()" title="Refazer Ação (Ctrl+Y)">
           <i class="fa-solid fa-rotate-right"></i> Refazer
         </button>
 
-        <button class="btn btn-purple admin-only-ui" onclick="document.getElementById('excel-file-input').click()">
+        <button class="btn btn-purple" onclick="document.getElementById('excel-file-input').click()">
           <i class="fa-solid fa-file-excel"></i> Importar Planilha
         </button>
         <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;" onchange="ExcelEngine.handleFile(event)">
         <input type="file" id="card-photo-input" accept="image/*" style="display: none;" onchange="ProductStore.handleCardPhotoSelect(event)">
 
-        <button class="btn btn-success admin-only-ui" onclick="PDFEngine.generate()">
+        <button class="btn btn-success" onclick="PDFEngine.generate()">
           <i class="fa-solid fa-file-pdf"></i> Exportar PDF
         </button>
 
-        <button class="btn btn-primary admin-only-ui" onclick="ModalEngine.openAddProduct()">
+        <button class="btn btn-primary" onclick="ModalEngine.openAddProduct()">
           <i class="fa-solid fa-plus"></i> Novo Produto
         </button>
 
-        <button class="btn btn-secondary admin-only-ui" onclick="ProductStore.confirmClearAll()" title="Limpar Todo o Catálogo">
+        <button class="btn btn-secondary" onclick="ProductStore.confirmClearAll()" title="Limpar Todo o Catálogo">
           <i class="fa-solid fa-trash-arrow-up"></i>
         </button>
       </div>
     </div>
-
-    <!-- BARRA DE CATEGORIAS -->
-    <div class="category-pills-bar" id="category-pills-bar"></div>
 
     <!-- GRID DE EXIBIÇÃO DE PRODUTOS -->
     <div class="product-grid" id="product-grid"></div>
@@ -2640,6 +2671,31 @@
     // INICIALIZAÇÃO AUTOMÁTICA DA APLICAÇÃO
     document.addEventListener('DOMContentLoaded', () => {
       ProductStore.init();
+
+      // LÓGICA INTELIGENTE DE REVEAL DA BUSCA AO ROLAR PARA CIMA
+      let lastScrollY = window.scrollY || document.documentElement.scrollTop;
+      window.addEventListener('scroll', () => {
+        const navContainer = document.getElementById('sticky-nav-container');
+        if (!navContainer) return;
+
+        const currentScrollY = window.scrollY || document.documentElement.scrollTop;
+        const diff = currentScrollY - lastScrollY;
+
+        if (currentScrollY > 90) {
+          if (diff > 6) {
+            // Rolando para baixo: Esconde a busca, mantém as pílulas de categoria fixas no topo
+            navContainer.classList.add('hide-search');
+          } else if (diff < -6) {
+            // Rolando para cima: Exibe a busca imediatamente!
+            navContainer.classList.remove('hide-search');
+          }
+        } else {
+          // No topo da página: sempre exibe a busca
+          navContainer.classList.remove('hide-search');
+        }
+
+        lastScrollY = currentScrollY;
+      }, { passive: true });
     });
   </script>
 </body>
