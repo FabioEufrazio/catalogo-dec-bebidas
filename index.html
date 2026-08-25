@@ -389,6 +389,41 @@
       align-items: center;
     }
 
+    .card-arrow-controls {
+      position: absolute;
+      top: 8px;
+      left: 32px;
+      z-index: 4;
+      display: flex;
+      gap: 3px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      border-radius: var(--radius-sm);
+      padding: 3px 5px;
+      border: 1px solid var(--border-color-light);
+    }
+
+    .arrow-btn {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: rgba(30, 41, 59, 0.8);
+      color: var(--text-muted);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .arrow-btn:hover {
+      background: var(--accent-blue);
+      color: #fff;
+      transform: scale(1.15);
+    }
+
     .card-select-checkbox {
       width: 16px;
       height: 16px;
@@ -2200,6 +2235,53 @@
         this.filter(q);
       },
 
+      moveProduct(id, direction) {
+        const p = this.getById(id);
+        if (!p) return;
+
+        const currentList = this.currentRenderedList || this.products;
+        const currentIdx = currentList.indexOf(p);
+        if (currentIdx === -1) return;
+
+        let delta = 0;
+        if (direction === 'left') delta = -1;
+        else if (direction === 'right') delta = 1;
+        else if (direction === 'up') delta = -4;   // Move 1 linha inteira para cima (4 colunas)
+        else if (direction === 'down') delta = 4;  // Move 1 linha inteira para baixo (4 colunas)
+
+        const targetIdx = currentIdx + delta;
+
+        if (targetIdx < 0 || targetIdx >= currentList.length) {
+          showToast('Limite da lista atingido nesta direção!', 'info');
+          return;
+        }
+
+        HistoryStore.snapshot();
+
+        // Remove do indice atual e insere no novo indice desejado
+        const [movedItem] = currentList.splice(currentIdx, 1);
+        currentList.splice(targetIdx, 0, movedItem);
+
+        // Atribui a ordem sequencial sortOrder
+        currentList.forEach((prod, idx) => {
+          prod.sortOrder = idx;
+        });
+
+        // Garante sortOrder continuo no catálogo total
+        let maxOrder = currentList.length;
+        this.products.forEach(prod => {
+          if (typeof prod.sortOrder !== 'number') {
+            prod.sortOrder = maxOrder++;
+          }
+        });
+
+        this.saveWithoutSnapshot();
+        FirebaseEngine.autoSyncProduct(movedItem);
+
+        const dirNames = { left: 'esquerda ◄', right: 'direita ►', up: '1 linha para cima ▲', down: '1 linha para baixo ▼' };
+        showToast(`Bebida movida para ${dirNames[direction] || direction}!`, 'info');
+      },
+
 
 
       triggerCardPhotoUpload(id) {
@@ -2328,11 +2410,15 @@
           list = list.filter(p => getProductCategory(p) === this.selectedCategory);
         }
 
-        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA (DESTAQUES HEROES PRIMEIRO, SEGUIDOS POR CATEGORIA E NOME)
+        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA (DESTAQUES HEROES PRIMEIRO, SEGUIDOS PELA ORDEM DAS SETAS / CATEGORIA)
         list = [...list].sort((a, b) => {
           const heroA = a.isHero ? 1 : 0;
           const heroB = b.isHero ? 1 : 0;
           if (heroA !== heroB) return heroB - heroA;
+
+          const orderA = typeof a.sortOrder === 'number' ? a.sortOrder : 999999;
+          const orderB = typeof b.sortOrder === 'number' ? b.sortOrder : 999999;
+          if (orderA !== orderB) return orderA - orderB;
 
           const catA = getProductCategory(a);
           const catB = getProductCategory(b);
@@ -2378,6 +2464,8 @@
           return;
         }
 
+        this.currentRenderedList = list;
+
         const startIdx = (this.currentPage - 1) * this.itemsPerPage;
         const paginatedList = list.slice(startIdx, startIdx + this.itemsPerPage);
 
@@ -2395,6 +2483,13 @@
               <div class="card-photo-container" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
                 <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para ação em lote">
                   <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
+                </div>
+
+                <div class="card-arrow-controls admin-only-ui" onclick="event.stopPropagation();" title="Mover bebida de posição nas linhas e colunas">
+                  <button class="arrow-btn" onclick="ProductStore.moveProduct('${safeId}', 'up')" title="Mover 1 Linha para Cima (▲)"><i class="fa-solid fa-chevron-up"></i></button>
+                  <button class="arrow-btn" onclick="ProductStore.moveProduct('${safeId}', 'down')" title="Mover 1 Linha para Baixo (▼)"><i class="fa-solid fa-chevron-down"></i></button>
+                  <button class="arrow-btn" onclick="ProductStore.moveProduct('${safeId}', 'left')" title="Mover 1 Posição para Esquerda (◄)"><i class="fa-solid fa-chevron-left"></i></button>
+                  <button class="arrow-btn" onclick="ProductStore.moveProduct('${safeId}', 'right')" title="Mover 1 Posição para Direita (►)"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
 
                 <div class="card-hero-badge admin-only-ui" title="${p.isHero ? 'Destaque Hero (exibido no topo do catálogo!)' : 'Produto Normal'}">
