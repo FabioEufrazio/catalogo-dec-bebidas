@@ -2359,7 +2359,19 @@
 
         this.renderCategoryPills();
 
-        let list = listToRender || this.products;
+        let list = listToRender;
+
+        if (!list) {
+          list = this.products;
+          const searchElem = document.getElementById('search-input');
+          const query = searchElem ? (searchElem.value || '').toLowerCase().trim() : '';
+          if (query) {
+            list = list.filter(p => 
+              (p.code || '').toLowerCase().includes(query) ||
+              (p.description || '').toLowerCase().includes(query)
+            );
+          }
+        }
 
         // No Modo Cliente (Visão Pública), exibe APENAS produtos estritamente ativos!
         if (FirebaseEngine.isClientMode) {
