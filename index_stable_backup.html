@@ -389,61 +389,6 @@
       align-items: center;
     }
 
-    .card-drag-handle {
-      position: absolute;
-      top: 8px;
-      left: 36px;
-      z-index: 4;
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(4px);
-      border-radius: var(--radius-sm);
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-muted);
-      cursor: grab;
-      border: 1px solid var(--border-color-light);
-      transition: all 0.2s ease;
-    }
-
-    .card-drag-handle:hover {
-      background: rgba(30, 41, 59, 0.95);
-      color: var(--accent-blue);
-      border-color: var(--accent-blue);
-      transform: scale(1.08);
-    }
-
-    .product-card[draggable="true"] {
-      cursor: grab;
-    }
-
-    .product-card[draggable="true"]:active {
-      cursor: grabbing;
-    }
-
-    .product-card.dragging {
-      opacity: 0.3;
-      transform: scale(0.92);
-      border: 2px dashed var(--accent-blue) !important;
-      box-shadow: 0 0 25px rgba(56, 189, 248, 0.4) !important;
-    }
-
-    .product-card.drop-before {
-      border-left: 6px solid var(--accent-blue) !important;
-      box-shadow: -10px 0 25px rgba(56, 189, 248, 0.6) !important;
-      transform: translateX(8px);
-      transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), border-left 0.15s ease;
-    }
-
-    .product-card.drop-after {
-      border-right: 6px solid var(--accent-blue) !important;
-      box-shadow: 10px 0 25px rgba(56, 189, 248, 0.6) !important;
-      transform: translateX(-8px);
-      transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), border-right 0.15s ease;
-    }
-
     .card-select-checkbox {
       width: 16px;
       height: 16px;
@@ -2255,149 +2200,7 @@
         this.filter(q);
       },
 
-      draggedProduct: null,
-      dragInsertPos: 'before',
-      currentRenderedList: [],
 
-      checkDragAutoScroll(clientY) {
-        const viewportHeight = window.innerHeight;
-        const topEdge = 130;
-        const bottomEdge = viewportHeight - 130;
-
-        if (clientY < topEdge) {
-          const speed = Math.min(30, Math.max(8, Math.round((topEdge - clientY) * 0.4)));
-          window.scrollBy({ top: -speed, behavior: 'instant' });
-        } else if (clientY > bottomEdge) {
-          const speed = Math.min(30, Math.max(8, Math.round((clientY - bottomEdge) * 0.4)));
-          window.scrollBy({ top: speed, behavior: 'instant' });
-        }
-      },
-
-      handleDragStart(e, id) {
-        if (FirebaseEngine.isClientMode) return;
-        const p = this.getById(id);
-        if (!p) return;
-
-        this.draggedProduct = p;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', id);
-
-        const card = e.currentTarget;
-        setTimeout(() => {
-          if (card) card.classList.add('dragging');
-        }, 0);
-      },
-
-      handleDragOver(e, targetId) {
-        if (FirebaseEngine.isClientMode || !this.draggedProduct) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-
-        this.checkDragAutoScroll(e.clientY);
-
-        if (targetId === String(this.draggedProduct.id)) return;
-
-        const card = document.getElementById(`prod-card-${targetId}`);
-        if (!card) return;
-
-        const rect = card.getBoundingClientRect();
-        const midX = rect.left + rect.width / 2;
-
-        document.querySelectorAll('.product-card').forEach(c => {
-          if (c !== card) c.classList.remove('drop-before', 'drop-after');
-        });
-
-        if (e.clientX < midX) {
-          this.dragInsertPos = 'before';
-          card.classList.add('drop-before');
-          card.classList.remove('drop-after');
-        } else {
-          this.dragInsertPos = 'after';
-          card.classList.add('drop-after');
-          card.classList.remove('drop-before');
-        }
-      },
-
-      handleDragEnter(e, targetId) {
-        if (FirebaseEngine.isClientMode) return;
-        e.preventDefault();
-      },
-
-      handleDragLeave(e) {
-        if (FirebaseEngine.isClientMode) return;
-        const card = e.currentTarget;
-        if (card) {
-          card.classList.remove('drop-before', 'drop-after');
-        }
-      },
-
-      async handleDrop(e, targetId) {
-        if (FirebaseEngine.isClientMode || !this.draggedProduct) return;
-        e.preventDefault();
-        e.stopPropagation();
-
-        document.querySelectorAll('.product-card').forEach(c => {
-          c.classList.remove('drop-before', 'drop-after', 'dragging');
-        });
-
-        const draggedItem = this.draggedProduct;
-        const targetItem = this.getById(targetId);
-
-        if (!draggedItem || !targetItem || String(draggedItem.id) === String(targetItem.id)) {
-          this.draggedProduct = null;
-          return;
-        }
-
-        // Mapeamento direto da lista visivel na tela
-        const visibleList = this.currentRenderedList || this.products;
-        const fromIndex = visibleList.indexOf(draggedItem);
-        let toIndex = visibleList.indexOf(targetItem);
-
-        if (fromIndex === -1 || toIndex === -1) {
-          this.draggedProduct = null;
-          return;
-        }
-
-        if (this.dragInsertPos === 'after') {
-          toIndex += 1;
-        }
-
-        // Move a bebida na lista visivel na tela
-        visibleList.splice(fromIndex, 1);
-        if (fromIndex < toIndex) {
-          toIndex -= 1;
-        }
-        visibleList.splice(Math.max(0, toIndex), 0, draggedItem);
-
-        // Atualiza a ordem sortOrder de todos os produtos na exata posicao soltada
-        visibleList.forEach((p, idx) => {
-          p.sortOrder = idx;
-        });
-
-        // Garante sortOrder continuo para o restante do catalogo
-        let currentMaxOrder = visibleList.length;
-        this.products.forEach(p => {
-          if (typeof p.sortOrder !== 'number') {
-            p.sortOrder = currentMaxOrder++;
-          }
-        });
-
-        HistoryStore.snapshot();
-        this.saveWithoutSnapshot();
-
-        // Sincroniza com a nuvem
-        FirebaseEngine.autoSyncProduct(draggedItem);
-        showToast(`Bebida "${draggedItem.description}" encaixada com sucesso!`, 'info');
-
-        this.draggedProduct = null;
-      },
-
-      handleDragEnd(e) {
-        this.draggedProduct = null;
-        document.querySelectorAll('.product-card').forEach(c => {
-          c.classList.remove('dragging', 'drop-before', 'drop-after');
-        });
-      },
 
       triggerCardPhotoUpload(id) {
         this.activePasteProductId = id;
@@ -2525,15 +2328,11 @@
           list = list.filter(p => getProductCategory(p) === this.selectedCategory);
         }
 
-        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA (DESTAQUES HEROES PRIMEIRO, SEGUIDOS PELA ORDEM ARRASTADA / CATEGORIA)
+        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA (DESTAQUES HEROES PRIMEIRO, SEGUIDOS POR CATEGORIA E NOME)
         list = [...list].sort((a, b) => {
           const heroA = a.isHero ? 1 : 0;
           const heroB = b.isHero ? 1 : 0;
           if (heroA !== heroB) return heroB - heroA;
-
-          const orderA = typeof a.sortOrder === 'number' ? a.sortOrder : 999999;
-          const orderB = typeof b.sortOrder === 'number' ? b.sortOrder : 999999;
-          if (orderA !== orderB) return orderA - orderB;
 
           const catA = getProductCategory(a);
           const catB = getProductCategory(b);
@@ -2579,8 +2378,6 @@
           return;
         }
 
-        this.currentRenderedList = list;
-
         const startIdx = (this.currentPage - 1) * this.itemsPerPage;
         const paginatedList = list.slice(startIdx, startIdx + this.itemsPerPage);
 
@@ -2594,24 +2391,10 @@
           const safeDesc = escapeHtml(p.description);
 
           return `
-            <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" 
-                 id="prod-card-${p.id}"
-                 ${!FirebaseEngine.isClientMode ? `
-                   draggable="true"
-                   ondragstart="ProductStore.handleDragStart(event, '${safeId}')"
-                   ondragover="ProductStore.handleDragOver(event, '${safeId}')"
-                   ondragenter="ProductStore.handleDragEnter(event, '${safeId}')"
-                   ondragleave="ProductStore.handleDragLeave(event)"
-                   ondrop="ProductStore.handleDrop(event, '${safeId}')"
-                   ondragend="ProductStore.handleDragEnd(event)"
-                 ` : ''}>
+            <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" id="prod-card-${p.id}">
               <div class="card-photo-container" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
                 <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para ação em lote">
                   <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
-                </div>
-
-                <div class="card-drag-handle admin-only-ui" onclick="event.stopPropagation();" title="Clique e arraste para reordenar esta bebida na lista">
-                  <i class="fa-solid fa-grip-vertical"></i>
                 </div>
 
                 <div class="card-hero-badge admin-only-ui" title="${p.isHero ? 'Destaque Hero (exibido no topo do catálogo!)' : 'Produto Normal'}">
