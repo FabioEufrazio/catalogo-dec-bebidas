@@ -2335,13 +2335,10 @@
         this.render();
       },
 
-      getById(id) {
-        return this.products.find(p => String(p.id) === String(id));
-      },
-
       filter(query) {
+        this.currentSearchQuery = (query || '').toLowerCase().trim();
         this.currentPage = 1;
-        const q = (query || '').toLowerCase().trim();
+        const q = this.currentSearchQuery;
         let list = this.products;
 
         if (q) {
@@ -2355,7 +2352,10 @@
       },
 
       render(listToRender = null) {
-        const scrollY = window.scrollY || document.documentElement.scrollTop;
+        let currentScroll = window.scrollY || document.documentElement.scrollTop;
+        if (this.savedEditScrollPos !== undefined && this.savedEditScrollPos !== null && this.savedEditScrollPos > 0) {
+          currentScroll = this.savedEditScrollPos;
+        }
 
         this.renderCategoryPills();
 
@@ -2364,7 +2364,7 @@
         if (!list) {
           list = this.products;
           const searchElem = document.getElementById('search-input');
-          const query = searchElem ? (searchElem.value || '').toLowerCase().trim() : '';
+          const query = this.currentSearchQuery !== undefined ? this.currentSearchQuery : (searchElem ? (searchElem.value || '').toLowerCase().trim() : '');
           if (query) {
             list = list.filter(p => 
               (p.code || '').toLowerCase().includes(query) ||
@@ -2457,7 +2457,7 @@
             <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" id="prod-card-${p.id}">
               <div class="card-photo-container" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
                 <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para ação em lote">
-                  <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onclick="event.stopPropagation();" onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
+                  <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
                 </div>
 
                 <div class="card-hero-badge admin-only-ui" title="${p.isHero ? 'Destaque Hero (exibido no topo do catálogo!)' : 'Produto Normal'}">
@@ -2533,16 +2533,17 @@
 
         this.renderPagination(totalFiltered, totalPages);
 
-        const savedPos = scrollY;
+        const targetPos = currentScroll;
         requestAnimationFrame(() => {
           if (this.shouldScrollToTop) {
             this.shouldScrollToTop = false;
             this.scrollToTop();
-          } else {
-            window.scrollTo(0, savedPos);
-            setTimeout(() => window.scrollTo(0, savedPos), 40);
+          } else if (targetPos > 0) {
+            window.scrollTo(0, targetPos);
+            setTimeout(() => window.scrollTo(0, targetPos), 40);
           }
           this.updateBulkBar();
+          this.savedEditScrollPos = null;
         });
       },
 
