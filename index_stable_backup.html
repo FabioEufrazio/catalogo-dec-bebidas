@@ -3051,21 +3051,36 @@
       ProductStore.init();
     });
 
-    // RECONEXÃO E ATUALIZAÇÃO AUTOMÁTICA EM DISPOSITIVOS MÓVEIS (MOBILE)
+    // RECONEXÃO E ATUALIZAÇÃO AUTOMÁTICA EM COMPUTADORES E DISPOSITIVOS MÓVEIS (DESKTOP & MOBILE)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         FirebaseEngine.checkAutoSyncInterval();
-        if (FirebaseEngine.db) FirebaseEngine.listenToCloud();
+        if (FirebaseEngine.db) {
+          FirebaseEngine.forceCloudFetch('server');
+          FirebaseEngine.listenToCloud();
+        }
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      FirebaseEngine.checkAutoSyncInterval();
+      if (FirebaseEngine.db) {
+        FirebaseEngine.forceCloudFetch('server');
       }
     });
 
     window.addEventListener('pageshow', () => {
       FirebaseEngine.checkAutoSyncInterval();
+      if (FirebaseEngine.db) {
+        FirebaseEngine.forceCloudFetch('server');
+      }
     });
 
     window.addEventListener('online', () => {
-      FirebaseEngine.forceCloudFetch('server');
-      if (FirebaseEngine.db) FirebaseEngine.listenToCloud();
+      if (FirebaseEngine.db) {
+        FirebaseEngine.forceCloudFetch('server');
+        FirebaseEngine.listenToCloud();
+      }
     });
   </script>
 </body>
