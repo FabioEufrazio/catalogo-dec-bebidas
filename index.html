@@ -393,6 +393,42 @@
       accent-color: var(--accent-blue);
     }
 
+    .card-hero-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 5;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 1px solid var(--border-color-light);
+      transition: all 0.2s ease;
+    }
+
+    .card-hero-badge:hover {
+      background: rgba(30, 41, 59, 0.95);
+      border-color: #fbbf24;
+    }
+
+    .card-hero-badge i {
+      font-size: 1.05rem;
+      color: var(--text-dim);
+      opacity: 0.45;
+      transition: all 0.2s ease;
+    }
+
+    .card-hero-badge i.active {
+      color: #fbbf24;
+      opacity: 1;
+      filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.85));
+      transform: scale(1.1);
+    }
+
     .status-badge {
       display: inline-flex;
       align-items: center;
@@ -1506,6 +1542,7 @@
               qtyPerBox: Number(p.qtyPerBox || 1),
               showBoxTotal: p.showBoxTotal !== false,
               active: p.active !== false,
+              isHero: p.isHero === true,
               category: p.category || 'auto',
               imageBase64: img
             });
@@ -1555,6 +1592,7 @@
             qtyPerBox: Number(product.qtyPerBox || 1),
             showBoxTotal: product.showBoxTotal !== false,
             active: product.active !== false && product.active !== 'false',
+            isHero: product.isHero === true,
             category: product.category || 'auto',
             imageBase64: img
           };
@@ -1957,6 +1995,19 @@
         showToast(`Buscando foto de "${p.description}". Copie a imagem no Google (clique com botão direito -> Copiar Imagem) e aperte Ctrl+V no sistema!`, 'info');
       },
 
+      toggleHero(id) {
+        const p = this.getById(id);
+        if (!p) return;
+
+        HistoryStore.snapshot();
+        p.isHero = !p.isHero;
+        this.saveWithoutSnapshot();
+        FirebaseEngine.autoSyncProduct(p);
+
+        const statusMsg = p.isHero ? 'adicionado aos DESTAQUES HERO (aparece no topo!)' : 'removido dos Destaques Hero';
+        showToast(`Produto "${p.description}" ${statusMsg}!`, 'info');
+      },
+
       init() {
         FirebaseEngine.checkMode(); // Executa antes de qualquer renderizacao para que isClientMode seja 100% conhecido desde o milissegundo 0!
         try {
@@ -2019,8 +2070,12 @@
           list = list.filter(p => getProductCategory(p) === this.selectedCategory);
         }
 
-        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA
+        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA (DESTAQUES HEROES PRIMEIRO!)
         list = [...list].sort((a, b) => {
+          const heroA = a.isHero ? 1 : 0;
+          const heroB = b.isHero ? 1 : 0;
+          if (heroA !== heroB) return heroB - heroA;
+
           const catA = getProductCategory(a);
           const catB = getProductCategory(b);
           const idxA = CATEGORIES.findIndex(c => c.id === catA);
@@ -2072,6 +2127,10 @@
               <div class="card-photo-container" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
                 <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para ação em lote">
                   <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
+                </div>
+
+                <div class="card-hero-badge admin-only-ui" onclick="event.stopPropagation(); ProductStore.toggleHero('${safeId}')" title="${p.isHero ? 'Remover dos Destaques (Hero)' : 'Marcar como Destaque Hero (aparecer em primeiro no topo!)'}">
+                  <i class="fa-solid fa-crown ${p.isHero ? 'active' : ''}"></i>
                 </div>
                 ${p.imageBase64 ? `
                   <img src="${p.imageBase64}" class="card-photo" alt="${safeDesc}">
