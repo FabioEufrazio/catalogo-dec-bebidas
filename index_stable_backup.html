@@ -1957,7 +1957,7 @@
       { id: 'gin', name: 'Gins', icon: 'fa-martini-glass-citrus', keywords: ['gin', 'gyn', 'tanqueray', 'beefeater', 'bombay', 'gordons', 'seagers', 'hespirit', 'hendricks', 'torquay'] },
       { id: 'rum', name: 'Rums', icon: 'fa-bottle-droplet', keywords: ['rum', 'runs', 'bacardi', 'malibu', 'captain morgan', 'havana', 'montilla'] },
       { id: 'cerveja', name: 'Cervejas', icon: 'fa-beer-mug-empty', keywords: ['cerveja', 'cervejas', 'chopp', 'heineken', 'stella', 'budweiser', 'corona', 'amstel', 'eisenbahn', 'spaten', 'brahma', 'skol', 'beck'] },
-      { id: 'energetico', name: 'Energéticos', icon: 'fa-bolt', keywords: ['energetico', 'energético', 'red bull', 'monster', 'tnt', 'bally', 'vibe', 'extra power'] },
+      { id: 'energetico', name: 'Energéticos', icon: 'fa-bolt', keywords: ['energetico', 'energético', 'energeticos', 'energéticos', 'beb energ', 'energ', 'red bull', 'monster', 'tnt', 'bally', 'baly', 'vibe', 'extra power'] },
       { id: 'outros', name: 'Outros', icon: 'fa-boxes-stacked', keywords: [] }
     ];
 
@@ -2285,6 +2285,24 @@
         showToast(`Produto "${p.description}" ${statusMsg}!`, 'info');
       },
 
+      autoCategorizeEnergeticos() {
+        if (!this.products || this.products.length === 0) return;
+        let count = 0;
+        this.products.forEach(p => {
+          const desc = ((p.description || '') + ' ' + (p.code || '')).toLowerCase();
+          if (desc.includes('beb energ') || desc.includes('baly') || desc.includes('bally') || desc.includes('red bull') || desc.includes('monster') || desc.includes('tnt') || desc.includes('energetico') || desc.includes('energético')) {
+            if (p.category === 'outros' || p.category === 'auto' || !p.category) {
+              p.category = 'energetico';
+              FirebaseEngine.autoSyncProduct(p);
+              count++;
+            }
+          }
+        });
+        if (count > 0) {
+          localStorage.setItem('catalog_products_v1', JSON.stringify(this.products));
+        }
+      },
+
       init() {
         if ('scrollRestoration' in history) {
           history.scrollRestoration = 'manual';
@@ -2300,6 +2318,7 @@
           this.products = [];
         }
 
+        this.autoCategorizeEnergeticos();
         this.render();
         FirebaseEngine.init();
         window.addEventListener('paste', (e) => this.handlePaste(e));
