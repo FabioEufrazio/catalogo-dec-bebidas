@@ -1588,10 +1588,14 @@
             });
 
             if (cloudProducts.length > 0) {
-              ProductStore.products = cloudProducts;
-              localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
-              localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now()));
-              ProductStore.render();
+              const oldJson = JSON.stringify(ProductStore.products);
+              const newJson = JSON.stringify(cloudProducts);
+              if (oldJson !== newJson) {
+                ProductStore.products = cloudProducts;
+                localStorage.setItem('catalog_products_v1', newJson);
+                localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now()));
+                ProductStore.render();
+              }
             }
           }
         } catch (e) {
@@ -1648,10 +1652,14 @@
               });
 
               if (cloudProducts.length > 0) {
-                ProductStore.products = cloudProducts;
-                localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
-                localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now()));
-                ProductStore.render();
+                const oldJson = JSON.stringify(ProductStore.products);
+                const newJson = JSON.stringify(cloudProducts);
+                if (oldJson !== newJson) {
+                  ProductStore.products = cloudProducts;
+                  localStorage.setItem('catalog_products_v1', newJson);
+                  localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now()));
+                  ProductStore.render();
+                }
               }
             }
           },
@@ -2274,6 +2282,9 @@
       },
 
       init() {
+        if ('scrollRestoration' in history) {
+          history.scrollRestoration = 'manual';
+        }
         FirebaseEngine.checkMode(); // Executa antes de qualquer renderizacao para que isClientMode seja 100% conhecido desde o milissegundo 0!
         try {
           const stored = localStorage.getItem('catalog_products_v1');
@@ -2408,7 +2419,7 @@
             <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" id="prod-card-${p.id}">
               <div class="card-photo-container" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
                 <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para ação em lote">
-                  <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
+                  <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onclick="event.stopPropagation();" onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
                 </div>
 
                 <div class="card-hero-badge admin-only-ui" title="${p.isHero ? 'Destaque Hero (exibido no topo do catálogo!)' : 'Produto Normal'}">
@@ -2484,12 +2495,14 @@
 
         this.renderPagination(totalFiltered, totalPages);
 
+        const savedPos = scrollY;
         requestAnimationFrame(() => {
           if (this.shouldScrollToTop) {
             this.shouldScrollToTop = false;
             this.scrollToTop();
           } else {
-            window.scrollTo({ top: scrollY, behavior: 'instant' });
+            window.scrollTo(0, savedPos);
+            setTimeout(() => window.scrollTo(0, savedPos), 40);
           }
           this.updateBulkBar();
         });
