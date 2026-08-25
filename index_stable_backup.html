@@ -905,6 +905,72 @@
         font-size: 0.98rem;
       }
     }
+
+    /* ==========================================================================
+       6. PAGINAÇÃO DA GRADE DE PRODUTOS
+       ========================================================================== */
+    .pagination-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      margin-top: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .pagination-info {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .pagination-info b {
+      color: var(--text-main);
+    }
+
+    .pagination-buttons {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .page-btn {
+      min-width: 36px;
+      height: 36px;
+      padding: 0 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-body);
+      border: 1px solid var(--border-color-light);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .page-btn:hover:not(.disabled):not(.active) {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .page-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    .page-btn.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -983,6 +1049,7 @@
 
     <!-- GRID DE EXIBIÇÃO DE PRODUTOS -->
     <div class="product-grid" id="product-grid"></div>
+    <div id="pagination-bar"></div>
   </main>
 
   <!-- MODAL 1: CADASTRO / EDIÇÃO DE PRODUTO -->
@@ -1825,6 +1892,71 @@
       selectedCategory: 'all',
       selectedIds: new Set(),
       isCategoryManuallySet: false,
+      currentPage: 1,
+      itemsPerPage: 24,
+
+      goToPage(pageNum) {
+        this.currentPage = pageNum;
+        this.render();
+        const nav = document.getElementById('sticky-nav-container');
+        if (nav) nav.scrollIntoView({ behavior: 'smooth' });
+      },
+
+      renderPagination(totalFiltered, totalPages) {
+        const pagElem = document.getElementById('pagination-bar');
+        if (!pagElem) return;
+
+        if (totalFiltered <= this.itemsPerPage) {
+          pagElem.innerHTML = '';
+          return;
+        }
+
+        const startIdx = (this.currentPage - 1) * this.itemsPerPage + 1;
+        const endIdx = Math.min(this.currentPage * this.itemsPerPage, totalFiltered);
+
+        let pageBtnsHtml = '';
+        const maxVisibleBtns = 5;
+        let startPage = Math.max(1, this.currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + maxVisibleBtns - 1);
+        if (endPage - startPage < maxVisibleBtns - 1) {
+          startPage = Math.max(1, endPage - maxVisibleBtns + 1);
+        }
+
+        if (startPage > 1) {
+          pageBtnsHtml += `<button class="page-btn" onclick="ProductStore.goToPage(1)">1</button>`;
+          if (startPage > 2) pageBtnsHtml += `<span style="color: var(--text-dim); padding: 0 4px;">...</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+          pageBtnsHtml += `
+            <button class="page-btn ${i === this.currentPage ? 'active' : ''}" onclick="ProductStore.goToPage(${i})">
+              ${i}
+            </button>
+          `;
+        }
+
+        if (endPage < totalPages) {
+          if (endPage < totalPages - 1) pageBtnsHtml += `<span style="color: var(--text-dim); padding: 0 4px;">...</span>`;
+          pageBtnsHtml += `<button class="page-btn" onclick="ProductStore.goToPage(${totalPages})">${totalPages}</button>`;
+        }
+
+        pagElem.innerHTML = `
+          <div class="pagination-container">
+            <div class="pagination-info">
+              Exibindo <b>${startIdx}-${endIdx}</b> de <b>${totalFiltered}</b> produtos (Página ${this.currentPage} de ${totalPages})
+            </div>
+            <div class="pagination-buttons">
+              <button class="page-btn ${this.currentPage === 1 ? 'disabled' : ''}" ${this.currentPage === 1 ? 'disabled' : ''} onclick="ProductStore.goToPage(${this.currentPage - 1})">
+                <i class="fa-solid fa-chevron-left"></i> Anterior
+              </button>
+              ${pageBtnsHtml}
+              <button class="page-btn ${this.currentPage === totalPages ? 'disabled' : ''}" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="ProductStore.goToPage(${this.currentPage + 1})">
+                Próximo <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      },
 
       onDescriptionInput(text) {
         if (this.isCategoryManuallySet) return;
@@ -1960,6 +2092,7 @@
 
       setCategoryFilter(catId) {
         this.selectedCategory = catId;
+        this.currentPage = 1;
         const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
         this.filter(q);
       },
@@ -2041,6 +2174,7 @@
       },
 
       filter(query) {
+        this.currentPage = 1;
         const q = (query || '').toLowerCase().trim();
         let list = this.products;
 
@@ -2102,7 +2236,13 @@
         const boxItemsElem = document.getElementById('stat-box-items');
         if (boxItemsElem) boxItemsElem.textContent = boxCount;
 
-        if (list.length === 0) {
+        const totalFiltered = list.length;
+        const totalPages = Math.max(1, Math.ceil(totalFiltered / this.itemsPerPage));
+
+        if (this.currentPage > totalPages) this.currentPage = totalPages;
+        if (this.currentPage < 1) this.currentPage = 1;
+
+        if (totalFiltered === 0) {
           grid.innerHTML = `
             <div class="empty-state">
               <i class="fa-solid fa-box-open"></i>
@@ -2110,10 +2250,14 @@
               <p>Utilize a barra de busca ou selecione outro grupo de bebidas.</p>
             </div>
           `;
+          this.renderPagination(0, 0);
           return;
         }
 
-        grid.innerHTML = list.map(p => {
+        const startIdx = (this.currentPage - 1) * this.itemsPerPage;
+        const paginatedList = list.slice(startIdx, startIdx + this.itemsPerPage);
+
+        grid.innerHTML = paginatedList.map(p => {
           const isActive = p.active !== false;
           const showBox = isActive && p.showBoxTotal !== false && p.qtyPerBox > 1;
           const boxTotal = (p.unitPrice || 0) * (p.qtyPerBox || 1);
@@ -2199,6 +2343,8 @@
             </div>
           `;
         }).join('');
+
+        this.renderPagination(totalFiltered, totalPages);
 
         requestAnimationFrame(() => {
           window.scrollTo({ top: scrollY, behavior: 'instant' });
