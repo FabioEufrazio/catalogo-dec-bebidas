@@ -1459,8 +1459,8 @@
     function getSortBrandKey(description) {
       if (!description) return '';
       let str = String(description).toUpperCase();
-      // Remove termos genericos do inicio para agrupar bebidas da mesma marca/nome similar lado a lado
-      str = str.replace(/^(WHISKY|WHISKEY|VODKA|LICOR|GIN|RUM|TEQUILA|CERVEJA|CHAMPAGNE|VINHO|ENERGETICO|BEBIDA|SPIRIT)\s+/i, '');
+      // Remove termos genericos e embalagens do inicio para agrupar bebidas da mesma marca/nome similar lado a lado
+      str = str.replace(/^(WHISKY|WHISKEY|VODKA|LICOR|GIN|RUM|TEQUILA|CERVEJA|CHAMPAGNE|VINHO|ENERGETICO|BEBIDA|SPIRIT|KIT|COMBO|PACK|CAIXA|GARRAFA|LATA|MINIATURA)\s+/ig, '');
       return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     }
 
@@ -2364,7 +2364,10 @@
 
           const keyA = getSortBrandKey(a.description);
           const keyB = getSortBrandKey(b.description);
-          return keyA.localeCompare(keyB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+          const brandComp = keyA.localeCompare(keyB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+          if (brandComp !== 0) return brandComp;
+
+          return (a.description || '').localeCompare(b.description || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
         });
 
         const grid = document.getElementById('product-grid');
