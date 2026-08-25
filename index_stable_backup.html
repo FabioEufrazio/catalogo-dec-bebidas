@@ -2165,10 +2165,26 @@
 
         HistoryStore.snapshot();
         p.isHero = !p.isHero;
-        this.saveWithoutSnapshot();
+
+        // Salva localmente e sincroniza na nuvem sem re-ordenar a tela para nao pular a posicao do usuario
+        localStorage.setItem('catalog_products_v1', JSON.stringify(this.products));
         FirebaseEngine.autoSyncProduct(p);
 
-        const statusMsg = p.isHero ? 'adicionado aos DESTAQUES HERO (aparece no topo!)' : 'removido dos Destaques Hero';
+        // Atualiza o icone visualmente no card instantaneamente
+        const cardElem = document.getElementById(`prod-card-${p.id}`);
+        if (cardElem) {
+          const crownIcon = cardElem.querySelector('.card-hero-badge i');
+          const crownBadge = cardElem.querySelector('.card-hero-badge');
+          if (crownIcon) {
+            if (p.isHero) crownIcon.classList.add('active');
+            else crownIcon.classList.remove('active');
+          }
+          if (crownBadge) {
+            crownBadge.title = p.isHero ? 'Remover dos Destaques (Hero)' : 'Marcar como Destaque Hero (aparecer em primeiro no topo!)';
+          }
+        }
+
+        const statusMsg = p.isHero ? 'marcado como HERO ✨ (aparece no topo do catálogo!)' : 'removido dos Destaques Hero';
         showToast(`Produto "${p.description}" ${statusMsg}!`, 'info');
       },
 
