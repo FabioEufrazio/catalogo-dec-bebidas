@@ -1707,6 +1707,7 @@
           let img = product.imageBase64 || '';
           if (img && img.length > 150000) {
             img = await compressBase64(img, 350);
+            product.imageBase64 = img;
           }
           const clean = {
             id: String(product.id),
@@ -1721,6 +1722,7 @@
             imageBase64: img
           };
           await this.db.collection('products').doc(clean.id).set(clean);
+          localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
         } catch(e) {
           console.error("Erro na auto sincronizacao do produto", e);
         }
@@ -2192,12 +2194,13 @@
         if (!file || !this.activePasteProductId) return;
 
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
           const target = this.getById(this.activePasteProductId);
           if (target) {
             HistoryStore.snapshot();
             target.imageBase64 = evt.target.result;
             this.saveWithoutSnapshot();
+            await FirebaseEngine.autoSyncProduct(target);
             showToast(`Foto adicionada a "${target.description}"!`);
           }
           document.getElementById('card-photo-input').value = '';
@@ -2692,6 +2695,7 @@
                   HistoryStore.snapshot();
                   target.imageBase64 = base64;
                   this.saveWithoutSnapshot();
+                  FirebaseEngine.autoSyncProduct(target);
                   showToast(`Foto atualizada para "${target.description}"!`);
                   return;
                 }
