@@ -1520,6 +1520,7 @@
               this.db = firebase.firestore();
               this.checkAutoSyncInterval();
               this.listenToCloud();
+              this.startHeartbeatPolling();
               this.updateStatusBadge(true);
               return;
             }
@@ -1529,6 +1530,16 @@
         }
 
         this.updateStatusBadge(false);
+      },
+
+      startHeartbeatPolling() {
+        if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+        // Polling de redundância a cada 15s via REST HTTP (100% imune a quedas silenciosas de WebSocket em redes móveis 4G/5G)
+        this.heartbeatTimer = setInterval(() => {
+          if (this.db) {
+            this.forceCloudFetch('server');
+          }
+        }, 15000);
       },
 
       checkAutoSyncInterval() {
