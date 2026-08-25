@@ -1990,6 +1990,8 @@
       currentPage: 1,
       itemsPerPage: 24,
       shouldScrollToTop: false,
+      currentSearchQuery: '',
+      savedEditScrollPos: null,
 
       scrollToTop() {
         const startPosition = window.pageYOffset || document.documentElement.scrollTop;
@@ -2318,17 +2320,13 @@
           this.products = [];
         }
 
-        this.autoCategorizeEnergeticos();
         this.render();
         FirebaseEngine.init();
+        this.autoCategorizeEnergeticos();
         window.addEventListener('paste', (e) => this.handlePaste(e));
       },
 
-      save() {
-        HistoryStore.snapshot();
-        localStorage.setItem('catalog_products_v1', JSON.stringify(this.products));
-        this.render();
-      },
+
 
       saveWithoutSnapshot() {
         localStorage.setItem('catalog_products_v1', JSON.stringify(this.products));
@@ -2341,8 +2339,11 @@
       },
 
       filter(query) {
-        this.currentSearchQuery = (query || '').toLowerCase().trim();
-        this.currentPage = 1;
+        const newQuery = (query || '').toLowerCase().trim();
+        if (this.currentSearchQuery !== newQuery) {
+          this.currentPage = 1;
+        }
+        this.currentSearchQuery = newQuery;
         const q = this.currentSearchQuery;
         let list = this.products;
 
@@ -2643,7 +2644,7 @@
           showToast('Produto atualizado com sucesso!');
         } else {
           const newProduct = {
-            id: String(Date.now()),
+            id: String(Date.now() + Math.floor(Math.random() * 10000)),
             code,
             description,
             unitPrice,
@@ -2660,13 +2661,6 @@
 
         ModalEngine.close('product-modal');
         this.saveWithoutSnapshot();
-
-        if (this.savedEditScrollPos !== undefined) {
-          const targetScroll = this.savedEditScrollPos;
-          requestAnimationFrame(() => {
-            window.scrollTo({ top: targetScroll, behavior: 'instant' });
-          });
-        }
       },
 
       edit(id) {
@@ -2674,7 +2668,6 @@
         if (!p) return;
 
         this.savedEditScrollPos = window.scrollY || document.documentElement.scrollTop;
-        this.savedEditPage = this.currentPage;
 
         document.getElementById('prod-id').value = p.id;
         document.getElementById('prod-code').value = p.code || '';
@@ -2710,7 +2703,7 @@
 
         const clone = {
           ...p,
-          id: String(Date.now()),
+          id: String(Date.now() + Math.floor(Math.random() * 10000)),
           code: p.code + '-CÓPIA',
           description: p.description + ' (CÓPIA)'
         };
@@ -3072,8 +3065,8 @@
               <td style="padding: 10px 12px; font-weight: 700; white-space: nowrap;">
                 ${isUpdate ? '<span style="color: #60a5fa;"><i class="fa-solid fa-rotate"></i> Atualizar</span>' : '<span style="color: #34d399;"><i class="fa-solid fa-plus"></i> Novo Item</span>'}
               </td>
-              <td style="padding: 10px 12px; font-weight: 700; color: var(--accent-blue);">${a.code}</td>
-              <td style="padding: 10px 12px; font-weight: 600; color: var(--text-main);">${a.description}</td>
+              <td style="padding: 10px 12px; font-weight: 700; color: var(--accent-blue);">${escapeHtml(a.code)}</td>
+              <td style="padding: 10px 12px; font-weight: 600; color: var(--text-main);">${escapeHtml(a.description)}</td>
               <td style="padding: 10px 12px; text-align: right; color: var(--text-muted);">${isUpdate ? formatCurrency(a.oldPrice) : '-'}</td>
               <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--accent-green);">
                 ${formatCurrency(a.newPrice)}
