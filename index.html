@@ -1070,7 +1070,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="prod-code">Código do Produto *</label>
-              <input type="text" id="prod-code" class="form-control" placeholder="Ex: 118227" required>
+              <input type="text" id="prod-code" class="form-control" placeholder="Ex: 118227" required oninput="this.value = this.value.toUpperCase()" style="text-transform: uppercase;">
             </div>
             <div class="form-group">
               <label for="prod-price">Preço Unitário (R$) *</label>
@@ -1080,7 +1080,7 @@
 
           <div class="form-group">
             <label for="prod-desc">Descrição / Nome do Produto *</label>
-            <input type="text" id="prod-desc" class="form-control" placeholder="Ex: VIN PORT DUETO 750ML" required oninput="ProductStore.onDescriptionInput(this.value)">
+            <input type="text" id="prod-desc" class="form-control" placeholder="Ex: VIN PORT DUETO 750ML" required oninput="this.value = this.value.toUpperCase(); ProductStore.onDescriptionInput(this.value);" style="text-transform: uppercase;">
           </div>
 
           <div class="form-row">
@@ -2562,12 +2562,15 @@
       saveFromForm(event) {
         event.preventDefault();
         const id = document.getElementById('prod-id').value;
-        const code = document.getElementById('prod-code').value.trim();
-        const description = document.getElementById('prod-desc').value.trim();
+        const code = document.getElementById('prod-code').value.trim().toUpperCase();
+        const description = document.getElementById('prod-desc').value.trim().toUpperCase();
         const unitPrice = parseFloat(document.getElementById('prod-price').value) || 0;
         const qtyPerBox = parseInt(document.getElementById('prod-qty-box').value) || 1;
         const showBoxTotal = document.getElementById('prod-show-box').checked;
         const category = document.getElementById('prod-category').value;
+
+        document.getElementById('prod-code').value = code;
+        document.getElementById('prod-desc').value = description;
 
         if (!code || !description) {
           showToast('Preencha os campos obrigatórios!', 'error');
@@ -2945,11 +2948,9 @@
           if (!rawPrice || rawPrice <= 0 || isNaN(rawPrice)) continue;
 
           const cKey = normCode(rawCode);
-          const dKey = normDesc(rawDesc);
 
           let matchedIdx = -1;
           if (cKey && codeMap.has(cKey)) matchedIdx = codeMap.get(cKey);
-          else if (dKey && descMap.has(dKey)) matchedIdx = descMap.get(dKey);
 
           if (matchedIdx >= 0) {
             const existingAction = this.actions.find(a => a.type === 'UPDATE' && a.targetIdx === matchedIdx);
@@ -2958,8 +2959,8 @@
               this.actions.push({
                 type: 'UPDATE',
                 targetIdx: matchedIdx,
-                code: rawCode || target.code,
-                description: rawDesc || target.description,
+                code: String(rawCode || target.code).toUpperCase().trim(),
+                description: String(target.description).toUpperCase().trim(), // MANTEM A DESCRICAO ORIGINAL DO SISTEMA SEM ALTERAR!
                 oldPrice: target.unitPrice,
                 newPrice: rawPrice,
                 qtyPerBox: rawQtyBox
@@ -2968,22 +2969,20 @@
           } else {
             let queuedIdx = -1;
             if (cKey && queuedCodes.has(cKey)) queuedIdx = queuedCodes.get(cKey);
-            else if (dKey && queuedDescs.has(dKey)) queuedIdx = queuedDescs.get(dKey);
 
             if (queuedIdx < 0) {
               const actionIdx = this.actions.length;
               this.actions.push({
                 type: 'NEW',
                 targetIdx: -1,
-                code: rawCode || ('IMP' + Math.floor(Math.random() * 10000)),
-                description: rawDesc,
+                code: String(rawCode || ('IMP' + Math.floor(Math.random() * 10000))).toUpperCase().trim(),
+                description: String(rawDesc || '').toUpperCase().trim(),
                 oldPrice: 0,
                 newPrice: rawPrice,
                 qtyPerBox: rawQtyBox
               });
 
               if (cKey) queuedCodes.set(cKey, actionIdx);
-              if (dKey) queuedDescs.set(dKey, actionIdx);
             }
           }
         }
@@ -3052,28 +3051,33 @@
           const finalPrice = Math.round((parseFloat(a.newPrice) || 0) * 100) / 100;
 
           if (a.type === 'UPDATE' && a.targetIdx >= 0) {
-            ProductStore.products[a.targetIdx].unitPrice = finalPrice;
-            if (a.code) ProductStore.products[a.targetIdx].code = a.code;
-            if (a.qtyPerBox > 1) ProductStore.products[a.targetIdx].qtyPerBox = a.qtyPerBox;
+            const target = ProductStore.products[a.targetIdx];
+            target.unitPrice = finalPrice;
+            if (a.code) target.code = String(a.code).toUpperCase().trim();
+            if (a.qtyPerBox > 1) target.qtyPerBox = a.qtyPerBox;
+            // IMPORTANTE: target.description NUNCA é alterado ao atualizar por tabela! Mantém o nome customizado do sistema.
+            FirebaseEngine.autoSyncProduct(target);
             updated++;
           } else if (a.type === 'NEW') {
-            ProductStore.products.unshift({
+            const newProduct = {
               id: String(Date.now() + Math.floor(Math.random() * 100000)),
-              code: a.code || 'S/N',
-              description: a.description,
+              code: String(a.code || 'S/N').toUpperCase().trim(),
+              description: String(a.description || '').toUpperCase().trim(),
               unitPrice: finalPrice,
               qtyPerBox: a.qtyPerBox || 1,
               showBoxTotal: true,
               active: true,
               imageBase64: ''
-            });
+            };
+            ProductStore.products.unshift(newProduct);
+            FirebaseEngine.autoSyncProduct(newProduct);
             created++;
           }
         });
 
         ProductStore.saveWithoutSnapshot();
         ModalEngine.close('preview-modal');
-        showToast(`Importação concluída! ${updated} preços atualizados e ${created} novos produtos cadastrados.`);
+        showToast(`Importação concluída! ${updated} preços atualizados (nomes originais mantidos) e ${created} novos produtos cadastrados.`);
       }
     };
 
