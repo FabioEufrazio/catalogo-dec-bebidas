@@ -424,24 +424,24 @@
     }
 
     .product-card.dragging {
-      opacity: 0.35;
-      transform: scale(0.95);
+      opacity: 0.3;
+      transform: scale(0.92);
       border: 2px dashed var(--accent-blue) !important;
       box-shadow: 0 0 25px rgba(56, 189, 248, 0.4) !important;
     }
 
-    .product-card.insert-left {
-      border-left: 5px solid var(--accent-blue) !important;
-      box-shadow: -8px 0 20px rgba(56, 189, 248, 0.5) !important;
-      transform: translateX(6px);
-      transition: transform 0.15s ease, border-left 0.15s ease;
+    .product-card.drop-before {
+      border-left: 6px solid var(--accent-blue) !important;
+      box-shadow: -10px 0 25px rgba(56, 189, 248, 0.6) !important;
+      transform: translateX(8px);
+      transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), border-left 0.15s ease;
     }
 
-    .product-card.insert-right {
-      border-right: 5px solid var(--accent-blue) !important;
-      box-shadow: 8px 0 20px rgba(56, 189, 248, 0.5) !important;
-      transform: translateX(-6px);
-      transition: transform 0.15s ease, border-right 0.15s ease;
+    .product-card.drop-after {
+      border-right: 6px solid var(--accent-blue) !important;
+      box-shadow: 10px 0 25px rgba(56, 189, 248, 0.6) !important;
+      transform: translateX(-8px);
+      transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), border-right 0.15s ease;
     }
 
     .card-select-checkbox {
@@ -2255,8 +2255,9 @@
         this.filter(q);
       },
 
-      draggedProductId: null,
-      dropInsertPosition: 'before',
+      draggedProduct: null,
+      dragInsertPos: 'before',
+      currentRenderedList: [],
 
       checkDragAutoScroll(clientY) {
         const viewportHeight = window.innerHeight;
@@ -2264,44 +2265,56 @@
         const bottomEdge = viewportHeight - 130;
 
         if (clientY < topEdge) {
-          const speed = Math.min(30, Math.max(6, Math.round((topEdge - clientY) * 0.35)));
+          const speed = Math.min(30, Math.max(8, Math.round((topEdge - clientY) * 0.4)));
           window.scrollBy({ top: -speed, behavior: 'instant' });
         } else if (clientY > bottomEdge) {
-          const speed = Math.min(30, Math.max(6, Math.round((clientY - bottomEdge) * 0.35)));
+          const speed = Math.min(30, Math.max(8, Math.round((clientY - bottomEdge) * 0.4)));
           window.scrollBy({ top: speed, behavior: 'instant' });
         }
       },
 
       handleDragStart(e, id) {
         if (FirebaseEngine.isClientMode) return;
-        this.draggedProductId = id;
+        const p = this.getById(id);
+        if (!p) return;
+
+        this.draggedProduct = p;
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', id);
-        const target = e.currentTarget;
-        setTimeout(() => target.classList.add('dragging'), 0);
+
+        const card = e.currentTarget;
+        setTimeout(() => {
+          if (card) card.classList.add('dragging');
+        }, 0);
       },
 
-      handleDragOver(e) {
-        if (FirebaseEngine.isClientMode) return;
+      handleDragOver(e, targetId) {
+        if (FirebaseEngine.isClientMode || !this.draggedProduct) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
 
         this.checkDragAutoScroll(e.clientY);
 
-        const card = e.currentTarget;
-        if (!card || card.id === `prod-card-${this.draggedProductId}`) return;
+        if (targetId === String(this.draggedProduct.id)) return;
+
+        const card = document.getElementById(`prod-card-${targetId}`);
+        if (!card) return;
 
         const rect = card.getBoundingClientRect();
         const midX = rect.left + rect.width / 2;
 
+        document.querySelectorAll('.product-card').forEach(c => {
+          if (c !== card) c.classList.remove('drop-before', 'drop-after');
+        });
+
         if (e.clientX < midX) {
-          this.dropInsertPosition = 'before';
-          card.classList.add('insert-left');
-          card.classList.remove('insert-right');
+          this.dragInsertPos = 'before';
+          card.classList.add('drop-before');
+          card.classList.remove('drop-after');
         } else {
-          this.dropInsertPosition = 'after';
-          card.classList.add('insert-right');
-          card.classList.remove('insert-left');
+          this.dragInsertPos = 'after';
+          card.classList.add('drop-after');
+          card.classList.remove('drop-before');
         }
       },
 
@@ -2314,56 +2327,75 @@
         if (FirebaseEngine.isClientMode) return;
         const card = e.currentTarget;
         if (card) {
-          card.classList.remove('insert-left', 'insert-right');
+          card.classList.remove('drop-before', 'drop-after');
         }
       },
 
       async handleDrop(e, targetId) {
-        if (FirebaseEngine.isClientMode) return;
+        if (FirebaseEngine.isClientMode || !this.draggedProduct) return;
         e.preventDefault();
         e.stopPropagation();
 
         document.querySelectorAll('.product-card').forEach(c => {
-          c.classList.remove('insert-left', 'insert-right', 'dragging');
+          c.classList.remove('drop-before', 'drop-after', 'dragging');
         });
 
-        const srcId = this.draggedProductId || e.dataTransfer.getData('text/plain');
-        if (!srcId || srcId === targetId) return;
+        const draggedItem = this.draggedProduct;
+        const targetItem = this.getById(targetId);
 
-        const srcIdx = this.products.findIndex(p => String(p.id) === String(srcId));
-        let targetIdx = this.products.findIndex(p => String(p.id) === String(targetId));
-
-        if (srcIdx === -1 || targetIdx === -1) return;
-
-        if (this.dropInsertPosition === 'after') {
-          targetIdx = targetIdx + 1;
+        if (!draggedItem || !targetItem || String(draggedItem.id) === String(targetItem.id)) {
+          this.draggedProduct = null;
+          return;
         }
 
-        HistoryStore.snapshot();
+        // Mapeamento direto da lista visivel na tela
+        const visibleList = this.currentRenderedList || this.products;
+        const fromIndex = visibleList.indexOf(draggedItem);
+        let toIndex = visibleList.indexOf(targetItem);
 
-        const [movedProduct] = this.products.splice(srcIdx, 1);
-        if (srcIdx < targetIdx) {
-          targetIdx = targetIdx - 1;
+        if (fromIndex === -1 || toIndex === -1) {
+          this.draggedProduct = null;
+          return;
         }
 
-        const insertPos = Math.max(0, Math.min(this.products.length, targetIdx));
-        this.products.splice(insertPos, 0, movedProduct);
+        if (this.dragInsertPos === 'after') {
+          toIndex += 1;
+        }
 
-        this.products.forEach((p, idx) => {
+        // Move a bebida na lista visivel na tela
+        visibleList.splice(fromIndex, 1);
+        if (fromIndex < toIndex) {
+          toIndex -= 1;
+        }
+        visibleList.splice(Math.max(0, toIndex), 0, draggedItem);
+
+        // Atualiza a ordem sortOrder de todos os produtos na exata posicao soltada
+        visibleList.forEach((p, idx) => {
           p.sortOrder = idx;
         });
 
+        // Garante sortOrder continuo para o restante do catalogo
+        let currentMaxOrder = visibleList.length;
+        this.products.forEach(p => {
+          if (typeof p.sortOrder !== 'number') {
+            p.sortOrder = currentMaxOrder++;
+          }
+        });
+
+        HistoryStore.snapshot();
         this.saveWithoutSnapshot();
 
-        // Sincroniza a nova posicao com a nuvem
-        FirebaseEngine.autoSyncProduct(movedProduct);
-        showToast(`Bebida "${movedProduct.description}" inserida na nova posição!`, 'info');
+        // Sincroniza com a nuvem
+        FirebaseEngine.autoSyncProduct(draggedItem);
+        showToast(`Bebida "${draggedItem.description}" encaixada com sucesso!`, 'info');
+
+        this.draggedProduct = null;
       },
 
       handleDragEnd(e) {
-        this.draggedProductId = null;
+        this.draggedProduct = null;
         document.querySelectorAll('.product-card').forEach(c => {
-          c.classList.remove('dragging', 'insert-left', 'insert-right');
+          c.classList.remove('dragging', 'drop-before', 'drop-after');
         });
       },
 
@@ -2547,6 +2579,8 @@
           return;
         }
 
+        this.currentRenderedList = list;
+
         const startIdx = (this.currentPage - 1) * this.itemsPerPage;
         const paginatedList = list.slice(startIdx, startIdx + this.itemsPerPage);
 
@@ -2565,7 +2599,7 @@
                  ${!FirebaseEngine.isClientMode ? `
                    draggable="true"
                    ondragstart="ProductStore.handleDragStart(event, '${safeId}')"
-                   ondragover="ProductStore.handleDragOver(event)"
+                   ondragover="ProductStore.handleDragOver(event, '${safeId}')"
                    ondragenter="ProductStore.handleDragEnter(event, '${safeId}')"
                    ondragleave="ProductStore.handleDragLeave(event)"
                    ondrop="ProductStore.handleDrop(event, '${safeId}')"
