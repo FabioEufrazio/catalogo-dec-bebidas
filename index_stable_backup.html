@@ -2335,6 +2335,11 @@
         this.render();
       },
 
+      getById(id) {
+        if (!id) return null;
+        return this.products.find(p => String(p.id) === String(id));
+      },
+
       filter(query) {
         this.currentSearchQuery = (query || '').toLowerCase().trim();
         this.currentPage = 1;
