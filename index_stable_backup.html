@@ -1695,10 +1695,10 @@
               unitPrice: Number(p.unitPrice || 0),
               qtyPerBox: Number(p.qtyPerBox || 1),
               showBoxTotal: p.showBoxTotal !== false,
-              active: p.active !== false,
+              active: p.active !== false && p.active !== 'false',
               isHero: p.isHero === true,
               sortOrder: typeof p.sortOrder === 'number' ? p.sortOrder : 999999,
-              category: p.category || 'auto',
+              category: getProductCategory(p),
               imageBase64: img
             });
           }
@@ -1750,7 +1750,7 @@
             active: product.active !== false && product.active !== 'false',
             isHero: product.isHero === true,
             sortOrder: typeof product.sortOrder === 'number' ? product.sortOrder : 999999,
-            category: product.category || 'auto',
+            category: getProductCategory(product),
             imageBase64: img
           };
           await this.db.collection('products').doc(clean.id).set(clean);
