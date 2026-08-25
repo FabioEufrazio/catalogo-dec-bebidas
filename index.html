@@ -1458,9 +1458,13 @@
 
     function getSortBrandKey(description) {
       if (!description) return '';
-      let str = String(description).toUpperCase();
-      // Remove termos genericos e embalagens do inicio para agrupar bebidas da mesma marca/nome similar lado a lado
-      str = str.replace(/^(WHISKY|WHISKEY|VODKA|LICOR|GIN|RUM|TEQUILA|CERVEJA|CHAMPAGNE|VINHO|ENERGETICO|BEBIDA|SPIRIT|KIT|COMBO|PACK|CAIXA|GARRAFA|LATA|MINIATURA)\s+/ig, '');
+      let str = String(description).toUpperCase().trim();
+      // Remove prefixos compostos como "LICOR DE WHISKY", "LICOR DE WHISK", "BEBIDA MISTA DE", etc.
+      str = str.replace(/^(LICOR DE WHISK(Y|EY)?|BEBIDA MISTA DE|BEBIDA DE|EXTRATO DE)\s+/ig, '');
+      // Remove prefixos genericos de tipo e embalagens do inicio
+      str = str.replace(/^(WHISKY|WHISKEY|WHISK|VODKA|VODCA|LICOR|GIN|GYN|RUM|RUN|TEQUILA|CERVEJA|CHAMPAGNE|VINHO|ENERGETICO|BEBIDA|SPIRIT|KIT|COMBO|PACK|CAIXA|GARRAFA|LATA|MINIATURA|DOSE|DE)\s+/ig, '');
+      // Remove qualquer "DE " ou "DE WHISK " remanescente do inicio
+      str = str.replace(/^(DE\s+WHISK(Y|EY)?|DE\s+VODKA|DE\s+GIN|DE\s+RUM|DE\s+TEQUILA|DE)\s+/ig, '');
       return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     }
 
