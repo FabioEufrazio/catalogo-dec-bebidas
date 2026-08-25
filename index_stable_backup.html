@@ -1900,18 +1900,17 @@
       shouldScrollToTop: false,
 
       scrollToTop() {
-        const targetElem = document.getElementById('sticky-nav-container') || document.getElementById('product-grid');
         const startPosition = window.pageYOffset || document.documentElement.scrollTop;
+        const mainElem = document.querySelector('.main-content');
         let targetPosition = 0;
-        if (targetElem) {
-          const rect = targetElem.getBoundingClientRect();
-          targetPosition = Math.max(0, rect.top + startPosition - 10);
+        if (mainElem) {
+          targetPosition = Math.max(0, mainElem.offsetTop - 10);
         }
 
         const distance = targetPosition - startPosition;
-        if (Math.abs(distance) < 10) return;
+        if (Math.abs(distance) < 15) return;
 
-        const duration = 450; // 450ms animacao suave
+        const duration = 450; // 450ms animacao de rolagem suave aveludada
         let start = null;
 
         function step(timestamp) {
