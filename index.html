@@ -389,6 +389,53 @@
       align-items: center;
     }
 
+    .card-drag-handle {
+      position: absolute;
+      top: 8px;
+      left: 36px;
+      z-index: 4;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      border-radius: var(--radius-sm);
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      cursor: grab;
+      border: 1px solid var(--border-color-light);
+      transition: all 0.2s ease;
+    }
+
+    .card-drag-handle:hover {
+      background: rgba(30, 41, 59, 0.95);
+      color: var(--accent-blue);
+      border-color: var(--accent-blue);
+      transform: scale(1.08);
+    }
+
+    .product-card[draggable="true"] {
+      cursor: grab;
+    }
+
+    .product-card[draggable="true"]:active {
+      cursor: grabbing;
+    }
+
+    .product-card.dragging {
+      opacity: 0.45;
+      transform: scale(0.96);
+      border: 2px dashed var(--accent-blue) !important;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.3) !important;
+    }
+
+    .product-card.drag-over {
+      border: 2px solid var(--accent-blue) !important;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.5) !important;
+      transform: translateY(-4px) scale(1.02);
+    }
+
     .card-select-checkbox {
       width: 16px;
       height: 16px;
@@ -1681,6 +1728,7 @@
               showBoxTotal: p.showBoxTotal !== false,
               active: p.active !== false,
               isHero: p.isHero === true,
+              sortOrder: typeof p.sortOrder === 'number' ? p.sortOrder : 999999,
               category: p.category || 'auto',
               imageBase64: img
             });
@@ -1732,6 +1780,7 @@
             showBoxTotal: product.showBoxTotal !== false,
             active: product.active !== false && product.active !== 'false',
             isHero: product.isHero === true,
+            sortOrder: typeof product.sortOrder === 'number' ? product.sortOrder : 999999,
             category: product.category || 'auto',
             imageBase64: img
           };
@@ -2198,6 +2247,78 @@
         this.filter(q);
       },
 
+      draggedProductId: null,
+
+      handleDragStart(e, id) {
+        if (FirebaseEngine.isClientMode) return;
+        this.draggedProductId = id;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+        const target = e.currentTarget;
+        setTimeout(() => target.classList.add('dragging'), 0);
+      },
+
+      handleDragOver(e) {
+        if (FirebaseEngine.isClientMode) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      },
+
+      handleDragEnter(e, targetId) {
+        if (FirebaseEngine.isClientMode) return;
+        e.preventDefault();
+        if (targetId !== this.draggedProductId) {
+          const card = document.getElementById(`prod-card-${targetId}`);
+          if (card) card.classList.add('drag-over');
+        }
+      },
+
+      handleDragLeave(e) {
+        if (FirebaseEngine.isClientMode) return;
+        const card = e.currentTarget;
+        if (card) card.classList.remove('drag-over');
+      },
+
+      async handleDrop(e, targetId) {
+        if (FirebaseEngine.isClientMode) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const card = document.getElementById(`prod-card-${targetId}`);
+        if (card) card.classList.remove('drag-over');
+
+        const srcId = this.draggedProductId || e.dataTransfer.getData('text/plain');
+        if (!srcId || srcId === targetId) return;
+
+        const srcIdx = this.products.findIndex(p => String(p.id) === String(srcId));
+        const targetIdx = this.products.findIndex(p => String(p.id) === String(targetId));
+
+        if (srcIdx === -1 || targetIdx === -1) return;
+
+        HistoryStore.snapshot();
+
+        // Reordena o array e atualiza sortOrder em todos os produtos
+        const [movedProduct] = this.products.splice(srcIdx, 1);
+        this.products.splice(targetIdx, 0, movedProduct);
+
+        this.products.forEach((p, idx) => {
+          p.sortOrder = idx;
+        });
+
+        this.saveWithoutSnapshot();
+
+        // Sincroniza a nova posicao com a nuvem
+        FirebaseEngine.autoSyncProduct(movedProduct);
+        showToast(`Bebida "${movedProduct.description}" movida para a nova posição!`, 'info');
+      },
+
+      handleDragEnd(e) {
+        this.draggedProductId = null;
+        document.querySelectorAll('.product-card').forEach(c => {
+          c.classList.remove('dragging', 'drag-over');
+        });
+      },
+
       triggerCardPhotoUpload(id) {
         this.activePasteProductId = id;
         document.getElementById('card-photo-input').click();
@@ -2324,11 +2445,15 @@
           list = list.filter(p => getProductCategory(p) === this.selectedCategory);
         }
 
-        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA (DESTAQUES HEROES PRIMEIRO!)
+        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA (DESTAQUES HEROES PRIMEIRO, SEGUIDOS PELA ORDEM ARRASTADA / CATEGORIA)
         list = [...list].sort((a, b) => {
           const heroA = a.isHero ? 1 : 0;
           const heroB = b.isHero ? 1 : 0;
           if (heroA !== heroB) return heroB - heroA;
+
+          const orderA = typeof a.sortOrder === 'number' ? a.sortOrder : 999999;
+          const orderB = typeof b.sortOrder === 'number' ? b.sortOrder : 999999;
+          if (orderA !== orderB) return orderA - orderB;
 
           const catA = getProductCategory(a);
           const catB = getProductCategory(b);
@@ -2387,10 +2512,24 @@
           const safeDesc = escapeHtml(p.description);
 
           return `
-            <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" id="prod-card-${p.id}">
+            <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" 
+                 id="prod-card-${p.id}"
+                 ${!FirebaseEngine.isClientMode ? `
+                   draggable="true"
+                   ondragstart="ProductStore.handleDragStart(event, '${safeId}')"
+                   ondragover="ProductStore.handleDragOver(event)"
+                   ondragenter="ProductStore.handleDragEnter(event, '${safeId}')"
+                   ondragleave="ProductStore.handleDragLeave(event)"
+                   ondrop="ProductStore.handleDrop(event, '${safeId}')"
+                   ondragend="ProductStore.handleDragEnd(event)"
+                 ` : ''}>
               <div class="card-photo-container" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
                 <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para ação em lote">
                   <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
+                </div>
+
+                <div class="card-drag-handle admin-only-ui" onclick="event.stopPropagation();" title="Clique e arraste para reordenar esta bebida na lista">
+                  <i class="fa-solid fa-grip-vertical"></i>
                 </div>
 
                 <div class="card-hero-badge admin-only-ui" title="${p.isHero ? 'Destaque Hero (exibido no topo do catálogo!)' : 'Produto Normal'}">
