@@ -1383,6 +1383,10 @@
       <i class="fa-solid fa-check-double"></i> Selecionar Todos
     </button>
 
+    <button class="btn btn-warning" style="font-size: 0.8rem; padding: 0.4rem 0.88rem; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border: none;" onclick="ProductStore.toggleBulkHero()" title="Alternar Destaque Hero nos produtos selecionados">
+      <i class="fa-solid fa-crown"></i> Destaque Hero
+    </button>
+
     <button class="btn btn-purple" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;" onclick="ModalEngine.open('bulk-category-modal')">
       <i class="fa-solid fa-tags"></i> Mudar Categoria
     </button>
@@ -2320,7 +2324,7 @@
                   <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
                 </div>
 
-                <div class="card-hero-badge admin-only-ui" onclick="event.stopPropagation(); ProductStore.toggleHero('${safeId}')" title="${p.isHero ? 'Remover dos Destaques (Hero)' : 'Marcar como Destaque Hero (aparecer em primeiro no topo!)'}">
+                <div class="card-hero-badge admin-only-ui" title="${p.isHero ? 'Destaque Hero (exibido no topo do catálogo!)' : 'Produto Normal'}">
                   <i class="fa-solid fa-crown ${p.isHero ? 'active' : ''}"></i>
                 </div>
                 ${p.imageBase64 ? `
@@ -2402,6 +2406,34 @@
           }
           this.updateBulkBar();
         });
+      },
+
+      toggleBulkHero() {
+        if (this.selectedIds.size === 0) return;
+
+        let allAreHeroes = true;
+        this.selectedIds.forEach(id => {
+          const p = this.getById(id);
+          if (p && !p.isHero) allAreHeroes = false;
+        });
+
+        const targetState = !allAreHeroes;
+
+        HistoryStore.snapshot();
+        let count = 0;
+        this.selectedIds.forEach(id => {
+          const p = this.getById(id);
+          if (p) {
+            p.isHero = targetState;
+            FirebaseEngine.autoSyncProduct(p);
+            count++;
+          }
+        });
+
+        this.selectedIds.clear();
+        this.saveWithoutSnapshot();
+        const actionMsg = targetState ? 'marcados como DESTAQUE HERO ✨ (aparecem no topo!)' : 'removidos dos Destaques Hero';
+        showToast(`${count} produto(s) ${actionMsg}!`, 'info');
       },
 
       applyBulkCategoryChange() {
