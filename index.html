@@ -2512,17 +2512,17 @@
                   ` : ''}
                 </div>
 
-                <div class="card-actions admin-only-ui">
-                  <button class="btn btn-secondary btn-icon" onclick="ProductStore.toggleActive('${safeId}')" title="${isActive ? 'Inativar produto (ocultar no catálogo online do cliente)' : 'Ativar produto (exibir no catálogo online do cliente)'}">
+                <div class="card-actions admin-only-ui" style="position: relative; z-index: 10;" onclick="event.stopPropagation();">
+                  <button class="btn btn-secondary btn-icon" onclick="event.stopPropagation(); ProductStore.toggleActive('${safeId}')" title="${isActive ? 'Inativar produto (ocultar no catálogo online do cliente)' : 'Ativar produto (exibir no catálogo online do cliente)'}">
                     <i class="fa-solid ${isActive ? 'fa-toggle-on' : 'fa-toggle-off'}" style="color: ${isActive ? 'var(--accent-green)' : 'var(--text-muted)'}; font-size: 1.15rem;"></i>
                   </button>
-                  <button class="btn btn-secondary btn-icon" onclick="ProductStore.edit('${safeId}')" title="Editar">
+                  <button class="btn btn-secondary btn-icon" onclick="event.stopPropagation(); ProductStore.edit('${safeId}')" title="Editar">
                     <i class="fa-solid fa-pen-to-square"></i>
                   </button>
-                  <button class="btn btn-secondary btn-icon" onclick="ProductStore.duplicate('${safeId}')" title="Duplicar">
+                  <button class="btn btn-secondary btn-icon" onclick="event.stopPropagation(); ProductStore.duplicate('${safeId}')" title="Duplicar">
                     <i class="fa-solid fa-copy"></i>
                   </button>
-                  <button class="btn btn-danger btn-icon" onclick="ProductStore.confirmDelete('${safeId}')" title="Excluir">
+                  <button class="btn btn-danger btn-icon" onclick="event.stopPropagation(); ProductStore.confirmDelete('${safeId}')" title="Excluir">
                     <i class="fa-solid fa-trash-can"></i>
                   </button>
                 </div>
