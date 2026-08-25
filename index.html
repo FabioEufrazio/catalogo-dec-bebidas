@@ -1518,6 +1518,7 @@
                 firebase.initializeApp(config);
               }
               this.db = firebase.firestore();
+              this.checkAutoSyncInterval();
               this.listenToCloud();
               this.updateStatusBadge(true);
               return;
@@ -1528,6 +1529,43 @@
         }
 
         this.updateStatusBadge(false);
+      },
+
+      checkAutoSyncInterval() {
+        const lastSync = localStorage.getItem('catalog_last_cloud_sync_timestamp');
+        const now = Date.now();
+        const ONE_HOUR = 60 * 60 * 1000; // 1 hora (3.600.000 ms)
+
+        if (!lastSync || (now - parseInt(lastSync, 10)) >= ONE_HOUR) {
+          this.forceCloudFetch('server');
+        }
+      },
+
+      async forceCloudFetch(source = 'server') {
+        if (!this.db) return;
+        try {
+          const snapshot = await this.db.collection('products').get({ source });
+          if (!snapshot.empty) {
+            const cloudProducts = [];
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              if (data && data.id) {
+                cloudProducts.push(data);
+              }
+            });
+
+            if (cloudProducts.length > 0) {
+              ProductStore.products = cloudProducts;
+              localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
+              localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now()));
+              ProductStore.render();
+            }
+          }
+        } catch (e) {
+          if (source === 'server') {
+            this.forceCloudFetch('cache');
+          }
+        }
       },
 
       updateStatusBadge(connected) {
@@ -1579,6 +1617,7 @@
               if (cloudProducts.length > 0) {
                 ProductStore.products = cloudProducts;
                 localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
+                localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now()));
                 ProductStore.render();
               }
             }
@@ -2977,6 +3016,23 @@
     // INICIALIZAÇÃO AUTOMÁTICA DA APLICAÇÃO
     document.addEventListener('DOMContentLoaded', () => {
       ProductStore.init();
+    });
+
+    // RECONEXÃO E ATUALIZAÇÃO AUTOMÁTICA EM DISPOSITIVOS MÓVEIS (MOBILE)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        FirebaseEngine.checkAutoSyncInterval();
+        if (FirebaseEngine.db) FirebaseEngine.listenToCloud();
+      }
+    });
+
+    window.addEventListener('pageshow', () => {
+      FirebaseEngine.checkAutoSyncInterval();
+    });
+
+    window.addEventListener('online', () => {
+      FirebaseEngine.forceCloudFetch('server');
+      if (FirebaseEngine.db) FirebaseEngine.listenToCloud();
     });
   </script>
 </body>
