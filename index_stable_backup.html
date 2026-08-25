@@ -2621,13 +2621,23 @@
           showToast('Produto cadastrado com sucesso!');
         }
 
-        this.saveWithoutSnapshot();
         ModalEngine.close('product-modal');
+        this.saveWithoutSnapshot();
+
+        if (this.savedEditScrollPos !== undefined) {
+          const targetScroll = this.savedEditScrollPos;
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: targetScroll, behavior: 'instant' });
+          });
+        }
       },
 
       edit(id) {
         const p = this.getById(id);
         if (!p) return;
+
+        this.savedEditScrollPos = window.scrollY || document.documentElement.scrollTop;
+        this.savedEditPage = this.currentPage;
 
         document.getElementById('prod-id').value = p.id;
         document.getElementById('prod-code').value = p.code || '';
