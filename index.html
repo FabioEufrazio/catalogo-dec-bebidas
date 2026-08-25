@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catálogo Profissional de Produtos</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Catálogo Profissional de Produtos v1.5</title>
   <!-- Google Fonts & FontAwesome -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1896,10 +1899,26 @@
       itemsPerPage: 24,
       shouldScrollToTop: false,
 
+      scrollToTop() {
+        this.shouldScrollToTop = true;
+        try {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+          const container = document.getElementById('sticky-nav-container') || document.getElementById('product-grid');
+          if (container) {
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        } catch(e) {
+          window.scrollTo(0, 0);
+        }
+      },
+
       goToPage(pageNum) {
         this.currentPage = pageNum;
-        this.shouldScrollToTop = true;
+        this.scrollToTop();
         this.render();
+        setTimeout(() => this.scrollToTop(), 50);
       },
 
       renderPagination(totalFiltered, totalPages) {
@@ -2349,13 +2368,12 @@
         requestAnimationFrame(() => {
           if (this.shouldScrollToTop) {
             this.shouldScrollToTop = false;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
             const container = document.getElementById('sticky-nav-container') || document.getElementById('product-grid');
             if (container) {
-              const rect = container.getBoundingClientRect();
-              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-              window.scrollTo({ top: scrollTop + rect.top - 10, behavior: 'smooth' });
-            } else {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              container.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           } else {
             window.scrollTo({ top: scrollY, behavior: 'instant' });
