@@ -1894,12 +1894,12 @@
       isCategoryManuallySet: false,
       currentPage: 1,
       itemsPerPage: 24,
+      shouldScrollToTop: false,
 
       goToPage(pageNum) {
         this.currentPage = pageNum;
+        this.shouldScrollToTop = true;
         this.render();
-        const nav = document.getElementById('sticky-nav-container');
-        if (nav) nav.scrollIntoView({ behavior: 'smooth' });
       },
 
       renderPagination(totalFiltered, totalPages) {
@@ -2347,7 +2347,19 @@
         this.renderPagination(totalFiltered, totalPages);
 
         requestAnimationFrame(() => {
-          window.scrollTo({ top: scrollY, behavior: 'instant' });
+          if (this.shouldScrollToTop) {
+            this.shouldScrollToTop = false;
+            const container = document.getElementById('sticky-nav-container') || document.getElementById('product-grid');
+            if (container) {
+              const rect = container.getBoundingClientRect();
+              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+              window.scrollTo({ top: scrollTop + rect.top - 10, behavior: 'smooth' });
+            } else {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          } else {
+            window.scrollTo({ top: scrollY, behavior: 'instant' });
+          }
           this.updateBulkBar();
         });
       },
