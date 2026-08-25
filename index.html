@@ -1900,16 +1900,18 @@
       shouldScrollToTop: false,
 
       scrollToTop() {
-        this.shouldScrollToTop = true;
         const targetElem = document.getElementById('sticky-nav-container') || document.getElementById('product-grid');
         const startPosition = window.pageYOffset || document.documentElement.scrollTop;
         let targetPosition = 0;
         if (targetElem) {
-          targetPosition = Math.max(0, targetElem.getBoundingClientRect().top + startPosition - 10);
+          const rect = targetElem.getBoundingClientRect();
+          targetPosition = Math.max(0, rect.top + startPosition - 10);
         }
 
         const distance = targetPosition - startPosition;
-        const duration = 400; // 400ms suave
+        if (Math.abs(distance) < 10) return;
+
+        const duration = 450; // 450ms animacao suave
         let start = null;
 
         function step(timestamp) {
@@ -1928,8 +1930,8 @@
 
       goToPage(pageNum) {
         this.currentPage = pageNum;
+        this.shouldScrollToTop = true;
         this.render();
-        this.scrollToTop();
       },
 
       renderPagination(totalFiltered, totalPages) {
@@ -2377,10 +2379,11 @@
         this.renderPagination(totalFiltered, totalPages);
 
         requestAnimationFrame(() => {
-          if (!this.shouldScrollToTop) {
-            window.scrollTo({ top: scrollY, behavior: 'instant' });
-          } else {
+          if (this.shouldScrollToTop) {
             this.shouldScrollToTop = false;
+            this.scrollToTop();
+          } else {
+            window.scrollTo({ top: scrollY, behavior: 'instant' });
           }
           this.updateBulkBar();
         });
