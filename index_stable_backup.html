@@ -1901,24 +1901,35 @@
 
       scrollToTop() {
         this.shouldScrollToTop = true;
-        try {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          document.documentElement.scrollTop = 0;
-          document.body.scrollTop = 0;
-          const container = document.getElementById('sticky-nav-container') || document.getElementById('product-grid');
-          if (container) {
-            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        } catch(e) {
-          window.scrollTo(0, 0);
+        const targetElem = document.getElementById('sticky-nav-container') || document.getElementById('product-grid');
+        const startPosition = window.pageYOffset || document.documentElement.scrollTop;
+        let targetPosition = 0;
+        if (targetElem) {
+          targetPosition = Math.max(0, targetElem.getBoundingClientRect().top + startPosition - 10);
         }
+
+        const distance = targetPosition - startPosition;
+        const duration = 400; // 400ms suave
+        let start = null;
+
+        function step(timestamp) {
+          if (!start) start = timestamp;
+          const progress = timestamp - start;
+          const easeInOutCubic = p => p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+          const percentage = Math.min(progress / duration, 1);
+          window.scrollTo(0, startPosition + distance * easeInOutCubic(percentage));
+          if (progress < duration) {
+            window.requestAnimationFrame(step);
+          }
+        }
+
+        window.requestAnimationFrame(step);
       },
 
       goToPage(pageNum) {
         this.currentPage = pageNum;
-        this.scrollToTop();
         this.render();
-        setTimeout(() => this.scrollToTop(), 50);
+        this.scrollToTop();
       },
 
       renderPagination(totalFiltered, totalPages) {
@@ -2366,17 +2377,10 @@
         this.renderPagination(totalFiltered, totalPages);
 
         requestAnimationFrame(() => {
-          if (this.shouldScrollToTop) {
-            this.shouldScrollToTop = false;
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            const container = document.getElementById('sticky-nav-container') || document.getElementById('product-grid');
-            if (container) {
-              container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          } else {
+          if (!this.shouldScrollToTop) {
             window.scrollTo({ top: scrollY, behavior: 'instant' });
+          } else {
+            this.shouldScrollToTop = false;
           }
           this.updateBulkBar();
         });
