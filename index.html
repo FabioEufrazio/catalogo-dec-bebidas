@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Catﾃ｡logo Profissional de Produtos v1.5</title>
+  <title>Catálogo Profissional de Produtos v1.5</title>
   <!-- Google Fonts & FontAwesome -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -137,7 +137,7 @@
     }
 
     /* ==========================================================================
-       3. TOOLBAR DE Aﾃ�髭S E BUSCA
+       3. TOOLBAR DE AÇÕES E BUSCA
        ========================================================================== */
     .main-content {
       max-width: 1400px;
@@ -227,7 +227,7 @@
       background: var(--bg-card-hover);
     }
 
-    /* NAVEGAﾃ�グ FIXA CONGELADA NO SCROLL (BUSCA + CATEGORIAS STICKY) */
+    /* NAVEGAÇÃO FIXA CONGELADA NO SCROLL (BUSCA + CATEGORIAS STICKY) */
     .sticky-nav-container {
       position: sticky;
       top: 0;
@@ -463,7 +463,7 @@
       border: 1px solid rgba(248, 113, 113, 0.3);
     }
 
-    /* CLOUD BADGE E MODO Pﾃ咤LICO DO CLIENTE */
+    /* CLOUD BADGE E MODO PÚBLICO DO CLIENTE */
     .cloud-badge {
       display: inline-flex;
       align-items: center;
@@ -762,7 +762,7 @@
       color: var(--text-muted);
     }
 
-    /* BARRA DE Aﾃ�髭S EM LOTE */
+    /* BARRA DE AÇÕES EM LOTE */
     .bulk-action-bar {
       position: fixed;
       bottom: 20px;
@@ -850,7 +850,7 @@
     .toast.success { border-left-color: var(--accent-green); }
 
     /* ==========================================================================
-       6. ADAPTAﾃ�グ COMPLETA PARA CELULAR (ANDROID / IOS)
+       6. ADAPTAÇÃO COMPLETA PARA CELULAR (ANDROID / IOS)
        ========================================================================== */
     @media (max-width: 640px) {
       header {
@@ -938,7 +938,7 @@
     }
 
     /* ==========================================================================
-       6. PAGINAﾃ�グ DA GRADE DE PRODUTOS
+       6. PAGINAÇÃO DA GRADE DE PRODUTOS
        ========================================================================== */
     .pagination-container {
       display: flex;
@@ -1011,7 +1011,7 @@
     <div class="header-container">
       <div class="brand-title" ondblclick="ModalEngine.open('login-modal')" style="cursor: pointer;" title="Duplo clique para acesso restrito">
         <i class="fa-solid fa-boxes-stacked"></i>
-        <h1 id="app-title-text">Gestor de Catﾃ｡logo</h1>
+        <h1 id="app-title-text">Gestor de Catálogo</h1>
       </div>
 
       <div class="header-stats" style="display: flex; align-items: center; gap: 0.6rem;">
@@ -1024,7 +1024,7 @@
           <span class="stat-value" id="stat-total-items">0</span>
         </div>
 
-        <button class="btn btn-primary admin-only-ui" id="btn-sync-cloud" onclick="FirebaseEngine.syncToCloud()" title="Sincronizar alteraﾃｧﾃｵes com a nuvem em tempo real" style="background: linear-gradient(135deg, #38bdf8, #0284c7); border: none;">
+        <button class="btn btn-primary admin-only-ui" id="btn-sync-cloud" onclick="FirebaseEngine.syncToCloud()" title="Sincronizar alterações com a nuvem em tempo real" style="background: linear-gradient(135deg, #38bdf8, #0284c7); border: none;">
           <i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Nuvem
         </button>
 
@@ -1047,18 +1047,19 @@
     </div>
   </header>
 
-  <!-- CONTEﾃ咼O PRINCIPAL -->
+  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
+
     <div class="price-disclaimer">
       <i class="fa-solid fa-circle-exclamation"></i>
-      <span><strong>Atenﾃｧﾃ｣o:</strong> Os preﾃｧos podem sofrer variaﾃｧﾃｵes. Consulte sempre o vendedor.</span>
+      <span><strong>Atenção:</strong> Os preços podem sofrer variações. Consulte sempre o vendedor.</span>
     </div>
 
-    <!-- NAVEGAﾃ�グ FIXA CONGELADA (BUSCA + CATEGORIAS STICKY) -->
+    <!-- NAVEGAÇÃO FIXA CONGELADA (BUSCA + CATEGORIAS STICKY) -->
     <div class="sticky-nav-container" id="sticky-nav-container">
       <div class="search-box" style="margin-bottom: 0.6rem;">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="search" id="search-input" placeholder="Buscar por cﾃｳdigo ou descriﾃｧﾃ｣o do produto..." oninput="ProductStore.filter(this.value)" autocomplete="off" autocorrect="off" spellcheck="false" name="q">
+        <input type="search" id="search-input" placeholder="Buscar por código ou descrição do produto..." oninput="ProductStore.filter(this.value)" autocomplete="off" autocorrect="off" spellcheck="false" name="q">
       </div>
 
       <!-- BARRA DE CATEGORIAS -->
@@ -1067,10 +1068,10 @@
 
     <div class="toolbar admin-only-ui" style="margin-bottom: 1.25rem;">
       <div class="action-buttons" style="width: 100%; justify-content: flex-end;">
-        <button class="btn btn-secondary" onclick="HistoryStore.undo()" title="Desfazer Aﾃｧﾃ｣o (Ctrl+Z)">
+        <button class="btn btn-secondary" onclick="HistoryStore.undo()" title="Desfazer Ação (Ctrl+Z)">
           <i class="fa-solid fa-rotate-left"></i> Desfazer
         </button>
-        <button class="btn btn-secondary" onclick="HistoryStore.redo()" title="Refazer Aﾃｧﾃ｣o (Ctrl+Y)">
+        <button class="btn btn-secondary" onclick="HistoryStore.redo()" title="Refazer Ação (Ctrl+Y)">
           <i class="fa-solid fa-rotate-right"></i> Refazer
         </button>
 
@@ -1084,18 +1085,18 @@
           <i class="fa-solid fa-plus"></i> Novo Produto
         </button>
 
-        <button class="btn btn-secondary" onclick="ProductStore.confirmClearAll()" title="Limpar Todo o Catﾃ｡logo">
+        <button class="btn btn-secondary" onclick="ProductStore.confirmClearAll()" title="Limpar Todo o Catálogo">
           <i class="fa-solid fa-trash-arrow-up"></i>
         </button>
       </div>
     </div>
 
-    <!-- GRID DE EXIBIﾃ�グ DE PRODUTOS -->
+    <!-- GRID DE EXIBIÇÃO DE PRODUTOS -->
     <div class="product-grid" id="product-grid"></div>
     <div id="pagination-bar"></div>
   </main>
 
-  <!-- MODAL 1: CADASTRO / EDIﾃ�グ DE PRODUTO -->
+  <!-- MODAL 1: CADASTRO / EDIÇÃO DE PRODUTO -->
   <div class="modal-overlay" id="product-modal">
     <div class="modal-card">
       <div class="modal-header">
@@ -1109,17 +1110,17 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="prod-code">Cﾃｳdigo do Produto *</label>
+              <label for="prod-code">Código do Produto *</label>
               <input type="text" id="prod-code" class="form-control" placeholder="Ex: 118227" required style="text-transform: uppercase;">
             </div>
             <div class="form-group">
-              <label for="prod-price">Preﾃｧo Unitﾃ｡rio (R$) *</label>
+              <label for="prod-price">Preço Unitário (R$) *</label>
               <input type="number" id="prod-price" class="form-control" step="0.01" min="0.01" placeholder="Ex: 63.55" required>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="prod-desc">Descriﾃｧﾃ｣o / Nome do Produto *</label>
+            <label for="prod-desc">Descrição / Nome do Produto *</label>
             <input type="text" id="prod-desc" class="form-control" placeholder="Ex: VIN PORT DUETO 750ML" required oninput="ProductStore.onDescriptionInput(this.value)" style="text-transform: uppercase;">
           </div>
 
@@ -1132,13 +1133,13 @@
                 <option value="licor">Licores</option>
                 <option value="xarope">Xaropes</option>
                 <option value="suco">Sucos</option>
-                <option value="coco">ﾃ“ua de Coco</option>
+                <option value="coco">Água de Coco</option>
                 <option value="espumante">Espumantes</option>
                 <option value="vinho">Vinhos</option>
                 <option value="gin">Gins</option>
                 <option value="rum">Rums</option>
                 <option value="cerveja">Cervejas</option>
-                <option value="energetico">Energﾃｩticos</option>
+                <option value="energetico">Energéticos</option>
                 <option value="outros">Outros</option>
               </select>
             </div>
@@ -1160,7 +1161,7 @@
             <div class="photo-preview-box" id="photo-preview-container" onclick="document.getElementById('modal-photo-input').click()">
               <div class="no-photo-placeholder">
                 <i class="fa-solid fa-cloud-arrow-up"></i>
-                <span>Clique para selecionar foto ou aperte <b>Ctrl+V</b> para colar da ﾃ｡rea de transferﾃｪncia</span>
+                <span>Clique para selecionar foto ou aperte <b>Ctrl+V</b> para colar da área de transferência</span>
               </div>
             </div>
             <input type="file" id="modal-photo-input" accept="image/*" style="display: none;" onchange="ProductStore.handlePhotoSelect(event)">
@@ -1198,17 +1199,17 @@
         </p>
 
         <div class="form-group">
-          <label for="map-col-code">1. Cﾃｳdigo do Item (COD ITEM) *</label>
+          <label for="map-col-code">1. Código do Item (COD ITEM) *</label>
           <select id="map-col-code" class="form-control"></select>
         </div>
 
         <div class="form-group">
-          <label for="map-col-desc">2. Descriﾃｧﾃ｣o / Nome (Descriﾃｧﾃ｣o) *</label>
+          <label for="map-col-desc">2. Descrição / Nome (Descrição) *</label>
           <select id="map-col-desc" class="form-control"></select>
         </div>
 
         <div class="form-group">
-          <label for="map-col-price-unit">3. Preﾃｧo Unitﾃ｡rio (Preﾃｧo Un)</label>
+          <label for="map-col-price-unit">3. Preço Unitário (Preço Un)</label>
           <select id="map-col-price-unit" class="form-control"></select>
         </div>
 
@@ -1230,21 +1231,21 @@
     </div>
   </div>
 
-  <!-- MODAL 3: PREVIEW E CONFIRMAﾃ�グ DE IMPORTAﾃ�グ -->
+  <!-- MODAL 3: PREVIEW E CONFIRMAÇÃO DE IMPORTAÇÃO -->
   <div class="modal-overlay" id="preview-modal">
     <div class="modal-card" style="max-width: 800px;">
       <div class="modal-header">
-        <h2><i class="fa-solid fa-eye" style="color: var(--accent-green);"></i> Prﾃｩ-visualizaﾃｧﾃ｣o das Alteraﾃｧﾃｵes</h2>
+        <h2><i class="fa-solid fa-eye" style="color: var(--accent-green);"></i> Pré-visualização das Alterações</h2>
         <button class="close-btn" onclick="ModalEngine.close('preview-modal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <div class="modal-body">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <div>
-            <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);" id="preview-summary-text">Resumo das alteraﾃｧﾃｵes:</span>
+            <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);" id="preview-summary-text">Resumo das alterações:</span>
           </div>
           <div style="display: flex; gap: 0.5rem;">
-            <span class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: rgba(56, 189, 248, 0.15); color: var(--accent-blue);" id="badge-updates">0 Atualizaﾃｧﾃｵes</span>
+            <span class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: rgba(56, 189, 248, 0.15); color: var(--accent-blue);" id="badge-updates">0 Atualizações</span>
             <span class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: rgba(52, 211, 153, 0.15); color: var(--accent-green);" id="badge-news">0 Novos Itens</span>
           </div>
         </div>
@@ -1253,11 +1254,11 @@
           <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
             <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 10; border-bottom: 2px solid var(--border-color);">
               <tr>
-                <th style="padding: 10px 12px; color: var(--text-muted);">Aﾃｧﾃ｣o</th>
-                <th style="padding: 10px 12px; color: var(--text-muted);">Cﾃｳdigo</th>
-                <th style="padding: 10px 12px; color: var(--text-muted);">Descriﾃｧﾃ｣o</th>
-                <th style="padding: 10px 12px; text-align: right; color: var(--text-muted);">Preﾃｧo Atual</th>
-                <th style="padding: 10px 12px; text-align: right; color: var(--text-muted);">Preﾃｧo Planilha</th>
+                <th style="padding: 10px 12px; color: var(--text-muted);">Ação</th>
+                <th style="padding: 10px 12px; color: var(--text-muted);">Código</th>
+                <th style="padding: 10px 12px; color: var(--text-muted);">Descrição</th>
+                <th style="padding: 10px 12px; text-align: right; color: var(--text-muted);">Preço Atual</th>
+                <th style="padding: 10px 12px; text-align: right; color: var(--text-muted);">Preço Planilha</th>
               </tr>
             </thead>
             <tbody id="preview-table-body"></tbody>
@@ -1267,16 +1268,16 @@
 
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('preview-modal')">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="ExcelEngine.applyChanges()"><i class="fa-solid fa-check-double"></i> Confirmar Alteraﾃｧﾃｵes</button>
+        <button type="button" class="btn btn-primary" onclick="ExcelEngine.applyChanges()"><i class="fa-solid fa-check-double"></i> Confirmar Alterações</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL 4: CONFIRMAﾃ�グ DE Aﾃ�グ (RED) -->
+  <!-- MODAL 4: CONFIRMAÇÃO DE AÇÃO (RED) -->
   <div class="modal-overlay" id="confirm-modal">
     <div class="modal-card" style="max-width: 450px;">
       <div class="modal-header">
-        <h2 id="confirm-title" style="color: var(--accent-red);"><i class="fa-solid fa-triangle-exclamation"></i> Confirmar Aﾃｧﾃ｣o</h2>
+        <h2 id="confirm-title" style="color: var(--accent-red);"><i class="fa-solid fa-triangle-exclamation"></i> Confirmar Ação</h2>
         <button class="close-btn" onclick="ModalEngine.close('confirm-modal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
@@ -1296,7 +1297,7 @@
     </div>
   </div>
 
-  <!-- MODAL 5: CONFIGURAﾃ�髭S DO FIREBASE CLOUD -->
+  <!-- MODAL 5: CONFIGURAÇÕES DO FIREBASE CLOUD -->
   <div class="modal-overlay" id="firebase-modal">
     <div class="modal-card">
       <div class="modal-header">
@@ -1306,7 +1307,7 @@
 
       <div class="modal-body">
         <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
-          Insira as credenciais do seu projeto gratuito no <b>Firebase Console</b> para sincronizar seu catﾃ｡logo online em tempo real:
+          Insira as credenciais do seu projeto gratuito no <b>Firebase Console</b> para sincronizar seu catálogo online em tempo real:
         </p>
 
         <div class="form-group">
@@ -1355,7 +1356,7 @@
 
         <div class="price-details-box" style="text-align: left;">
           <div class="price-row">
-            <span class="price-label">Preﾃｧo Unitﾃ｡rio</span>
+            <span class="price-label">Preço Unitário</span>
             <span class="price-value highlight" id="lightbox-price-unit"></span>
           </div>
           <div class="price-row" id="lightbox-price-box-row" style="display: none;">
@@ -1390,7 +1391,7 @@
         <div class="form-group">
           <label>Senha</label>
           <div style="position: relative;">
-            <input type="password" id="login-password" class="form-control" placeholder="窶｢窶｢窶｢窶｢窶｢窶｢窶｢窶｢" autocomplete="current-password" style="padding-right: 2.5rem;" onkeydown="if(event.key === 'Enter') FirebaseEngine.login()">
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" style="padding-right: 2.5rem;" onkeydown="if(event.key === 'Enter') FirebaseEngine.login()">
             <i class="fa-regular fa-eye" id="toggle-password-visibility" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 1.1rem;" title="Mostrar/Ocultar Senha" onclick="
               const input = document.getElementById('login-password');
               const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -1408,7 +1409,7 @@
     </div>
   </div>
 
-  <!-- MODAL ALTERAﾃ�グ DE CATEGORIA EM LOTE -->
+  <!-- MODAL ALTERAÇÃO DE CATEGORIA EM LOTE -->
   <div class="modal-overlay" id="bulk-category-modal">
     <div class="modal-card" style="max-width: 450px; margin: auto;">
       <div class="modal-header">
@@ -1429,13 +1430,13 @@
             <option value="licor">Licores</option>
             <option value="xarope">Xaropes</option>
             <option value="suco">Sucos</option>
-            <option value="coco">ﾃ“ua de Coco</option>
+            <option value="coco">Água de Coco</option>
             <option value="espumante">Espumantes</option>
             <option value="vinho">Vinhos</option>
             <option value="gin">Gins</option>
             <option value="rum">Rums</option>
             <option value="cerveja">Cervejas</option>
-            <option value="energetico">Energﾃｩticos</option>
+            <option value="energetico">Energéticos</option>
             <option value="outros">Outros</option>
           </select>
         </div>
@@ -1448,7 +1449,7 @@
     </div>
   </div>
 
-  <!-- BARRA FLUTUANTE DE Aﾃ�髭S EM LOTE -->
+  <!-- BARRA FLUTUANTE DE AÇÕES EM LOTE -->
   <div class="bulk-action-bar" id="bulk-action-bar">
     <div class="bulk-info-count">
       <i class="fa-solid fa-square-check" style="color: var(--accent-blue); font-size: 1.1rem;"></i>
@@ -1472,10 +1473,10 @@
     </button>
   </div>
 
-  <!-- CONTAINER DE NOTIFICAﾃ�髭S TOAST -->
+  <!-- CONTAINER DE NOTIFICAÇÕES TOAST -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- Lﾃ敵ICA JAVASCRIPT DA APLICAﾃ�グ -->
+  <!-- LÓGICA JAVASCRIPT DA APLICAÇÃO -->
   <script>
     async function compressBase64(base64Str, maxWidth = 400, quality = 0.65) {
       if (!base64Str) return '';
@@ -1567,12 +1568,12 @@
       isClientMode: false,
 
       checkMode() {
-        // Agora por padrﾃ｣o a aplicaﾃｧﾃ｣o ﾃｩ 100% modo cliente (esconde ediﾃｧﾃ｣o).
-        // Sﾃｳ muda se o Firebase confirmar que tem um admin logado.
+        // Agora por padrão a aplicação é 100% modo cliente (esconde edição).
+        // Só muda se o Firebase confirmar que tem um admin logado.
         this.isClientMode = true;
         document.body.classList.add('client-mode');
         const title = document.getElementById('app-title-text');
-        if (title) title.textContent = 'Catﾃ｡logo de Produtos';
+        if (title) title.textContent = 'Catálogo de Produtos';
       },
 
       defaultConfig: {
@@ -1612,24 +1613,24 @@
               }
               this.db = firebase.firestore();
               
-              // Ouve mudanﾃｧas de Autenticaﾃｧﾃ｣o (Login / Logout)
+              // Ouve mudanças de Autenticação (Login / Logout)
               firebase.auth().onAuthStateChanged(user => {
                 if (user) {
                   this.isClientMode = false;
                   document.body.classList.remove('client-mode');
                   const title = document.getElementById('app-title-text');
-                  if (title) title.textContent = 'Gestor de Catﾃ｡logo';
+                  if (title) title.textContent = 'Gestor de Catálogo';
                   ProductStore.render();
                 } else {
                   this.isClientMode = true;
                   document.body.classList.add('client-mode');
                   const title = document.getElementById('app-title-text');
-                  if (title) title.textContent = 'Catﾃ｡logo de Produtos';
+                  if (title) title.textContent = 'Catálogo de Produtos';
                   ProductStore.render();
                 }
               });
 
-              // Verifica se veio via URL com ?admin=1 e nﾃ｣o estﾃ｡ logado
+              // Verifica se veio via URL com ?admin=1 e não está logado
               const params = new URLSearchParams(window.location.search);
               if ((params.get('admin') === '1' || params.get('admin') === 'true') && !firebase.auth().currentUser) {
                 setTimeout(() => ModalEngine.open('login-modal'), 1000);
@@ -1651,7 +1652,7 @@
 
       startHeartbeatPolling() {
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
-        // Polling de redundﾃ｢ncia a cada 15s via REST HTTP (100% imune a quedas silenciosas de WebSocket em redes mﾃｳveis 4G/5G)
+        // Polling de redundância a cada 15s via REST HTTP (100% imune a quedas silenciosas de WebSocket em redes móveis 4G/5G)
         this.heartbeatTimer = setInterval(() => {
           if (this.db) {
             this.forceCloudFetch('server');
@@ -1680,9 +1681,9 @@
       },
 
       logout() {
-        if (confirm('Deseja realmente sair do modo de ediﾃｧﾃ｣o?')) {
+        if (confirm('Deseja realmente sair do modo de edição?')) {
           firebase.auth().signOut().then(() => {
-            showToast('Vocﾃｪ saiu do painel de administraﾃｧﾃ｣o.');
+            showToast('Você saiu do painel de administração.');
             window.location.search = '';
           });
         }
@@ -1707,7 +1708,11 @@
             snapshot.forEach(doc => {
               const data = doc.data();
               if (data && data.id) {
-                cloudProducts.push(data);
+                if (data.id === '__SETTINGS__') {
+                  ProductStore.setHidePrices(!!data.hidePrices);
+                } else {
+                  cloudProducts.push(data);
+                }
               }
             });
 
@@ -1755,7 +1760,7 @@
 
         const config = { apiKey, projectId, authDomain };
         localStorage.setItem('catalog_firebase_config', JSON.stringify(config));
-        showToast('Configuraﾃｧﾃｵes salvas! Conectando...', 'info');
+        showToast('Configurações salvas! Conectando...', 'info');
         ModalEngine.close('firebase-modal');
         this.init();
       },
@@ -1763,17 +1768,6 @@
       listenToCloud() {
         if (!this.db) return;
         if (this.unsubscribe) this.unsubscribe();
-        if (this.unsubscribeSettings) this.unsubscribeSettings();
-
-        this.unsubscribeSettings = this.db.collection('settings').doc('general').onSnapshot(
-          (doc) => {
-            if (doc.exists) {
-              const data = doc.data();
-              ProductStore.setHidePrices(!!data.hidePrices);
-            }
-          },
-          (err) => { console.log('Sem acesso a settings', err); }
-        );
 
         this.unsubscribe = this.db.collection('products').onSnapshot(
           (snapshot) => {
@@ -1782,7 +1776,11 @@
               snapshot.forEach(doc => {
                 const data = doc.data();
                 if (data && data.id) {
-                  cloudProducts.push(data);
+                  if (data.id === '__SETTINGS__') {
+                    ProductStore.setHidePrices(!!data.hidePrices);
+                  } else {
+                    cloudProducts.push(data);
+                  }
                 }
               });
 
@@ -1807,13 +1805,13 @@
 
       async syncToCloud() {
         if (!this.db) {
-          showToast('Configuraﾃｧﾃ｣o do Firebase necessﾃ｡ria!', 'info');
+          showToast('Configuração do Firebase necessária!', 'info');
           ModalEngine.open('firebase-modal');
           return;
         }
 
         try {
-          showToast('Otimizando fotos e sincronizando catﾃ｡logo na nuvem...', 'info');
+          showToast('Otimizando fotos e sincronizando catálogo na nuvem...', 'info');
 
           const rawProducts = ProductStore.products;
           const cleanProducts = [];
@@ -1838,7 +1836,7 @@
             });
           }
 
-          // Envia em documentos individuais na coleﾃｧﾃ｣o 'products' (mﾃ｡ximo 400 por lote)
+          // Envia em documentos individuais na coleção 'products' (máximo 400 por lote)
           const batchSize = 400;
           for (let i = 0; i < cleanProducts.length; i += batchSize) {
             const chunk = cleanProducts.slice(i, i + batchSize);
@@ -1850,7 +1848,7 @@
             await batch.commit();
           }
 
-          showToast(`Catﾃ｡logo de ${cleanProducts.length} itens otimizado e sincronizado na nuvem com sucesso!`);
+          showToast(`Catálogo de ${cleanProducts.length} itens otimizado e sincronizado na nuvem com sucesso!`);
         } catch (err) {
           console.error("Erro ao sincronizar na nuvem", err);
           showToast('Erro ao enviar para nuvem: ' + err.message, 'error');
@@ -1907,7 +1905,7 @@
     };
 
     /* --------------------------------------------------------------------------
-       SISTEMA DE HISTﾃ迭ICO (DESFAZER / REFAZER - CTRL+Z / CTRL+Y)
+       SISTEMA DE HISTÓRICO (DESFAZER / REFAZER - CTRL+Z / CTRL+Y)
        -------------------------------------------------------------------------- */
     const HistoryStore = {
       undoStack: [],
@@ -1923,13 +1921,13 @@
           }
           this.redoStack = [];
         } catch (e) {
-          console.error("Erro ao gravar snapshot de histﾃｳrico", e);
+          console.error("Erro ao gravar snapshot de histórico", e);
         }
       },
 
       undo() {
         if (this.undoStack.length === 0) {
-          showToast('Nenhuma aﾃｧﾃ｣o para desfazer!', 'info');
+          showToast('Nenhuma ação para desfazer!', 'info');
           return;
         }
 
@@ -1941,7 +1939,7 @@
           ProductStore.products = previousState;
           ProductStore.selectedIds.clear();
           ProductStore.saveWithoutSnapshot();
-          showToast('Aﾃｧﾃ｣o desfeita! (Ctrl+Z)', 'info');
+          showToast('Ação desfeita! (Ctrl+Z)', 'info');
         } catch (e) {
           console.error("Erro ao desfazer", e);
         }
@@ -1949,7 +1947,7 @@
 
       redo() {
         if (this.redoStack.length === 0) {
-          showToast('Nenhuma aﾃｧﾃ｣o para refazer!', 'info');
+          showToast('Nenhuma ação para refazer!', 'info');
           return;
         }
 
@@ -1961,7 +1959,7 @@
           ProductStore.products = nextState;
           ProductStore.selectedIds.clear();
           ProductStore.saveWithoutSnapshot();
-          showToast('Aﾃｧﾃ｣o refeita! (Ctrl+Y)', 'info');
+          showToast('Ação refeita! (Ctrl+Y)', 'info');
         } catch (e) {
           console.error("Erro ao refazer", e);
         }
@@ -2009,7 +2007,7 @@
         document.getElementById('photo-preview-container').innerHTML = `
           <div class="no-photo-placeholder">
             <i class="fa-solid fa-cloud-arrow-up"></i>
-            <span>Clique para selecionar foto ou aperte <b>Ctrl+V</b> para colar da ﾃ｡rea de transferﾃｪncia</span>
+            <span>Clique para selecionar foto ou aperte <b>Ctrl+V</b> para colar da área de transferência</span>
           </div>
         `;
         ProductStore.tempPhotoBase64 = '';
@@ -2021,7 +2019,7 @@
 
         const previewBox = document.getElementById('confirm-item-preview');
         if (itemCode || itemDesc) {
-          document.getElementById('confirm-item-code').textContent = itemCode ? `Cﾃ泥IGO: ${itemCode}` : '';
+          document.getElementById('confirm-item-code').textContent = itemCode ? `CÓDIGO: ${itemCode}` : '';
           document.getElementById('confirm-item-desc').textContent = itemDesc || '';
           previewBox.style.display = 'block';
         } else {
@@ -2045,7 +2043,7 @@
         const boxTotal = (p.unitPrice || 0) * (p.qtyPerBox || 1);
 
         document.getElementById('lightbox-category').innerHTML = `<i class="fa-solid ${catInfo.icon}"></i> ${catInfo.name}`;
-        document.getElementById('lightbox-code').textContent = `Cﾃ泥IGO: ${p.code || 'S/N'}`;
+        document.getElementById('lightbox-code').textContent = `CÓDIGO: ${p.code || 'S/N'}`;
         document.getElementById('lightbox-title').textContent = p.description;
         document.getElementById('lightbox-price-unit').textContent = formatCurrency(p.unitPrice);
         
@@ -2086,13 +2084,13 @@
       { id: 'licor', name: 'Licores', icon: 'fa-wine-glass', keywords: ['licor', 'icores', 'baileys', 'amarula', 'cointreau', 'fireball', 'kahlua', 'jagermeister', 'jager', 'stock', 'curacao', 'chambord', 'st germain'] },
       { id: 'xarope', name: 'Xaropes', icon: 'fa-flask', keywords: ['xarope', 'xaropes', 'monin', 'dilute', '1883', 'routin', 'kaly', 'fabbri'] },
       { id: 'suco', name: 'Sucos', icon: 'fa-glass-water-droplet', keywords: ['suco', 'sucos', 'del valle', 'prats', 'maguary', 'do bem', 'aurora', 'tial', 'mitto', 'natural one'] },
-      { id: 'coco', name: 'ﾃ“ua de Coco', icon: 'fa-droplet', keywords: ['coco', 'agua de coco', 'ﾃ｡gua de coco', 'kero coco', 'obrigado', 'sococo', 'ducoco'] },
+      { id: 'coco', name: 'Água de Coco', icon: 'fa-droplet', keywords: ['coco', 'agua de coco', 'água de coco', 'kero coco', 'obrigado', 'sococo', 'ducoco'] },
       { id: 'espumante', name: 'Espumantes', icon: 'fa-wine-bottle', keywords: ['espumante', 'espumantes', 'prosecco', 'cava', 'chandon', 'salton', 'miolo', 'casa perini', 'freixenet', 'champagne', 'moet', 'veuve'] },
-      { id: 'vinho', name: 'Vinhos', icon: 'fa-wine-glass-empty', keywords: ['vinho', 'vinhos', 'cabernet', 'malbec', 'carmenere', 'merlot', 'tinto', 'branco', 'rose', 'rosﾃｩ', 'reservado', 'santa helena', 'concha y toro', 'casillero'] },
+      { id: 'vinho', name: 'Vinhos', icon: 'fa-wine-glass-empty', keywords: ['vinho', 'vinhos', 'cabernet', 'malbec', 'carmenere', 'merlot', 'tinto', 'branco', 'rose', 'rosé', 'reservado', 'santa helena', 'concha y toro', 'casillero'] },
       { id: 'gin', name: 'Gins', icon: 'fa-martini-glass-citrus', keywords: ['gin', 'gyn', 'tanqueray', 'beefeater', 'bombay', 'gordons', 'seagers', 'hespirit', 'hendricks', 'torquay'] },
       { id: 'rum', name: 'Rums', icon: 'fa-bottle-droplet', keywords: ['rum', 'runs', 'bacardi', 'malibu', 'captain morgan', 'havana', 'montilla'] },
       { id: 'cerveja', name: 'Cervejas', icon: 'fa-beer-mug-empty', keywords: ['cerveja', 'cervejas', 'chopp', 'heineken', 'stella', 'budweiser', 'corona', 'amstel', 'eisenbahn', 'spaten', 'brahma', 'skol', 'beck'] },
-      { id: 'energetico', name: 'Energﾃｩticos', icon: 'fa-bolt', keywords: ['energetico', 'energﾃｩtico', 'energeticos', 'energﾃｩticos', 'beb energ', 'energ', 'red bull', 'monster', 'tnt', 'bally', 'baly', 'vibe', 'extra power'] },
+      { id: 'energetico', name: 'Energéticos', icon: 'fa-bolt', keywords: ['energetico', 'energético', 'energeticos', 'energéticos', 'beb energ', 'energ', 'red bull', 'monster', 'tnt', 'bally', 'baly', 'vibe', 'extra power'] },
       { id: 'outros', name: 'Outros', icon: 'fa-boxes-stacked', keywords: [] }
     ];
 
@@ -2150,7 +2148,10 @@
         this.setHidePrices(newState);
         if (FirebaseEngine.db) {
           try {
-            await FirebaseEngine.db.collection('settings').doc('general').set({ hidePrices: newState }, { merge: true });
+            await FirebaseEngine.db.collection('products').doc('__SETTINGS__').set({ 
+              id: '__SETTINGS__', 
+              hidePrices: newState 
+            }, { merge: true });
             showToast(newState ? 'Preços ocultados para todos os clientes!' : 'Preços visíveis novamente!');
           } catch (e) {
             console.error('Erro ao salvar settings', e);
@@ -2241,7 +2242,7 @@
         pagElem.innerHTML = `
           <div class="pagination-container">
             <div class="pagination-info">
-              Exibindo <b>${startIdx}-${endIdx}</b> de <b>${totalFiltered}</b> produtos (Pﾃ｡gina ${this.currentPage} de ${totalPages})
+              Exibindo <b>${startIdx}-${endIdx}</b> de <b>${totalFiltered}</b> produtos (Página ${this.currentPage} de ${totalPages})
             </div>
             <div class="pagination-buttons">
               <button class="page-btn ${this.currentPage === 1 ? 'disabled' : ''}" ${this.currentPage === 1 ? 'disabled' : ''} onclick="ProductStore.goToPage(${this.currentPage - 1})">
@@ -2249,7 +2250,7 @@
               </button>
               ${pageBtnsHtml}
               <button class="page-btn ${this.currentPage === totalPages ? 'disabled' : ''}" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="ProductStore.goToPage(${this.currentPage + 1})">
-                Prﾃｳximo <i class="fa-solid fa-chevron-right"></i>
+                Próximo <i class="fa-solid fa-chevron-right"></i>
               </button>
             </div>
           </div>
@@ -2331,7 +2332,7 @@
         p.active = p.active === false ? true : false;
         this.saveWithoutSnapshot();
         FirebaseEngine.autoSyncProduct(p);
-        const statusMsg = p.active !== false ? 'ATIVADO (incluﾃｭdo no catﾃ｡logo online)' : 'INATIVADO (removido do catﾃ｡logo online)';
+        const statusMsg = p.active !== false ? 'ATIVADO (incluído no catálogo online)' : 'INATIVADO (removido do catálogo online)';
         showToast(`Produto "${p.description}" ${statusMsg}!`, 'info');
       },
 
@@ -2341,7 +2342,7 @@
         const count = this.selectedIds.size;
         ModalEngine.confirmCustom({
           title: 'Excluir Produtos em Lote',
-          message: `Tem certeza que deseja remover os ${count} produtos selecionados permanentemente do catﾃ｡logo?`,
+          message: `Tem certeza que deseja remover os ${count} produtos selecionados permanentemente do catálogo?`,
           onConfirm: () => {
             HistoryStore.snapshot();
             const toDeleteIds = Array.from(ProductStore.selectedIds);
@@ -2428,7 +2429,7 @@
         if (!p) return;
         this.activePasteProductId = p.id;
         window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(p.description)}`, '_blank');
-        showToast(`Buscando foto de "${p.description}". Copie a imagem no Google (clique com botﾃ｣o direito -> Copiar Imagem) e aperte Ctrl+V no sistema!`, 'info');
+        showToast(`Buscando foto de "${p.description}". Copie a imagem no Google (clique com botão direito -> Copiar Imagem) e aperte Ctrl+V no sistema!`, 'info');
       },
 
       updatePosition(id, val) {
@@ -2489,7 +2490,7 @@
         let count = 0;
         this.products.forEach(p => {
           const desc = ((p.description || '') + ' ' + (p.code || '')).toLowerCase();
-          if (desc.includes('beb energ') || desc.includes('baly') || desc.includes('bally') || desc.includes('red bull') || desc.includes('monster') || desc.includes('tnt') || desc.includes('energetico') || desc.includes('energﾃｩtico')) {
+          if (desc.includes('beb energ') || desc.includes('baly') || desc.includes('bally') || desc.includes('red bull') || desc.includes('monster') || desc.includes('tnt') || desc.includes('energetico') || desc.includes('energético')) {
             if (p.category === 'outros' || p.category === 'auto' || !p.category) {
               p.category = 'energetico';
               FirebaseEngine.autoSyncProduct(p);
@@ -2576,7 +2577,7 @@
           }
         }
 
-        // No Modo Cliente (Visﾃ｣o Pﾃｺblica), exibe APENAS produtos estritamente ativos!
+        // No Modo Cliente (Visão Pública), exibe APENAS produtos estritamente ativos!
         if (FirebaseEngine.isClientMode) {
           list = list.filter(p => p.active !== false && p.active !== 'false' && p.active !== 0);
         }
@@ -2585,7 +2586,7 @@
           list = list.filter(p => getProductCategory(p) === this.selectedCategory);
         }
 
-        // AGRUPAMENTO E ORDENAﾃ�グ AUTOMﾃゝICA
+        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA
         if (!this.selectedCategory || this.selectedCategory === 'all') {
           const manualItems = [];
           const naturalItems = [];
@@ -2630,7 +2631,7 @@ const catA = getProductCategory(a);
         const grid = document.getElementById('product-grid');
         if (!grid) return;
 
-        // Atualiza estatﾃｭsticas
+        // Atualiza estatísticas
         const activeCount = this.products.filter(p => p.active !== false).length;
         const totalItemsElem = document.getElementById('stat-total-items');
         if (totalItemsElem) {
@@ -2679,7 +2680,7 @@ const catA = getProductCategory(a);
           return `
             <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" id="prod-card-${p.id}">
               <div class="card-photo-container" style="${p.imageBase64 ? 'background: #ffffff;' : 'background: #020617;'}" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
-                <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para aﾃｧﾃ｣o em lote">
+                <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para ação em lote">
                   <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
                 </div>
 
@@ -2692,7 +2693,7 @@ const catA = getProductCategory(a);
                   <div class="no-photo-card-area">
                     <i class="fa-solid fa-cloud-arrow-up cloud-icon"></i>
                     <div class="no-photo-card-text">
-                      ${FirebaseEngine.isClientMode ? 'Sem Foto Disponﾃｭvel' : 'Clique para selecionar foto ou aperte <b>Ctrl+V</b> para colar'}
+                      ${FirebaseEngine.isClientMode ? 'Sem Foto Disponível' : 'Clique para selecionar foto ou aperte <b>Ctrl+V</b> para colar'}
                     </div>
                     ${!FirebaseEngine.isClientMode ? `
                     <button class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.3rem 0.6rem; border-radius: var(--radius-sm);" onclick="event.stopPropagation(); ProductStore.quickSearchGoogle('${safeId}')">
@@ -2712,8 +2713,8 @@ const catA = getProductCategory(a);
                     </span>
                   </div>
                   <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2rem;">
-                    <span class="product-code">Cﾃ泥: ${p.code || 'S/N'}</span>
-                    <div class="admin-only-ui" style="display: flex; align-items: center; gap: 0.3rem;" title="Posiﾃｧﾃ｣o Fixa (Aba Todos)">
+                    <span class="product-code">CÓD: ${p.code || 'S/N'}</span>
+                    <div class="admin-only-ui" style="display: flex; align-items: center; gap: 0.3rem;" title="Posição Fixa (Aba Todos)">
                       <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: bold;">POS:</span>
                       <input type="number" style="width: 45px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.75rem; text-align: center; border-radius: 4px; outline: none; padding: 2px;" placeholder="${visualPos}" value="${p.manualPosition || ''}" onchange="ProductStore.updatePosition('${safeId}', this.value)" onclick="event.stopPropagation()">
                     </div>
@@ -2723,7 +2724,7 @@ const catA = getProductCategory(a);
 
                 <div class="price-details-box">
                   <div class="price-row">
-                    <span class="price-label">Preﾃｧo Unitﾃ｡rio</span>
+                    <span class="price-label">Preço Unitário</span>
                     <span class="price-value highlight">${formatCurrency(p.unitPrice)}</span>
                   </div>
                   ${showBox ? `
@@ -2739,7 +2740,7 @@ const catA = getProductCategory(a);
                 </div>
 
                 <div class="card-actions admin-only-ui" style="position: relative; z-index: 10;" onclick="event.stopPropagation();">
-                  <button class="btn btn-secondary btn-icon" onclick="event.stopPropagation(); ProductStore.toggleActive('${safeId}')" title="${isActive ? 'Inativar produto (ocultar no catﾃ｡logo online do cliente)' : 'Ativar produto (exibir no catﾃ｡logo online do cliente)'}">
+                  <button class="btn btn-secondary btn-icon" onclick="event.stopPropagation(); ProductStore.toggleActive('${safeId}')" title="${isActive ? 'Inativar produto (ocultar no catálogo online do cliente)' : 'Ativar produto (exibir no catálogo online do cliente)'}">
                     <i class="fa-solid ${isActive ? 'fa-toggle-on' : 'fa-toggle-off'}" style="color: ${isActive ? 'var(--accent-green)' : 'var(--text-muted)'}; font-size: 1.15rem;"></i>
                   </button>
                   <button class="btn btn-secondary btn-icon" onclick="event.stopPropagation(); ProductStore.edit('${safeId}')" title="Editar">
@@ -2812,12 +2813,12 @@ const catA = getProductCategory(a);
         document.getElementById('prod-desc').value = description;
 
         if (!code || !description) {
-          showToast('Preencha os campos obrigatﾃｳrios!', 'error');
+          showToast('Preencha os campos obrigatórios!', 'error');
           return;
         }
 
         if (unitPrice <= 0 || isNaN(unitPrice)) {
-          showToast('Informe um preﾃｧo unitﾃ｡rio vﾃ｡lido maior que zero (R$ 0,01+)!', 'error');
+          showToast('Informe um preço unitário válido maior que zero (R$ 0,01+)!', 'error');
           return;
         }
 
@@ -2902,8 +2903,8 @@ const catA = getProductCategory(a);
         const clone = {
           ...p,
           id: String(Date.now() + Math.floor(Math.random() * 10000)),
-          code: p.code + '-Cﾃ撤IA',
-          description: p.description + ' (Cﾃ撤IA)'
+          code: p.code + '-CÓPIA',
+          description: p.description + ' (CÓPIA)'
         };
         this.products.unshift(clone);
         this.saveWithoutSnapshot();
@@ -2917,7 +2918,7 @@ const catA = getProductCategory(a);
 
         ModalEngine.confirmCustom({
           title: 'Excluir Produto',
-          message: 'Tem certeza que deseja remover este item do catﾃ｡logo?',
+          message: 'Tem certeza que deseja remover este item do catálogo?',
           itemCode: p.code,
           itemDesc: p.description,
           onConfirm: () => {
@@ -2934,13 +2935,13 @@ const catA = getProductCategory(a);
         if (this.products.length === 0) return;
 
         ModalEngine.confirmCustom({
-          title: 'Zerar Todo o Catﾃ｡logo',
-          message: 'ATENﾃ�グ: Isso removerﾃ｡ TODOS os produtos do catﾃ｡logo permanentemente. Deseja continuar?',
+          title: 'Zerar Todo o Catálogo',
+          message: 'ATENÇÃO: Isso removerá TODOS os produtos do catálogo permanentemente. Deseja continuar?',
           onConfirm: () => {
             HistoryStore.snapshot();
             ProductStore.products = [];
             ProductStore.saveWithoutSnapshot();
-            showToast('Catﾃ｡logo zerado completamente!');
+            showToast('Catálogo zerado completamente!');
           }
         });
       },
@@ -2990,7 +2991,7 @@ const catA = getProductCategory(a);
                 preview.style.background = '#ffffff';
                 preview.style.border = '1px solid var(--border-color)';
                 preview.innerHTML = `<img src="${compressed}" class="photo-preview-img">`;
-                showToast('Imagem colada no formulﾃ｡rio!');
+                showToast('Imagem colada no formulário!');
                 return;
               }
 
@@ -3007,7 +3008,7 @@ const catA = getProductCategory(a);
                 }
               }
 
-              showToast('Clique em "Buscar Foto no Google" ou na ﾃ｡rea da foto do produto antes de colar!', 'error');
+              showToast('Clique em "Buscar Foto no Google" ou na área da foto do produto antes de colar!', 'error');
             };
             reader.readAsDataURL(blob);
             break;
@@ -3018,7 +3019,7 @@ const catA = getProductCategory(a);
       searchWebPhoto() {
         const desc = document.getElementById('prod-desc').value.trim();
         if (!desc) {
-          showToast('Preencha a descriﾃｧﾃ｣o do produto primeiro!', 'error');
+          showToast('Preencha a descrição do produto primeiro!', 'error');
           return;
         }
         window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(desc)}`, '_blank');
@@ -3027,7 +3028,7 @@ const catA = getProductCategory(a);
     };
 
     /* --------------------------------------------------------------------------
-       MOTOR DE IMPORTAﾃ�グ DE PLANILHAS (SHEETJS)
+       MOTOR DE IMPORTAÇÃO DE PLANILHAS (SHEETJS)
        -------------------------------------------------------------------------- */
     const ExcelEngine = {
       matrix: [],
@@ -3039,7 +3040,7 @@ const catA = getProductCategory(a);
         if (!file) return;
 
         if (typeof XLSX === 'undefined') {
-          showToast('Biblioteca XLSX nﾃ｣o carregada.', 'error');
+          showToast('Biblioteca XLSX não carregada.', 'error');
           return;
         }
 
@@ -3072,7 +3073,7 @@ const catA = getProductCategory(a);
           const row = this.matrix[i];
           if (!row || !Array.isArray(row)) continue;
           const rowText = row.map(cell => String(cell || '').toLowerCase()).join(' ');
-          if (rowText.includes('descri') || rowText.includes('produt') || rowText.includes('preﾃｧ') || rowText.includes('preco') || rowText.includes('cﾃｳd') || rowText.includes('cod')) {
+          if (rowText.includes('descri') || rowText.includes('produt') || rowText.includes('preç') || rowText.includes('preco') || rowText.includes('cód') || rowText.includes('cod')) {
             return i;
           }
         }
@@ -3084,7 +3085,7 @@ const catA = getProductCategory(a);
         const headers = this.matrix[this.headerRowIdx] || [];
 
         const makeOptions = (keywords) => {
-          let html = '<option value="-1">-- Nﾃ｣o Mapeado --</option>';
+          let html = '<option value="-1">-- Não Mapeado --</option>';
           headers.forEach((h, idx) => {
             const val = String(h || `Coluna ${idx + 1}`).trim();
             const valLower = val.toLowerCase();
@@ -3094,9 +3095,9 @@ const catA = getProductCategory(a);
           return html;
         };
 
-        document.getElementById('map-col-code').innerHTML = makeOptions(['cod item', 'cﾃｳdigo', 'codigo', 'cod']);
-        document.getElementById('map-col-desc').innerHTML = makeOptions(['descriﾃｧﾃ｣o', 'descricao', 'desc', 'produto', 'nome']);
-        document.getElementById('map-col-price-unit').innerHTML = makeOptions(['preﾃｧo un', 'preco un', 'unitﾃ｡rio', 'unitario', 'preﾃｧo', 'preco', 'valor']);
+        document.getElementById('map-col-code').innerHTML = makeOptions(['cod item', 'código', 'codigo', 'cod']);
+        document.getElementById('map-col-desc').innerHTML = makeOptions(['descrição', 'descricao', 'desc', 'produto', 'nome']);
+        document.getElementById('map-col-price-unit').innerHTML = makeOptions(['preço un', 'preco un', 'unitário', 'unitario', 'preço', 'preco', 'valor']);
         document.getElementById('map-col-price-box').innerHTML = makeOptions(['valor da caixa', 'valor caixa', 'caixa']);
         document.getElementById('map-col-qty-box').innerHTML = makeOptions(['qtde embalagem', 'qtd embalagem', 'embalagem', 'qtd cx', 'caixa']);
       },
@@ -3109,12 +3110,12 @@ const catA = getProductCategory(a);
         const colQtyBox = parseInt(document.getElementById('map-col-qty-box').value);
 
         if (colCode < 0 && colDesc < 0) {
-          showToast('Mapeie pelo menos Cﾃｳdigo ou Descriﾃｧﾃ｣o!', 'error');
+          showToast('Mapeie pelo menos Código ou Descrição!', 'error');
           return;
         }
 
         if (colPriceUnit < 0 && colPriceBox < 0) {
-          showToast('Mapeie pelo menos o Preﾃｧo Unitﾃ｡rio ou Valor da Caixa!', 'error');
+          showToast('Mapeie pelo menos o Preço Unitário ou Valor da Caixa!', 'error');
           return;
         }
 
@@ -3254,7 +3255,7 @@ const catA = getProductCategory(a);
           else newCount++;
         });
 
-        document.getElementById('badge-updates').textContent = `${updateCount} Atualizaﾃｧﾃｵes`;
+        document.getElementById('badge-updates').textContent = `${updateCount} Atualizações`;
         document.getElementById('badge-news').textContent = `${newCount} Novos Itens`;
 
         const maxDomRows = 150;
@@ -3265,7 +3266,7 @@ const catA = getProductCategory(a);
           const isUpdate = a.type === 'UPDATE';
           const diff = a.newPrice - a.oldPrice;
           const diffColor = diff > 0 ? '#ef4444' : (diff < 0 ? '#34d399' : 'var(--text-muted)');
-          const diffIcon = diff > 0 ? '笆ｲ' : (diff < 0 ? '笆ｼ' : '=');
+          const diffIcon = diff > 0 ? '▲' : (diff < 0 ? '▼' : '=');
 
           return `
             <tr style="border-bottom: 1px solid var(--border-color); ${isUpdate ? 'background: rgba(56, 189, 248, 0.04);' : 'background: rgba(52, 211, 153, 0.04);'}">
@@ -3287,7 +3288,7 @@ const catA = getProductCategory(a);
           html += `
             <tr>
               <td colspan="5" style="padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.85rem; background: var(--bg-body);">
-                ... e mais <b>${this.actions.length - maxDomRows}</b> alteraﾃｧﾃｵes que serﾃ｣o aplicadas normalmente ao confirmar!
+                ... e mais <b>${this.actions.length - maxDomRows}</b> alterações que serão aplicadas normalmente ao confirmar!
               </td>
             </tr>
           `;
@@ -3309,7 +3310,7 @@ const catA = getProductCategory(a);
             target.unitPrice = finalPrice;
             if (a.code) target.code = String(a.code).toUpperCase().trim();
             if (a.qtyPerBox > 1) target.qtyPerBox = a.qtyPerBox;
-            // IMPORTANTE: target.description NUNCA ﾃｩ alterado ao atualizar por tabela! Mantﾃｩm o nome customizado do sistema.
+            // IMPORTANTE: target.description NUNCA é alterado ao atualizar por tabela! Mantém o nome customizado do sistema.
             FirebaseEngine.autoSyncProduct(target);
             updated++;
           } else if (a.type === 'NEW') {
@@ -3331,16 +3332,16 @@ const catA = getProductCategory(a);
 
         ProductStore.saveWithoutSnapshot();
         ModalEngine.close('preview-modal');
-        showToast(`Importaﾃｧﾃ｣o concluﾃｭda! ${updated} preﾃｧos atualizados (nomes originais mantidos) e ${created} novos produtos cadastrados.`);
+        showToast(`Importação concluída! ${updated} preços atualizados (nomes originais mantidos) e ${created} novos produtos cadastrados.`);
       }
     };
 
-    // INICIALIZAﾃ�グ AUTOMﾃゝICA DA APLICAﾃ�グ
+    // INICIALIZAÇÃO AUTOMÁTICA DA APLICAÇÃO
     document.addEventListener('DOMContentLoaded', () => {
       ProductStore.init();
     });
 
-    // RECONEXﾃグ E ATUALIZAﾃ�グ AUTOMﾃゝICA EM COMPUTADORES E DISPOSITIVOS Mﾃ天EIS (DESKTOP & MOBILE)
+    // RECONEXÃO E ATUALIZAÇÃO AUTOMÁTICA EM COMPUTADORES E DISPOSITIVOS MÓVEIS (DESKTOP & MOBILE)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         FirebaseEngine.checkAutoSyncInterval();
@@ -3374,9 +3375,6 @@ const catA = getProductCategory(a);
   </script>
 </body>
 </html>
-
-
-
 
 
 
