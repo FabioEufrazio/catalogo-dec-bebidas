@@ -2356,6 +2356,8 @@
         showToast(`Buscando foto de "${p.description}". Copie a imagem no Google (clique com botão direito -> Copiar Imagem) e aperte Ctrl+V no sistema!`, 'info');
       },
 
+      updatePosition(id, val) { const p = this.getById(id); if (p) { HistoryStore.snapshot(); p.manualPosition = parseInt(val, 10) || 0; this.saveWithoutSnapshot(); FirebaseEngine.autoSyncProduct(p); } },
+
       toggleHero(id) {
         const p = this.getById(id);
         if (!p) return;
@@ -2487,10 +2489,18 @@
         }
 
         // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA:
-        // 1º Destaques Heroes no topo (isHero = true)
-        // 2º Categoria (Whiskies, Vodkas, Licores, Gins, etc.)
-        // 3º Chave de Marca / Nome Similar (para bebidas de mesmo nome ficarem lado a lado!)
+        // 1º Posição Manual (Apenas na aba Todos)
+        // 2º Destaques Heroes no topo (isHero = true)
+        // 3º Categoria (Whiskies, Vodkas, Licores, Gins, etc.)
+        // 4º Chave de Marca / Nome Similar (para bebidas de mesmo nome ficarem lado a lado!)
         list = [...list].sort((a, b) => {
+          if (!this.selectedCategory || this.selectedCategory === 'all') {
+            const posA = (a.manualPosition && a.manualPosition > 0) ? parseInt(a.manualPosition, 10) : 999999;
+            const posB = (b.manualPosition && b.manualPosition > 0) ? parseInt(b.manualPosition, 10) : 999999;
+            
+            if (posA !== posB) return posA - posB;
+          }
+
           const heroA = a.isHero ? 1 : 0;
           const heroB = b.isHero ? 1 : 0;
           if (heroA !== heroB) return heroB - heroA;
@@ -2595,7 +2605,13 @@
                       <i class="fa-solid ${isActive ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isActive ? 'Ativo' : 'Inativo'}
                     </span>
                   </div>
-                  <span class="product-code">CÓD: ${p.code || 'S/N'}</span>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2rem;">
+                    <span class="product-code">CÓD: ${p.code || 'S/N'}</span>
+                    <div class="admin-only-ui" style="display: flex; align-items: center; gap: 0.3rem;" title="Posição Fixa (Aba Todos)">
+                      <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: bold;">POS:</span>
+                      <input type="number" style="width: 45px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.75rem; text-align: center; border-radius: 4px; outline: none; padding: 2px;" value="${p.manualPosition || ''}" onchange="ProductStore.updatePosition('${safeId}', this.value)" onclick="event.stopPropagation()">
+                    </div>
+                  </div>
                   <h3 class="product-title">${safeDesc}</h3>
                 </div>
 
@@ -3278,3 +3294,5 @@
   </script>
 </body>
 </html>
+
+
