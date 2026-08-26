@@ -1354,12 +1354,12 @@
         </p>
         <div class="form-group">
           <label>E-mail</label>
-          <input type="email" id="login-email" class="form-control" placeholder="admin@email.com" autocomplete="username">
+          <input type="email" id="login-email" class="form-control" placeholder="admin@email.com" autocomplete="username" onkeydown="if(event.key === 'Enter') FirebaseEngine.login()">
         </div>
         <div class="form-group">
           <label>Senha</label>
           <div style="position: relative;">
-            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" style="padding-right: 2.5rem;">
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" style="padding-right: 2.5rem;" onkeydown="if(event.key === 'Enter') FirebaseEngine.login()">
             <i class="fa-regular fa-eye" id="toggle-password-visibility" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 1.1rem;" title="Mostrar/Ocultar Senha" onclick="
               const input = document.getElementById('login-password');
               const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
