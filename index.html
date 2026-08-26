@@ -14,11 +14,16 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- SheetJS para Processamento de Planilhas -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Firebase Cloud SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   
   <style>
+    /* MODO CLIENTE: Oculta todos os elementos administrativos automaticamente */
+    body.client-mode .admin-only-ui {
+      display: none !important;
+    }
+
     /* ==========================================================================
        1. VARIAVEIS E RESET GLOBAL
        ========================================================================== */
@@ -981,7 +986,7 @@
   <!-- HEADER PRINCIPAL -->
   <header>
     <div class="header-container">
-      <div class="brand-title">
+      <div class="brand-title" ondblclick="ModalEngine.open('login-modal')" style="cursor: pointer;" title="Duplo clique para acesso restrito">
         <i class="fa-solid fa-boxes-stacked"></i>
         <h1 id="app-title-text">Gestor de Catálogo</h1>
       </div>
@@ -1006,6 +1011,10 @@
 
         <button class="btn btn-secondary admin-only-ui" onclick="ModalEngine.open('firebase-modal')" title="Configurar Firebase Cloud">
           <i class="fa-solid fa-gear"></i>
+        </button>
+
+        <button class="btn btn-secondary admin-only-ui" onclick="FirebaseEngine.logout()" title="Sair do Modo Admin" style="color: var(--accent-red);">
+          <i class="fa-solid fa-right-from-bracket"></i>
         </button>
       </div>
     </div>
@@ -1332,6 +1341,33 @@
     </div>
   </div>
 
+  <!-- MODAL LOGIN -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-card" style="max-width: 400px; margin: auto;">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-lock" style="color: var(--accent-blue);"></i> Acesso Restrito</h2>
+        <button class="close-btn" onclick="ModalEngine.close('login-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+          Digite seu e-mail e senha de administrador para acessar o painel.
+        </p>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="login-email" class="form-control" placeholder="admin@email.com">
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('login-modal')">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="FirebaseEngine.login()"><i class="fa-solid fa-right-to-bracket"></i> Entrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL ALTERAÇÃO DE CATEGORIA EM LOTE -->
   <div class="modal-overlay" id="bulk-category-modal">
     <div class="modal-card" style="max-width: 450px; margin: auto;">
@@ -1495,17 +1531,12 @@
       isClientMode: false,
 
       checkMode() {
-        const params = new URLSearchParams(window.location.search);
-        this.isClientMode = params.get('mode') === 'client' || params.get('view') === 'public';
-
-        if (this.isClientMode) {
-          document.body.classList.add('client-mode');
-          const title = document.getElementById('app-title-text');
-          if (title) title.textContent = 'Catálogo de Produtos';
-
-          const adminElements = document.querySelectorAll('.admin-only-ui');
-          adminElements.forEach(el => el.style.display = 'none');
-        }
+        // Agora por padrão a aplicação é 100% modo cliente (esconde edição).
+        // Só muda se o Firebase confirmar que tem um admin logado.
+        this.isClientMode = true;
+        document.body.classList.add('client-mode');
+        const title = document.getElementById('app-title-text');
+        if (title) title.textContent = 'Catálogo de Produtos';
       },
 
       defaultConfig: {
@@ -1544,6 +1575,30 @@
                 firebase.initializeApp(config);
               }
               this.db = firebase.firestore();
+              
+              // Ouve mudanças de Autenticação (Login / Logout)
+              firebase.auth().onAuthStateChanged(user => {
+                if (user) {
+                  this.isClientMode = false;
+                  document.body.classList.remove('client-mode');
+                  const title = document.getElementById('app-title-text');
+                  if (title) title.textContent = 'Gestor de Catálogo';
+                  ProductStore.render();
+                } else {
+                  this.isClientMode = true;
+                  document.body.classList.add('client-mode');
+                  const title = document.getElementById('app-title-text');
+                  if (title) title.textContent = 'Catálogo de Produtos';
+                  ProductStore.render();
+                }
+              });
+
+              // Verifica se veio via URL com ?admin=1 e não está logado
+              const params = new URLSearchParams(window.location.search);
+              if ((params.get('admin') === '1' || params.get('admin') === 'true') && !firebase.auth().currentUser) {
+                setTimeout(() => ModalEngine.open('login-modal'), 1000);
+              }
+
               this.checkAutoSyncInterval();
               this.listenToCloud();
               this.startHeartbeatPolling();
@@ -1566,6 +1621,35 @@
             this.forceCloudFetch('server');
           }
         }, 15000);
+      },
+
+      login() {
+        const email = document.getElementById('login-email').value.trim();
+        const pass = document.getElementById('login-password').value.trim();
+        if (!email || !pass) {
+          showToast('Preencha e-mail e senha!', 'error');
+          return;
+        }
+
+        firebase.auth().signInWithEmailAndPassword(email, pass)
+          .then(() => {
+            showToast('Login realizado com sucesso! Painel destravado.');
+            ModalEngine.close('login-modal');
+            document.getElementById('login-password').value = '';
+          })
+          .catch(err => {
+            showToast('Erro no login. Verifique e-mail e senha.', 'error');
+            console.error(err);
+          });
+      },
+
+      logout() {
+        if (confirm('Deseja realmente sair do modo de edição?')) {
+          firebase.auth().signOut().then(() => {
+            showToast('Você saiu do painel de administração.');
+            window.location.search = '';
+          });
+        }
       },
 
       checkAutoSyncInterval() {
