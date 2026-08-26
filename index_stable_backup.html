@@ -1027,7 +1027,7 @@
     <div class="sticky-nav-container" id="sticky-nav-container">
       <div class="search-box" style="margin-bottom: 0.6rem;">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="search-input" placeholder="Buscar por código ou descrição do produto..." oninput="ProductStore.filter(this.value)">
+        <input type="text" id="search-input" placeholder="Buscar por código ou descrição do produto..." oninput="ProductStore.filter(this.value)" autocomplete="off" autocorrect="off" spellcheck="false" name="search_catalog">
       </div>
 
       <!-- BARRA DE CATEGORIAS -->
@@ -1354,11 +1354,11 @@
         </p>
         <div class="form-group">
           <label>E-mail</label>
-          <input type="email" id="login-email" class="form-control" placeholder="admin@email.com">
+          <input type="email" id="login-email" class="form-control" placeholder="admin@email.com" autocomplete="username">
         </div>
         <div class="form-group">
           <label>Senha</label>
-          <input type="password" id="login-password" class="form-control" placeholder="••••••••">
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password">
         </div>
       </div>
       <div class="modal-footer">
