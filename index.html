@@ -1031,6 +1031,9 @@
         <button class="btn btn-secondary admin-only-ui" id="btn-share-link" onclick="FirebaseEngine.copyClientLink()" title="Copiar Link para envio aos Clientes">
           <i class="fa-solid fa-share-nodes"></i> Link do Cliente
         </button>
+        <div id="price-status-badge" style="background: rgba(251, 191, 36, 0.2); border: 1px solid #fbbf24; color: #fbbf24; padding: 0.4rem 0.8rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: bold; margin-right: 0.5rem;" class="admin-only-ui">
+          <i class="fa-solid fa-eye-slash"></i> CLIENTE: OCULTO
+        </div>
 
         <button class="btn btn-success admin-only-ui" id="btn-toggle-prices" onclick="ProductStore.togglePricesGlobally()" title="Ocultar/Mostrar preços no catálogo">
           <i class="fa-solid fa-eye" id="icon-toggle-prices"></i> <span id="text-toggle-prices">Mostrar Preços</span>
@@ -2129,6 +2132,13 @@
           if (btn) btn.classList.replace('btn-warning', 'btn-success');
           const icon = document.getElementById('icon-toggle-prices');
           if (icon) icon.className = 'fa-solid fa-eye';
+          const badge = document.getElementById('price-status-badge');
+          if (badge) {
+            badge.innerHTML = '<i class="fa-solid fa-eye-slash"></i> CLIENTE: OCULTO';
+            badge.style.background = 'rgba(251, 191, 36, 0.2)';
+            badge.style.borderColor = '#fbbf24';
+            badge.style.color = '#fbbf24';
+          }
         } else {
           document.body.classList.remove('prices-hidden');
           const txt = document.getElementById('text-toggle-prices');
@@ -2140,6 +2150,13 @@
           }
           const icon = document.getElementById('icon-toggle-prices');
           if (icon) icon.className = 'fa-solid fa-eye-slash';
+          const badge = document.getElementById('price-status-badge');
+          if (badge) {
+            badge.innerHTML = '<i class="fa-solid fa-eye"></i> CLIENTE: VISÍVEL';
+            badge.style.background = 'rgba(34, 197, 94, 0.2)';
+            badge.style.borderColor = '#22c55e';
+            badge.style.color = '#22c55e';
+          }
         }
       },
 
