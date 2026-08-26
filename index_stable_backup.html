@@ -339,7 +339,6 @@
       object-fit: contain;
       padding: 0.5rem;
       transition: transform 0.3s;
-      background: #ffffff;
     }
 
     .card-photo-container:hover .card-photo {
@@ -745,7 +744,6 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      background: #ffffff;
     }
 
     .no-photo-placeholder {
@@ -1311,8 +1309,8 @@
         <button class="close-btn" onclick="ModalEngine.close('lightbox-modal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="padding: 1rem; text-align: center;">
-        <div style="width: 100%; height: 260px; background: #020617; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 1rem; border: 1px solid var(--border-color);">
-          <img id="lightbox-img" style="width: 100%; height: 100%; object-fit: contain; background: #ffffff;">
+        <div id="lightbox-container" style="width: 100%; height: 260px; background: #020617; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+          <img id="lightbox-img" style="width: 100%; height: 100%; object-fit: contain;">
           <div id="lightbox-no-img" style="display: none; flex-direction: column; align-items: center; color: var(--text-dim);">
             <i class="fa-solid fa-camera" style="font-size: 2.5rem; margin-bottom: 0.5rem;"></i>
             <span>Sem foto cadastrada</span>
@@ -2023,13 +2021,16 @@
 
         const imgElem = document.getElementById('lightbox-img');
         const noImgElem = document.getElementById('lightbox-no-img');
+        const container = document.getElementById('lightbox-container');
         if (p.imageBase64) {
           imgElem.src = p.imageBase64;
           imgElem.style.display = 'block';
           noImgElem.style.display = 'none';
+          if(container) container.style.background = '#ffffff';
         } else {
           imgElem.style.display = 'none';
           noImgElem.style.display = 'flex';
+          if(container) container.style.background = '#020617';
         }
 
         this.open('lightbox-modal');
@@ -2556,7 +2557,7 @@
 
           return `
             <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" id="prod-card-${p.id}">
-              <div class="card-photo-container" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
+              <div class="card-photo-container" style="${p.imageBase64 ? 'background: #ffffff;' : 'background: #020617;'}" onclick="${FirebaseEngine.isClientMode ? `ModalEngine.openLightbox('${safeId}')` : `ProductStore.triggerCardPhotoUpload('${safeId}')`}" title="${FirebaseEngine.isClientMode ? 'Clique para ampliar detalhes' : 'Clique para selecionar imagem de foto'}">
                 <div class="card-select-badge admin-only-ui" onclick="event.stopPropagation();" title="Selecionar item para ação em lote">
                   <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
                 </div>
@@ -2776,8 +2777,12 @@
         this.tempPhotoBase64 = p.imageBase64 || '';
         const preview = document.getElementById('photo-preview-container');
         if (p.imageBase64) {
+          preview.style.background = '#ffffff';
+          preview.style.border = '1px solid var(--border-color)';
           preview.innerHTML = `<img src="${p.imageBase64}" class="photo-preview-img">`;
         } else {
+          preview.style.background = 'var(--bg-body)';
+          preview.style.border = '2px dashed var(--border-color-light)';
           preview.innerHTML = `
             <div class="no-photo-placeholder">
               <i class="fa-solid fa-cloud-arrow-up"></i>
@@ -2849,14 +2854,20 @@
         const reader = new FileReader();
         reader.onload = async (evt) => {
           this.tempPhotoBase64 = await compressBase64(evt.target.result, 400, 0.65);
-          document.getElementById('photo-preview-container').innerHTML = `<img src="${this.tempPhotoBase64}" class="photo-preview-img">`;
+          const preview = document.getElementById('photo-preview-container');
+          preview.style.background = '#ffffff';
+          preview.style.border = '1px solid var(--border-color)';
+          preview.innerHTML = `<img src="${this.tempPhotoBase64}" class="photo-preview-img">`;
         };
         reader.readAsDataURL(file);
       },
 
       removePhoto() {
         this.tempPhotoBase64 = '';
-        document.getElementById('photo-preview-container').innerHTML = `
+        const preview = document.getElementById('photo-preview-container');
+        preview.style.background = 'var(--bg-body)';
+        preview.style.border = '2px dashed var(--border-color-light)';
+        preview.innerHTML = `
           <div class="no-photo-placeholder">
             <i class="fa-solid fa-cloud-arrow-up"></i>
             <span>Clique para selecionar foto ou aperte <b>Ctrl+V</b> para colar</span>
@@ -2877,7 +2888,10 @@
               const modal = document.getElementById('product-modal');
               if (modal && modal.style.display === 'flex') {
                 this.tempPhotoBase64 = compressed;
-                document.getElementById('photo-preview-container').innerHTML = `<img src="${compressed}" class="photo-preview-img">`;
+                const preview = document.getElementById('photo-preview-container');
+                preview.style.background = '#ffffff';
+                preview.style.border = '1px solid var(--border-color)';
+                preview.innerHTML = `<img src="${compressed}" class="photo-preview-img">`;
                 showToast('Imagem colada no formulário!');
                 return;
               }
