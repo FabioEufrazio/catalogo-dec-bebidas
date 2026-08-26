@@ -1710,12 +1710,10 @@
             const cloudProducts = [];
             snapshot.forEach(doc => {
               const data = doc.data();
-              if (data && data.id) {
-                if (data.id === '__SETTINGS__') {
-                  ProductStore.setHidePrices(!!data.hidePrices);
-                } else {
-                  cloudProducts.push(data);
-                }
+              if (doc.id === '__SETTINGS__') {
+                ProductStore.setHidePrices(!!data.hidePrices);
+              } else if (data && data.id) {
+                cloudProducts.push(data);
               }
             });
 
@@ -1778,12 +1776,10 @@
               const cloudProducts = [];
               snapshot.forEach(doc => {
                 const data = doc.data();
-                if (data && data.id) {
-                  if (data.id === '__SETTINGS__') {
-                    ProductStore.setHidePrices(!!data.hidePrices);
-                  } else {
-                    cloudProducts.push(data);
-                  }
+                if (doc.id === '__SETTINGS__') {
+                  ProductStore.setHidePrices(!!data.hidePrices);
+                } else if (data && data.id) {
+                  cloudProducts.push(data);
                 }
               });
 
