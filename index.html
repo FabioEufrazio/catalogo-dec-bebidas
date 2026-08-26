@@ -2357,7 +2357,56 @@
         showToast(`Buscando foto de "${p.description}". Copie a imagem no Google (clique com botão direito -> Copiar Imagem) e aperte Ctrl+V no sistema!`, 'info');
       },
 
-      updatePosition(id, val) { const p = this.getById(id); if (p) { HistoryStore.snapshot(); p.manualPosition = parseInt(val, 10) || 0; this.saveWithoutSnapshot(); FirebaseEngine.autoSyncProduct(p); } },
+      updatePosition(id, val) {
+        const p = this.getById(id);
+        if (!p) return;
+        HistoryStore.snapshot();
+        
+        const newPos = parseInt(val, 10);
+        const oldPos = p.manualPosition || 0;
+
+        if (!newPos || newPos <= 0) {
+          if (oldPos > 0) {
+            this.products.forEach(other => {
+              if (other.id !== p.id && other.manualPosition > oldPos) {
+                other.manualPosition--;
+                FirebaseEngine.autoSyncProduct(other);
+              }
+            });
+          }
+          p.manualPosition = 0;
+          this.saveWithoutSnapshot();
+          FirebaseEngine.autoSyncProduct(p);
+          return;
+        }
+
+        this.products.forEach(other => {
+          if (other.id === p.id || !other.manualPosition) return;
+          
+          if (oldPos > 0) {
+            if (newPos < oldPos) {
+              if (other.manualPosition >= newPos && other.manualPosition < oldPos) {
+                other.manualPosition++;
+                FirebaseEngine.autoSyncProduct(other);
+              }
+            } else if (newPos > oldPos) {
+              if (other.manualPosition > oldPos && other.manualPosition <= newPos) {
+                other.manualPosition--;
+                FirebaseEngine.autoSyncProduct(other);
+              }
+            }
+          } else {
+            if (other.manualPosition >= newPos) {
+              other.manualPosition++;
+              FirebaseEngine.autoSyncProduct(other);
+            }
+          }
+        });
+
+        p.manualPosition = newPos;
+        this.saveWithoutSnapshot();
+        FirebaseEngine.autoSyncProduct(p);
+      },
 
       toggleHero(id) {
         const p = this.getById(id);
@@ -2576,7 +2625,7 @@
         const startIdx = (this.currentPage - 1) * this.itemsPerPage;
         const paginatedList = list.slice(startIdx, startIdx + this.itemsPerPage);
 
-        grid.innerHTML = paginatedList.map(p => {
+        grid.innerHTML = paginatedList.map((p, index) => {
           const isActive = p.active !== false;
           const showBox = isActive && p.showBoxTotal !== false && p.qtyPerBox > 1;
           const boxTotal = (p.unitPrice || 0) * (p.qtyPerBox || 1);
@@ -2584,6 +2633,7 @@
           const isSel = this.selectedIds.has(String(p.id));
           const safeId = String(p.id).replace(/'/g, "\\'");
           const safeDesc = escapeHtml(p.description);
+          const visualPos = (!this.selectedCategory || this.selectedCategory === 'all') ? (startIdx + index + 1) : '';
 
           return `
             <div class="product-card ${isSel ? 'selected' : ''} ${!isActive ? 'inactive' : ''}" id="prod-card-${p.id}">
@@ -2627,7 +2677,7 @@
                     <span class="product-code">CÓD: ${p.code || 'S/N'}</span>
                     <div class="admin-only-ui" style="display: flex; align-items: center; gap: 0.3rem;" title="Posição Fixa (Aba Todos)">
                       <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: bold;">POS:</span>
-                      <input type="number" style="width: 45px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.75rem; text-align: center; border-radius: 4px; outline: none; padding: 2px;" value="${p.manualPosition || ''}" onchange="ProductStore.updatePosition('${safeId}', this.value)" onclick="event.stopPropagation()">
+                      <input type="number" style="width: 45px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.75rem; text-align: center; border-radius: 4px; outline: none; padding: 2px;" placeholder="${visualPos}" value="${p.manualPosition || ''}" onchange="ProductStore.updatePosition('${safeId}', this.value)" onclick="event.stopPropagation()">
                     </div>
                   </div>
                   <h3 class="product-title">${safeDesc}</h3>
