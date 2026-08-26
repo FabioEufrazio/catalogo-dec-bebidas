@@ -2158,17 +2158,29 @@
 
       async togglePricesGlobally() {
         const newState = !this.hidePrices;
-        this.setHidePrices(newState);
+        
         if (FirebaseEngine.db) {
           try {
+            showToast('Salvando configuração...', 'info');
             await FirebaseEngine.db.collection('products').doc('__SETTINGS__').set({ 
-              id: '__SETTINGS__', 
+              id: '__SETTINGS__',
+              code: 'CFG',
+              description: 'System Config',
+              category: 'outros',
+              unitPrice: 0,
+              qtyPerBox: 1,
+              active: false,
               hidePrices: newState 
             }, { merge: true });
-            showToast(newState ? 'Preços ocultados para todos os clientes!' : 'Preços visíveis novamente!');
+            
+            this.setHidePrices(newState);
+            showToast(newState ? 'Preços ocultados para clientes!' : 'Preços visíveis novamente!');
           } catch (e) {
             console.error('Erro ao salvar settings', e);
+            showToast('Erro de permissão no banco! A configuração não foi salva.', 'error');
           }
+        } else {
+          this.setHidePrices(newState);
         }
       },
       selectedCategory: 'all',
