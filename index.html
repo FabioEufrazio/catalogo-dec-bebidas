@@ -1004,14 +1004,14 @@
     }
   </style>
 </head>
-<body class="prices-hidden">
+<body class="client-mode prices-hidden">
 
   <!-- HEADER PRINCIPAL -->
   <header>
     <div class="header-container">
       <div class="brand-title" ondblclick="ModalEngine.open('login-modal')" style="cursor: pointer;" title="Duplo clique para acesso restrito">
         <i class="fa-solid fa-boxes-stacked"></i>
-        <h1 id="app-title-text">Gestor de Catálogo</h1>
+        <h1 id="app-title-text">Catálogo de Produtos</h1>
       </div>
 
       <div class="header-stats" style="display: flex; align-items: center; gap: 0.6rem;">
@@ -3359,6 +3359,15 @@ const catA = getProductCategory(a);
       }
     });
 
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        FirebaseEngine.checkAutoSyncInterval();
+        if (FirebaseEngine.db) {
+          FirebaseEngine.forceCloudFetch('server');
+        }
+      }
+    });
+
     window.addEventListener('pageshow', () => {
       FirebaseEngine.checkAutoSyncInterval();
       if (FirebaseEngine.db) {
@@ -3375,6 +3384,7 @@ const catA = getProductCategory(a);
   </script>
 </body>
 </html>
+
 
 
 
