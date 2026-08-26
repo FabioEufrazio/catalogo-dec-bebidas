@@ -1849,6 +1849,7 @@
             active: product.active !== false && product.active !== 'false',
             isHero: product.isHero === true,
             sortOrder: typeof product.sortOrder === 'number' ? product.sortOrder : 999999,
+            manualPosition: Number(product.manualPosition) || 0,
             category: getProductCategory(product),
             imageBase64: img
           };
@@ -2488,36 +2489,53 @@
           list = list.filter(p => getProductCategory(p) === this.selectedCategory);
         }
 
-        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA:
-        // 1º Posição Manual (Apenas na aba Todos)
-        // 2º Destaques Heroes no topo (isHero = true)
-        // 3º Categoria (Whiskies, Vodkas, Licores, Gins, etc.)
-        // 4º Chave de Marca / Nome Similar (para bebidas de mesmo nome ficarem lado a lado!)
-        list = [...list].sort((a, b) => {
-          if (!this.selectedCategory || this.selectedCategory === 'all') {
-            const posA = (a.manualPosition && a.manualPosition > 0) ? parseInt(a.manualPosition, 10) : 999999;
-            const posB = (b.manualPosition && b.manualPosition > 0) ? parseInt(b.manualPosition, 10) : 999999;
-            
-            if (posA !== posB) return posA - posB;
+        // AGRUPAMENTO E ORDENAÇÃO AUTOMÁTICA
+        if (!this.selectedCategory || this.selectedCategory === 'all') {
+          const manualItems = [];
+          const naturalItems = [];
+          list.forEach(item => {
+            if (item.manualPosition && item.manualPosition > 0) manualItems.push(item);
+            else naturalItems.push(item);
+          });
+          naturalItems.sort((a, b) => {
+            const heroA = a.isHero ? 1 : 0;
+            const heroB = b.isHero ? 1 : 0;
+            if (heroA !== heroB) return heroB - heroA;
+            const catA = getProductCategory(a);
+            const catB = getProductCategory(b);
+            const idxA = CATEGORIES.findIndex(c => c.id === catA);
+            const idxB = CATEGORIES.findIndex(c => c.id === catB);
+            if (idxA !== idxB) return idxA - idxB;
+            const keyA = getSortBrandKey(a.description);
+            const keyB = getSortBrandKey(b.description);
+            const brandComp = keyA.localeCompare(keyB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+            if (brandComp !== 0) return brandComp;
+            return (a.description || '').localeCompare(b.description || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
+          });
+          manualItems.sort((a, b) => a.manualPosition - b.manualPosition);
+          const finalResult = [...naturalItems];
+          for (const mItem of manualItems) {
+            const targetIdx = Math.max(0, mItem.manualPosition - 1);
+            finalResult.splice(targetIdx, 0, mItem);
           }
-
-          const heroA = a.isHero ? 1 : 0;
-          const heroB = b.isHero ? 1 : 0;
-          if (heroA !== heroB) return heroB - heroA;
-
-          const catA = getProductCategory(a);
-          const catB = getProductCategory(b);
-          const idxA = CATEGORIES.findIndex(c => c.id === catA);
-          const idxB = CATEGORIES.findIndex(c => c.id === catB);
-          if (idxA !== idxB) return idxA - idxB;
-
-          const keyA = getSortBrandKey(a.description);
-          const keyB = getSortBrandKey(b.description);
-          const brandComp = keyA.localeCompare(keyB, 'pt-BR', { numeric: true, sensitivity: 'base' });
-          if (brandComp !== 0) return brandComp;
-
-          return (a.description || '').localeCompare(b.description || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
-        });
+          list = finalResult;
+        } else {
+          list = [...list].sort((a, b) => {
+            const heroA = a.isHero ? 1 : 0;
+            const heroB = b.isHero ? 1 : 0;
+            if (heroA !== heroB) return heroB - heroA;
+            const catA = getProductCategory(a);
+            const catB = getProductCategory(b);
+            const idxA = CATEGORIES.findIndex(c => c.id === catA);
+            const idxB = CATEGORIES.findIndex(c => c.id === catB);
+            if (idxA !== idxB) return idxA - idxB;
+            const keyA = getSortBrandKey(a.description);
+            const keyB = getSortBrandKey(b.description);
+            const brandComp = keyA.localeCompare(keyB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+            if (brandComp !== 0) return brandComp;
+            return (a.description || '').localeCompare(b.description || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
+          });
+        }
 
         const grid = document.getElementById('product-grid');
         if (!grid) return;
@@ -3294,5 +3312,8 @@
   </script>
 </body>
 </html>
+
+
+
 
 
