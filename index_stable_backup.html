@@ -1710,7 +1710,7 @@
             const cloudProducts = [];
             snapshot.forEach(doc => {
               const data = doc.data();
-              if (doc.id === '__SETTINGS__') {
+              if (doc.id === '__SETTINGS__' || doc.id === '9999999999999') {
                 ProductStore.setHidePrices(!!data.hidePrices);
               } else if (data && data.id) {
                 cloudProducts.push(data);
@@ -1776,7 +1776,7 @@
               const cloudProducts = [];
               snapshot.forEach(doc => {
                 const data = doc.data();
-                if (doc.id === '__SETTINGS__') {
+                if (doc.id === '__SETTINGS__' || doc.id === '9999999999999') {
                   ProductStore.setHidePrices(!!data.hidePrices);
                 } else if (data && data.id) {
                   cloudProducts.push(data);
@@ -2162,13 +2162,16 @@
         if (FirebaseEngine.db) {
           try {
             showToast('Salvando configuração...', 'info');
-            await FirebaseEngine.db.collection('products').doc('__SETTINGS__').set({ 
-              id: '__SETTINGS__',
+            await FirebaseEngine.db.collection('products').doc('9999999999999').set({ 
+              id: '9999999999999',
               code: 'CFG',
               description: 'System Config',
               category: 'outros',
               unitPrice: 0,
               qtyPerBox: 1,
+              showBoxTotal: false,
+              sortOrder: 999999,
+              imageBase64: '',
               active: false,
               hidePrices: newState 
             }, { merge: true });
