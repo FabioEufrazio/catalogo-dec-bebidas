@@ -1004,7 +1004,7 @@
     }
   </style>
 </head>
-<body>
+<body class="prices-hidden">
 
   <!-- HEADER PRINCIPAL -->
   <header>
@@ -1032,8 +1032,8 @@
           <i class="fa-solid fa-share-nodes"></i> Link do Cliente
         </button>
 
-        <button class="btn btn-warning admin-only-ui" id="btn-toggle-prices" onclick="ProductStore.togglePricesGlobally()" title="Ocultar/Mostrar preços no catálogo">
-          <i class="fa-solid fa-eye-slash" id="icon-toggle-prices"></i> <span id="text-toggle-prices">Ocultar Preços</span>
+        <button class="btn btn-success admin-only-ui" id="btn-toggle-prices" onclick="ProductStore.togglePricesGlobally()" title="Ocultar/Mostrar preços no catálogo">
+          <i class="fa-solid fa-eye" id="icon-toggle-prices"></i> <span id="text-toggle-prices">Mostrar Preços</span>
         </button>
 
         <button class="btn btn-secondary admin-only-ui" onclick="ModalEngine.open('firebase-modal')" title="Configurar Firebase Cloud">
@@ -2117,7 +2117,7 @@
       products: [],
       tempPhotoBase64: '',
       activePasteProductId: null,
-      hidePrices: false,
+      hidePrices: true,
 
       setHidePrices(val) {
         this.hidePrices = val;
