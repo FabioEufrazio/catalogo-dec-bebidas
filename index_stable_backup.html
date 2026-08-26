@@ -1430,10 +1430,6 @@
       <i class="fa-solid fa-check-double"></i> Selecionar Todos
     </button>
 
-    <button class="btn btn-warning" style="font-size: 0.8rem; padding: 0.4rem 0.88rem; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border: none;" onclick="ProductStore.toggleBulkHero()" title="Alternar Destaque Hero nos produtos selecionados">
-      <i class="fa-solid fa-crown"></i> Destaque Hero
-    </button>
-
     <button class="btn btn-purple" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;" onclick="ModalEngine.open('bulk-category-modal')">
       <i class="fa-solid fa-tags"></i> Mudar Categoria
     </button>
@@ -1795,7 +1791,7 @@
               qtyPerBox: Number(p.qtyPerBox || 1),
               showBoxTotal: p.showBoxTotal !== false,
               active: p.active !== false && p.active !== 'false',
-              isHero: p.isHero === true,
+              
               sortOrder: typeof p.sortOrder === 'number' ? p.sortOrder : 999999,
               category: getProductCategory(p),
               imageBase64: img
@@ -1847,7 +1843,7 @@
             qtyPerBox: Number(product.qtyPerBox || 1),
             showBoxTotal: product.showBoxTotal !== false,
             active: product.active !== false && product.active !== 'false',
-            isHero: product.isHero === true,
+            
             sortOrder: typeof product.sortOrder === 'number' ? product.sortOrder : 999999,
             manualPosition: Number(product.manualPosition) || 0,
             category: getProductCategory(product),
@@ -2408,34 +2404,7 @@
         FirebaseEngine.autoSyncProduct(p);
       },
 
-      toggleHero(id) {
-        const p = this.getById(id);
-        if (!p) return;
 
-        HistoryStore.snapshot();
-        p.isHero = !p.isHero;
-
-        // Salva localmente e sincroniza na nuvem sem re-ordenar a tela para nao pular a posicao do usuario
-        localStorage.setItem('catalog_products_v1', JSON.stringify(this.products));
-        FirebaseEngine.autoSyncProduct(p);
-
-        // Atualiza o icone visualmente no card instantaneamente
-        const cardElem = document.getElementById(`prod-card-${p.id}`);
-        if (cardElem) {
-          const crownIcon = cardElem.querySelector('.card-hero-badge i');
-          const crownBadge = cardElem.querySelector('.card-hero-badge');
-          if (crownIcon) {
-            if (p.isHero) crownIcon.classList.add('active');
-            else crownIcon.classList.remove('active');
-          }
-          if (crownBadge) {
-            crownBadge.title = p.isHero ? 'Remover dos Destaques (Hero)' : 'Marcar como Destaque Hero (aparecer em primeiro no topo!)';
-          }
-        }
-
-        const statusMsg = p.isHero ? 'marcado como HERO ✨ (aparece no topo do catálogo!)' : 'removido dos Destaques Hero';
-        showToast(`Produto "${p.description}" ${statusMsg}!`, 'info');
-      },
 
       autoCategorizeEnergeticos() {
         if (!this.products || this.products.length === 0) return;
@@ -2547,10 +2516,7 @@
             else naturalItems.push(item);
           });
           naturalItems.sort((a, b) => {
-            const heroA = a.isHero ? 1 : 0;
-            const heroB = b.isHero ? 1 : 0;
-            if (heroA !== heroB) return heroB - heroA;
-            const catA = getProductCategory(a);
+const catA = getProductCategory(a);
             const catB = getProductCategory(b);
             const idxA = CATEGORIES.findIndex(c => c.id === catA);
             const idxB = CATEGORIES.findIndex(c => c.id === catB);
@@ -2570,10 +2536,7 @@
           list = finalResult;
         } else {
           list = [...list].sort((a, b) => {
-            const heroA = a.isHero ? 1 : 0;
-            const heroB = b.isHero ? 1 : 0;
-            if (heroA !== heroB) return heroB - heroA;
-            const catA = getProductCategory(a);
+const catA = getProductCategory(a);
             const catB = getProductCategory(b);
             const idxA = CATEGORIES.findIndex(c => c.id === catA);
             const idxB = CATEGORIES.findIndex(c => c.id === catB);
@@ -2642,9 +2605,6 @@
                   <input type="checkbox" class="card-select-checkbox" data-id="${p.id}" ${isSel ? 'checked' : ''} onchange="ProductStore.toggleSelectProduct('${safeId}', this.checked)">
                 </div>
 
-                <div class="card-hero-badge admin-only-ui" title="${p.isHero ? 'Destaque Hero (exibido no topo do catálogo!)' : 'Produto Normal'}">
-                  <i class="fa-solid fa-crown ${p.isHero ? 'active' : ''}"></i>
-                </div>
                 ${p.imageBase64 ? `
                   <img src="${p.imageBase64}" class="card-photo" alt="${safeDesc}">
                   <button class="card-photo-change-btn admin-only-ui" onclick="event.stopPropagation(); ProductStore.quickSearchGoogle('${safeId}')" title="Buscar nova foto no Google">
@@ -2735,33 +2695,7 @@
         });
       },
 
-      toggleBulkHero() {
-        if (this.selectedIds.size === 0) return;
 
-        let allAreHeroes = true;
-        this.selectedIds.forEach(id => {
-          const p = this.getById(id);
-          if (p && !p.isHero) allAreHeroes = false;
-        });
-
-        const targetState = !allAreHeroes;
-
-        HistoryStore.snapshot();
-        let count = 0;
-        this.selectedIds.forEach(id => {
-          const p = this.getById(id);
-          if (p) {
-            p.isHero = targetState;
-            FirebaseEngine.autoSyncProduct(p);
-            count++;
-          }
-        });
-
-        this.selectedIds.clear();
-        this.saveWithoutSnapshot();
-        const actionMsg = targetState ? 'marcados como DESTAQUE HERO ✨ (aparecem no topo!)' : 'removidos dos Destaques Hero';
-        showToast(`${count} produto(s) ${actionMsg}!`, 'info');
-      },
 
       applyBulkCategoryChange() {
         if (this.selectedIds.size === 0) return;
@@ -3362,6 +3296,11 @@
   </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
