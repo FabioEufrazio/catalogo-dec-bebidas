@@ -1868,12 +1868,7 @@
           const rawPB = cPB >= 0 ? parsePrice(row[cPB]) : 0;
           const rawQty = cQty >= 0 ? parseInt(row[cQty]) || 1 : 1;
 
-          let price = 0;
-          if (cPB >= 0 && rawPB > 0) {
-            price = rawQty > 0 ? (rawPB / rawQty) : rawPB;
-          } else if (cPU >= 0 && rawPU > 0) {
-            price = rawPU;
-          }
+          let price = (cPU >= 0 && rawPU > 0) ? rawPU : ((cPB >= 0 && rawPB > 0) ? (rawPB / (rawQty > 0 ? rawQty : 1)) : 0);
           price = Math.round(price * 100) / 100;
           if (!price || price <= 0) continue;
 
