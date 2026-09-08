@@ -941,28 +941,54 @@
       },
       isSyncingCloud: false,
       mergeCloudProducts(prods) {
+        if (!ProductStore.products || ProductStore.products.length === 0) return prods;
+
         const lastLocal = parseInt(localStorage.getItem('catalog_last_local_update_timestamp') || '0', 10);
         const lastCloud = parseInt(localStorage.getItem('catalog_last_cloud_sync_timestamp') || '0', 10);
 
-        if (lastLocal > lastCloud && ProductStore.products && ProductStore.products.length > 0) {
-          const cloudMap = new Map();
-          prods.forEach(p => cloudMap.set(String(p.id), p));
+        if (lastLocal >= lastCloud) {
+          const normCode = (c) => { if (c == null || c === '') return ''; let s = String(c).trim().replace(/\.0+$/, ''); return s.replace(/^0+/, '').toLowerCase() || s.toLowerCase(); };
+          const normDesc = (d) => { if (!d) return ''; return String(d).toLowerCase().replace(/[^a-z0-9]/g, ''); };
 
-          // Preservar os preços atualizados locais se forem mais recentes que a confirmação da nuvem
-          const merged = ProductStore.products.map(localP => {
-            const cloudP = cloudMap.get(String(localP.id));
-            if (!cloudP) return localP;
-            return { ...cloudP, ...localP }; // Manter prioridade nos dados locais recentemente editados
+          const localIdMap = new Map();
+          const localCodeMap = new Map();
+          const localDescMap = new Map();
+
+          ProductStore.products.forEach(lp => {
+            if (lp.id) localIdMap.set(String(lp.id), lp);
+            const ck = normCode(lp.code);
+            if (ck && !localCodeMap.has(ck)) localCodeMap.set(ck, lp);
+            const dk = normDesc(lp.description);
+            if (dk && !localDescMap.has(dk)) localDescMap.set(dk, lp);
           });
 
-          // Adicionar produtos que existiam na nuvem mas não no local
-          prods.forEach(p => {
-            if (!ProductStore.products.some(lp => String(lp.id) === String(p.id))) {
-              merged.push(p);
+          const mergedCloudIds = new Set();
+          const merged = prods.map(cloudP => {
+            const cid = String(cloudP.id || '');
+            const ck = normCode(cloudP.code);
+            const dk = normDesc(cloudP.description);
+
+            let localP = null;
+            if (cid) localP = localIdMap.get(cid);
+            if (!localP && ck) localP = localCodeMap.get(ck);
+            if (!localP && dk) localP = localDescMap.get(dk);
+
+            if (localP) {
+              mergedCloudIds.add(String(localP.id));
+              return { ...cloudP, ...localP }; // Manter os dados atualizados locais prioritários
+            }
+            return cloudP;
+          });
+
+          ProductStore.products.forEach(lp => {
+            if (!mergedCloudIds.has(String(lp.id))) {
+              merged.push(lp);
             }
           });
 
-          setTimeout(() => { if (!this.isSyncingCloud) this.syncToCloud(); }, 1500);
+          if (lastLocal > lastCloud) {
+            setTimeout(() => { if (!this.isSyncingCloud) this.syncToCloud(); }, 1500);
+          }
           return merged;
         }
 
@@ -980,8 +1006,12 @@
               const prods = [];
               snap.forEach(doc => {
                 const d = doc.data();
-                if (doc.id === '__SETTINGS__' || doc.id === '9999999999999') ProductStore.setHidePrices(!!d.hidePrices);
-                else if (d && d.id) prods.push(d);
+                if (doc.id === '__SETTINGS__' || doc.id === '9999999999999') {
+                  ProductStore.setHidePrices(!!d.hidePrices);
+                } else if (d) {
+                  const pid = String(d.id || doc.id);
+                  prods.push({ ...d, id: pid });
+                }
               });
               if (prods.length > 0) {
                 const mergedProds = this.mergeCloudProducts(prods);
@@ -992,42 +1022,67 @@
                   return (a.description || '').localeCompare(b.description || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
                 });
                 const oldJ = JSON.stringify(ProductStore.products), newJ = JSON.stringify(mergedProds);
-                if (oldJ !== newJ) { ProductStore.products = mergedProds; localStorage.setItem('catalog_products_v1', newJ); ProductStore.render(); }
+                if (oldJ !== newJ) {
+                  ProductStore.products = mergedProds;
+                  localStorage.setItem('catalog_products_v1', newJ);
+                  ProductStore.render();
+                }
               }
             }
           },
           (err) => { this.updateStatusBadge(false); }
         );
       },
+
       async syncToCloud() {
         if (!this.db) { showToast('Configure o Firebase primeiro!', 'info'); ModalEngine.open('firebase-modal'); return; }
         try {
           this.isSyncingCloud = true;
-          showToast('Sincronizando...', 'info');
+          showToast('Sincronizando com a nuvem...', 'info');
           const clean = [];
           for (const p of ProductStore.products) {
             let img = p.imageBase64 || '';
-            if (img && img.length > 150000) img = await compressBase64(img, 350);
+            if (img && img.length > 150000) {
+              try { img = await compressBase64(img, 350); } catch(err) { img = ''; }
+            }
+            const docId = String(p.id || p.code || ('PROD_' + Math.random())).replace(/[\/\#\?\[\]]/g, '_');
             clean.push({
-              id: String(p.id), code: String(p.code || 'S/N'), description: String(p.description || ''),
-              unitPrice: Number(p.unitPrice || 0), qtyPerBox: Number(p.qtyPerBox || 1),
-              showBoxTotal: p.showBoxTotal !== false, active: p.active !== false && p.active !== 'false',
+              id: docId,
+              code: String(p.code || 'S/N').toUpperCase().trim(),
+              description: String(p.description || '').toUpperCase().trim(),
+              unitPrice: Number(p.unitPrice || 0),
+              qtyPerBox: Number(p.qtyPerBox || 1),
+              showBoxTotal: p.showBoxTotal !== false,
+              active: p.active !== false && p.active !== 'false' && p.active !== 0,
               manualPosition: Number(p.manualPosition) || 0,
               sortOrder: typeof p.sortOrder === 'number' ? p.sortOrder : 999999,
-              category: getProductCategory(p), imageBase64: img
+              category: getProductCategory(p),
+              imageBase64: img
             });
           }
-          for (let i = 0; i < clean.length; i += 400) {
-            const chunk = clean.slice(i, i + 400), batch = this.db.batch();
-            chunk.forEach(prod => batch.set(this.db.collection('products').doc(prod.id), prod));
+
+          // Lotes de 80 produtos por requisição para evitar estourar o limite de 10MB do Firestore Batch
+          for (let i = 0; i < clean.length; i += 80) {
+            const chunk = clean.slice(i, i + 80);
+            const batch = this.db.batch();
+            chunk.forEach(prod => {
+              const ref = this.db.collection('products').doc(prod.id);
+              batch.set(ref, prod);
+            });
             await batch.commit();
           }
+
           const nowTs = String(Date.now());
           localStorage.setItem('catalog_last_cloud_sync_timestamp', nowTs);
           localStorage.setItem('catalog_last_local_update_timestamp', nowTs);
           localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
-          showToast(`${clean.length} itens sincronizados!`);
-        } catch(e) { showToast('Erro: ' + e.message, 'error'); } finally { this.isSyncingCloud = false; }
+          showToast(`${clean.length} itens sincronizados!`, 'success');
+        } catch(e) {
+          console.error("Erro no syncToCloud:", e);
+          showToast('Erro no sync: ' + e.message, 'error');
+        } finally {
+          this.isSyncingCloud = false;
+        }
       },
       copyClientLink() {
         const url = window.location.href.split('?')[0] + '?view=public';
