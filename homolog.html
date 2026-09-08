@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Catálogo Profissional de Produtos v1.5</title>
+  <title>[HOMOLOG] Catálogo de Produtos (Ambiente de Testes)</title>
   <!-- Google Fonts & FontAwesome -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +18,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  
+
   <style>
     /* MODO CLIENTE: Oculta todos os elementos administrativos automaticamente */
     body.client-mode .admin-only-ui {
@@ -33,11 +34,11 @@
       --bg-card-hover: #1e293b;
       --border-color: #1e293b;
       --border-color-light: #334155;
-      
+
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --text-dim: #64748b;
-      
+
       --accent-blue: #38bdf8;
       --accent-blue-hover: #0284c7;
       --accent-green: #34d399;
@@ -50,8 +51,8 @@
       --radius-md: 10px;
       --radius-lg: 14px;
 
-      --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
-      --shadow-md: 0 10px 25px rgba(0,0,0,0.5);
+      --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.5);
     }
 
     * {
@@ -206,23 +207,48 @@
       text-decoration: none;
     }
 
-    .btn-primary { background: var(--accent-blue); color: #020617; }
-    .btn-primary:hover { background: var(--accent-blue-hover); }
+    .btn-primary {
+      background: var(--accent-blue);
+      color: #020617;
+    }
 
-    .btn-success { background: var(--accent-green); color: #020617; }
-    .btn-success:hover { background: var(--accent-green-hover); }
+    .btn-primary:hover {
+      background: var(--accent-blue-hover);
+    }
 
-    .btn-purple { background: var(--accent-purple); color: #fff; }
-    .btn-purple:hover { opacity: 0.9; }
+    .btn-success {
+      background: var(--accent-green);
+      color: #020617;
+    }
 
-    .btn-danger { background: var(--accent-red); color: #fff; }
-    .btn-danger:hover { background: var(--accent-red-hover); }
+    .btn-success:hover {
+      background: var(--accent-green-hover);
+    }
+
+    .btn-purple {
+      background: var(--accent-purple);
+      color: #fff;
+    }
+
+    .btn-purple:hover {
+      opacity: 0.9;
+    }
+
+    .btn-danger {
+      background: var(--accent-red);
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: var(--accent-red-hover);
+    }
 
     .btn-secondary {
       background: var(--bg-card);
       color: var(--text-main);
       border: 1px solid var(--border-color-light);
     }
+
     .btn-secondary:hover {
       background: var(--bg-card-hover);
     }
@@ -474,11 +500,13 @@
       cursor: help;
       transition: all 0.2s;
     }
+
     .cloud-badge.online {
       background: rgba(52, 211, 153, 0.15);
       color: var(--accent-green);
       border: 1px solid rgba(52, 211, 153, 0.35);
     }
+
     .cloud-badge.offline {
       background: rgba(248, 113, 113, 0.15);
       color: var(--accent-red);
@@ -579,7 +607,7 @@
       font-size: 0.85rem;
     }
 
-    .price-row + .price-row {
+    .price-row+.price-row {
       margin-top: 0.4rem;
       padding-top: 0.4rem;
       border-top: 1px dashed var(--border-color);
@@ -644,8 +672,15 @@
     }
 
     @keyframes modalSlideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .modal-header {
@@ -672,7 +707,10 @@
       cursor: pointer;
       padding: 0.3rem;
     }
-    .close-btn:hover { color: var(--text-main); }
+
+    .close-btn:hover {
+      color: var(--text-main);
+    }
 
     .modal-body {
       padding: 1.5rem;
@@ -702,7 +740,10 @@
       font-size: 0.9rem;
       outline: none;
     }
-    .form-control:focus { border-color: var(--accent-blue); }
+
+    .form-control:focus {
+      border-color: var(--accent-blue);
+    }
 
     .form-row {
       display: grid;
@@ -830,8 +871,13 @@
       transform: translateX(0);
     }
 
-    .toast.error { border-left-color: var(--accent-red); }
-    .toast.success { border-left-color: var(--accent-green); }
+    .toast.error {
+      border-left-color: var(--accent-red);
+    }
+
+    .toast.success {
+      border-left-color: var(--accent-green);
+    }
 
     /* ==========================================================================
        6. ADAPTAÇÃO COMPLETA PARA CELULAR (ANDROID / IOS)
@@ -988,14 +1034,30 @@
     }
   </style>
 </head>
+
 <body class="client-mode prices-hidden">
+  <!-- BANNER EXCLUSIVO DO AMBIENTE DE HOMOLOGAÇÃO -->
+  <div id="staging-top-banner" style="background: linear-gradient(90deg, #d97706, #b45309); color: #ffffff; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(0,0,0,0.4); position: sticky; top: 0; z-index: 10000;">
+    <div style="display: flex; align-items: center; gap: 0.6rem;">
+      <span style="background: #ffffff; color: #b45309; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.5px;">HOMOLOGAÇÃO</span>
+      <span>🧪 Ambiente de Testes & Experimentação (Dados 100% Isolados da Produção)</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <span style="font-size: 0.78rem; opacity: 0.9; background: rgba(0,0,0,0.25); padding: 3px 8px; border-radius: 4px;">
+        <i class="fa-solid fa-database"></i> Firestore: <code>products_staging</code>
+      </span>
+      <a href="index.html" style="color: #fff; text-decoration: underline; font-size: 0.78rem; font-weight: bold;">Ir para Produção →</a>
+    </div>
+  </div>
+
 
   <!-- HEADER PRINCIPAL -->
   <header>
     <div class="header-container">
-      <div class="brand-title" ondblclick="ModalEngine.open('login-modal')" style="cursor: pointer;" title="Duplo clique para acesso restrito">
+      <div class="brand-title" ondblclick="ModalEngine.open('login-modal')" style="cursor: pointer;"
+        title="Duplo clique para acesso restrito">
         <i class="fa-solid fa-boxes-stacked"></i>
-        <h1 id="app-title-text">Catálogo de Produtos</h1>
+        <h1 id="app-title-text">Catálogo [HOMOLOG]</h1>
       </div>
 
       <div class="header-stats" style="display: flex; align-items: center; gap: 0.6rem;">
@@ -1008,26 +1070,34 @@
           <span class="stat-value" id="stat-total-items">0</span>
         </div>
 
-        <button class="btn btn-primary admin-only-ui" id="btn-sync-cloud" onclick="FirebaseEngine.syncToCloud()" title="Sincronizar alterações com a nuvem em tempo real" style="background: linear-gradient(135deg, #38bdf8, #0284c7); border: none;">
+        <button class="btn btn-primary admin-only-ui" id="btn-sync-cloud" onclick="FirebaseEngine.syncToCloud()"
+          title="Sincronizar alterações com a nuvem em tempo real"
+          style="background: linear-gradient(135deg, #38bdf8, #0284c7); border: none;">
           <i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Nuvem
         </button>
 
-        <button class="btn btn-secondary admin-only-ui" id="btn-share-link" onclick="FirebaseEngine.copyClientLink()" title="Copiar Link para envio aos Clientes">
+        <button class="btn btn-secondary admin-only-ui" id="btn-share-link" onclick="FirebaseEngine.copyClientLink()"
+          title="Copiar Link para envio aos Clientes">
           <i class="fa-solid fa-share-nodes"></i> Link do Cliente
         </button>
-        <div id="price-status-badge" style="background: rgba(251, 191, 36, 0.2); border: 1px solid #fbbf24; color: #fbbf24; padding: 0.4rem 0.8rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: bold; margin-right: 0.5rem;" class="admin-only-ui">
+        <div id="price-status-badge"
+          style="background: rgba(251, 191, 36, 0.2); border: 1px solid #fbbf24; color: #fbbf24; padding: 0.4rem 0.8rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: bold; margin-right: 0.5rem;"
+          class="admin-only-ui">
           <i class="fa-solid fa-eye-slash"></i> CLIENTE: OCULTO
         </div>
 
-        <button class="btn btn-success admin-only-ui" id="btn-toggle-prices" onclick="ProductStore.togglePricesGlobally()" title="Ocultar/Mostrar preços no catálogo">
+        <button class="btn btn-success admin-only-ui" id="btn-toggle-prices"
+          onclick="ProductStore.togglePricesGlobally()" title="Ocultar/Mostrar preços no catálogo">
           <i class="fa-solid fa-eye" id="icon-toggle-prices"></i> <span id="text-toggle-prices">Mostrar Preços</span>
         </button>
 
-        <button class="btn btn-secondary admin-only-ui" onclick="ModalEngine.open('firebase-modal')" title="Configurar Firebase Cloud">
+        <button class="btn btn-secondary admin-only-ui" onclick="ModalEngine.open('firebase-modal')"
+          title="Configurar Firebase Cloud">
           <i class="fa-solid fa-gear"></i>
         </button>
 
-        <button class="btn btn-secondary admin-only-ui" onclick="FirebaseEngine.logout()" title="Sair do Modo Admin" style="color: var(--accent-red);">
+        <button class="btn btn-secondary admin-only-ui" onclick="FirebaseEngine.logout()" title="Sair do Modo Admin"
+          style="color: var(--accent-red);">
           <i class="fa-solid fa-right-from-bracket"></i>
         </button>
       </div>
@@ -1041,7 +1111,8 @@
     <div class="sticky-nav-container" id="sticky-nav-container">
       <div class="search-box" style="margin-bottom: 0.6rem;">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="search" id="search-input" placeholder="Buscar por código ou descrição do produto..." oninput="ProductStore.filter(this.value)" autocomplete="off" autocorrect="off" spellcheck="false" name="q">
+        <input type="search" id="search-input" placeholder="Buscar por código ou descrição do produto..."
+          oninput="ProductStore.filter(this.value)" autocomplete="off" autocorrect="off" spellcheck="false" name="q">
       </div>
 
       <!-- BARRA DE CATEGORIAS -->
@@ -1060,8 +1131,10 @@
         <button class="btn btn-purple" onclick="document.getElementById('excel-file-input').click()">
           <i class="fa-solid fa-file-excel"></i> Importar Planilha
         </button>
-        <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;" onchange="ExcelEngine.handleFile(event)">
-        <input type="file" id="card-photo-input" accept="image/*" style="display: none;" onchange="ProductStore.handleCardPhotoSelect(event)">
+        <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;"
+          onchange="ExcelEngine.handleFile(event)">
+        <input type="file" id="card-photo-input" accept="image/*" style="display: none;"
+          onchange="ProductStore.handleCardPhotoSelect(event)">
 
         <button class="btn btn-primary" onclick="ModalEngine.openAddProduct()">
           <i class="fa-solid fa-plus"></i> Novo Produto
@@ -1082,8 +1155,10 @@
   <div class="modal-overlay" id="product-modal">
     <div class="modal-card">
       <div class="modal-header">
-        <h2 id="product-modal-title"><i class="fa-solid fa-box-open" style="color: var(--accent-blue);"></i> Cadastrar Produto</h2>
-        <button class="close-btn" onclick="ModalEngine.close('product-modal')"><i class="fa-solid fa-xmark"></i></button>
+        <h2 id="product-modal-title"><i class="fa-solid fa-box-open" style="color: var(--accent-blue);"></i> Cadastrar
+          Produto</h2>
+        <button class="close-btn" onclick="ModalEngine.close('product-modal')"><i
+            class="fa-solid fa-xmark"></i></button>
       </div>
 
       <form id="product-form" onsubmit="ProductStore.saveFromForm(event)">
@@ -1093,17 +1168,20 @@
           <div class="form-row">
             <div class="form-group">
               <label for="prod-code">Código do Produto *</label>
-              <input type="text" id="prod-code" class="form-control" placeholder="Ex: 118227" required style="text-transform: uppercase;">
+              <input type="text" id="prod-code" class="form-control" placeholder="Ex: 118227" required
+                style="text-transform: uppercase;">
             </div>
             <div class="form-group">
               <label for="prod-price">Preço Unitário (R$) *</label>
-              <input type="number" id="prod-price" class="form-control" step="0.01" min="0.01" placeholder="Ex: 63.55" required>
+              <input type="number" id="prod-price" class="form-control" step="0.01" min="0.01" placeholder="Ex: 63.55"
+                required>
             </div>
           </div>
 
           <div class="form-group">
             <label for="prod-desc">Descrição / Nome do Produto *</label>
-            <input type="text" id="prod-desc" class="form-control" placeholder="Ex: VIN PORT DUETO 750ML" required oninput="ProductStore.onDescriptionInput(this.value)" style="text-transform: uppercase;">
+            <input type="text" id="prod-desc" class="form-control" placeholder="Ex: VIN PORT DUETO 750ML" required
+              oninput="ProductStore.onDescriptionInput(this.value)" style="text-transform: uppercase;">
           </div>
 
           <div class="form-row">
@@ -1132,27 +1210,34 @@
           </div>
 
           <div class="form-group" style="padding-bottom: 0.5rem;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: var(--text-main);">
-              <input type="checkbox" id="prod-show-box" checked style="width: 18px; height: 18px; accent-color: var(--accent-blue);">
+            <label
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: var(--text-main);">
+              <input type="checkbox" id="prod-show-box" checked
+                style="width: 18px; height: 18px; accent-color: var(--accent-blue);">
               Exibir Valor Total da Caixa
             </label>
           </div>
 
           <div class="form-group">
             <label>Imagem do Produto (Opcional)</label>
-            <div class="photo-preview-box" id="photo-preview-container" onclick="document.getElementById('modal-photo-input').click()">
+            <div class="photo-preview-box" id="photo-preview-container"
+              onclick="document.getElementById('modal-photo-input').click()">
               <div class="no-photo-placeholder">
                 <i class="fa-solid fa-cloud-arrow-up"></i>
                 <span>Clique para selecionar foto ou aperte <b>Ctrl+V</b> para colar da área de transferência</span>
               </div>
             </div>
-            <input type="file" id="modal-photo-input" accept="image/*" style="display: none;" onchange="ProductStore.handlePhotoSelect(event)">
-            
+            <input type="file" id="modal-photo-input" accept="image/*" style="display: none;"
+              onchange="ProductStore.handlePhotoSelect(event)">
+
             <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-              <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;" onclick="ProductStore.searchWebPhoto()">
+              <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;"
+                onclick="ProductStore.searchWebPhoto()">
                 <i class="fa-solid fa-magnifying-glass"></i> Buscar Foto no Google
               </button>
-              <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; color: var(--accent-red);" onclick="ProductStore.removePhoto()">
+              <button type="button" class="btn btn-secondary"
+                style="font-size: 0.8rem; padding: 0.4rem 0.8rem; color: var(--accent-red);"
+                onclick="ProductStore.removePhoto()">
                 <i class="fa-solid fa-trash"></i> Remover Foto
               </button>
             </div>
@@ -1171,8 +1256,10 @@
   <div class="modal-overlay" id="mapping-modal">
     <div class="modal-card">
       <div class="modal-header">
-        <h2><i class="fa-solid fa-table-columns" style="color: var(--accent-purple);"></i> Mapeamento de Colunas do Excel</h2>
-        <button class="close-btn" onclick="ModalEngine.close('mapping-modal')"><i class="fa-solid fa-xmark"></i></button>
+        <h2><i class="fa-solid fa-table-columns" style="color: var(--accent-purple);"></i> Mapeamento de Colunas do
+          Excel</h2>
+        <button class="close-btn" onclick="ModalEngine.close('mapping-modal')"><i
+            class="fa-solid fa-xmark"></i></button>
       </div>
 
       <div class="modal-body">
@@ -1208,7 +1295,8 @@
 
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('mapping-modal')">Cancelar</button>
-        <button type="button" class="btn btn-purple" onclick="ExcelEngine.processMapping()"><i class="fa-solid fa-bolt"></i> Analisar Planilha</button>
+        <button type="button" class="btn btn-purple" onclick="ExcelEngine.processMapping()"><i
+            class="fa-solid fa-bolt"></i> Analisar Planilha</button>
       </div>
     </div>
   </div>
@@ -1218,23 +1306,31 @@
     <div class="modal-card" style="max-width: 800px;">
       <div class="modal-header">
         <h2><i class="fa-solid fa-eye" style="color: var(--accent-green);"></i> Pré-visualização das Alterações</h2>
-        <button class="close-btn" onclick="ModalEngine.close('preview-modal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="close-btn" onclick="ModalEngine.close('preview-modal')"><i
+            class="fa-solid fa-xmark"></i></button>
       </div>
 
       <div class="modal-body">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <div>
-            <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);" id="preview-summary-text">Resumo das alterações:</span>
+            <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);" id="preview-summary-text">Resumo
+              das alterações:</span>
           </div>
           <div style="display: flex; gap: 0.5rem;">
-            <span class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: rgba(56, 189, 248, 0.15); color: var(--accent-blue);" id="badge-updates">0 Atualizações</span>
-            <span class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: rgba(52, 211, 153, 0.15); color: var(--accent-green);" id="badge-news">0 Novos Itens</span>
+            <span class="btn btn-secondary"
+              style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: rgba(56, 189, 248, 0.15); color: var(--accent-blue);"
+              id="badge-updates">0 Atualizações</span>
+            <span class="btn btn-secondary"
+              style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: rgba(52, 211, 153, 0.15); color: var(--accent-green);"
+              id="badge-news">0 Novos Itens</span>
           </div>
         </div>
 
-        <div style="max-height: 50vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+        <div
+          style="max-height: 50vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
-            <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 10; border-bottom: 2px solid var(--border-color);">
+            <thead
+              style="position: sticky; top: 0; background: var(--bg-card); z-index: 10; border-bottom: 2px solid var(--border-color);">
               <tr>
                 <th style="padding: 10px 12px; color: var(--text-muted);">Ação</th>
                 <th style="padding: 10px 12px; color: var(--text-muted);">Código</th>
@@ -1250,7 +1346,8 @@
 
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('preview-modal')">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="ExcelEngine.applyChanges()"><i class="fa-solid fa-check-double"></i> Confirmar Alterações</button>
+        <button type="button" class="btn btn-primary" onclick="ExcelEngine.applyChanges()"><i
+            class="fa-solid fa-check-double"></i> Confirmar Alterações</button>
       </div>
     </div>
   </div>
@@ -1259,14 +1356,17 @@
   <div class="modal-overlay" id="confirm-modal">
     <div class="modal-card" style="max-width: 450px;">
       <div class="modal-header">
-        <h2 id="confirm-title" style="color: var(--accent-red);"><i class="fa-solid fa-triangle-exclamation"></i> Confirmar Ação</h2>
-        <button class="close-btn" onclick="ModalEngine.close('confirm-modal')"><i class="fa-solid fa-xmark"></i></button>
+        <h2 id="confirm-title" style="color: var(--accent-red);"><i class="fa-solid fa-triangle-exclamation"></i>
+          Confirmar Ação</h2>
+        <button class="close-btn" onclick="ModalEngine.close('confirm-modal')"><i
+            class="fa-solid fa-xmark"></i></button>
       </div>
 
       <div class="modal-body">
         <p id="confirm-message" style="font-size: 0.95rem; color: var(--text-main); line-height: 1.5;"></p>
-        
-        <div id="confirm-item-preview" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-body); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: none;">
+
+        <div id="confirm-item-preview"
+          style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-body); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: none;">
           <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent-blue);" id="confirm-item-code"></div>
           <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main);" id="confirm-item-desc"></div>
         </div>
@@ -1274,7 +1374,8 @@
 
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('confirm-modal')">Cancelar</button>
-        <button type="button" class="btn btn-danger" id="confirm-action-btn"><i class="fa-solid fa-trash-can"></i> Confirmar</button>
+        <button type="button" class="btn btn-danger" id="confirm-action-btn"><i class="fa-solid fa-trash-can"></i>
+          Confirmar</button>
       </div>
     </div>
   </div>
@@ -1284,12 +1385,14 @@
     <div class="modal-card">
       <div class="modal-header">
         <h2><i class="fa-solid fa-cloud" style="color: var(--accent-blue);"></i> Configurar Firebase Cloud</h2>
-        <button class="close-btn" onclick="ModalEngine.close('firebase-modal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="close-btn" onclick="ModalEngine.close('firebase-modal')"><i
+            class="fa-solid fa-xmark"></i></button>
       </div>
 
       <div class="modal-body">
         <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
-          Insira as credenciais do seu projeto gratuito no <b>Firebase Console</b> para sincronizar seu catálogo online em tempo real:
+          Insira as credenciais do seu projeto gratuito no <b>Firebase Console</b> para sincronizar seu catálogo online
+          em tempo real:
         </p>
 
         <div class="form-group">
@@ -1310,7 +1413,8 @@
 
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('firebase-modal')">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="FirebaseEngine.saveFromForm()"><i class="fa-solid fa-plug"></i> Salvar e Conectar</button>
+        <button type="button" class="btn btn-primary" onclick="FirebaseEngine.saveFromForm()"><i
+            class="fa-solid fa-plug"></i> Salvar e Conectar</button>
       </div>
     </div>
   </div>
@@ -1320,12 +1424,15 @@
     <div class="modal-card" style="max-width: 480px; margin: auto;" onclick="event.stopPropagation();">
       <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding: 0.88rem 1.25rem;">
         <span class="category-tag" id="lightbox-category"></span>
-        <button class="close-btn" onclick="ModalEngine.close('lightbox-modal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="close-btn" onclick="ModalEngine.close('lightbox-modal')"><i
+            class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="padding: 1rem; text-align: center;">
-        <div id="lightbox-container" style="width: 100%; height: 260px; background: #020617; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+        <div id="lightbox-container"
+          style="width: 100%; height: 260px; background: #020617; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 1rem; border: 1px solid var(--border-color);">
           <img id="lightbox-img" style="width: 100%; height: 100%; object-fit: contain;">
-          <div id="lightbox-no-img" style="display: none; flex-direction: column; align-items: center; color: var(--text-dim);">
+          <div id="lightbox-no-img"
+            style="display: none; flex-direction: column; align-items: center; color: var(--text-dim);">
             <i class="fa-solid fa-camera" style="font-size: 2.5rem; margin-bottom: 0.5rem;"></i>
             <span>Sem foto cadastrada</span>
           </div>
@@ -1333,7 +1440,9 @@
 
         <div style="text-align: left; margin-bottom: 1rem;">
           <div style="font-size: 0.75rem; color: var(--accent-blue); font-weight: 700;" id="lightbox-code"></div>
-          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-top: 0.2rem; line-height: 1.3;" id="lightbox-title"></h3>
+          <h3
+            style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-top: 0.2rem; line-height: 1.3;"
+            id="lightbox-title"></h3>
         </div>
 
         <div class="price-details-box" style="text-align: left;">
@@ -1348,7 +1457,8 @@
         </div>
       </div>
       <div class="modal-footer" style="padding: 0.88rem 1.25rem;">
-        <button class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="ModalEngine.close('lightbox-modal')">
+        <button class="btn btn-secondary" style="width: 100%; justify-content: center;"
+          onclick="ModalEngine.close('lightbox-modal')">
           Fechar Detalhes
         </button>
       </div>
@@ -1368,13 +1478,18 @@
         </p>
         <div class="form-group">
           <label>E-mail</label>
-          <input type="email" id="login-email" class="form-control" placeholder="admin@email.com" autocomplete="username" onkeydown="if(event.key === 'Enter') FirebaseEngine.login()">
+          <input type="email" id="login-email" class="form-control" placeholder="admin@email.com"
+            autocomplete="username" onkeydown="if(event.key === 'Enter') FirebaseEngine.login()">
         </div>
         <div class="form-group">
           <label>Senha</label>
           <div style="position: relative;">
-            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" style="padding-right: 2.5rem;" onkeydown="if(event.key === 'Enter') FirebaseEngine.login()">
-            <i class="fa-regular fa-eye" id="toggle-password-visibility" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 1.1rem;" title="Mostrar/Ocultar Senha" onclick="
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••"
+              autocomplete="current-password" style="padding-right: 2.5rem;"
+              onkeydown="if(event.key === 'Enter') FirebaseEngine.login()">
+            <i class="fa-regular fa-eye" id="toggle-password-visibility"
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 1.1rem;"
+              title="Mostrar/Ocultar Senha" onclick="
               const input = document.getElementById('login-password');
               const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
               input.setAttribute('type', type);
@@ -1386,7 +1501,8 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('login-modal')">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="FirebaseEngine.login()"><i class="fa-solid fa-right-to-bracket"></i> Entrar</button>
+        <button type="button" class="btn btn-primary" onclick="FirebaseEngine.login()"><i
+            class="fa-solid fa-right-to-bracket"></i> Entrar</button>
       </div>
     </div>
   </div>
@@ -1396,7 +1512,8 @@
     <div class="modal-card" style="max-width: 450px; margin: auto;">
       <div class="modal-header">
         <h2><i class="fa-solid fa-tags" style="color: var(--accent-purple);"></i> Alterar Categoria em Lote</h2>
-        <button class="close-btn" onclick="ModalEngine.close('bulk-category-modal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="close-btn" onclick="ModalEngine.close('bulk-category-modal')"><i
+            class="fa-solid fa-xmark"></i></button>
       </div>
 
       <div class="modal-body">
@@ -1425,8 +1542,10 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('bulk-category-modal')">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="ProductStore.applyBulkCategoryChange()"><i class="fa-solid fa-check"></i> Aplicar Categoria</button>
+        <button type="button" class="btn btn-secondary"
+          onclick="ModalEngine.close('bulk-category-modal')">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="ProductStore.applyBulkCategoryChange()"><i
+            class="fa-solid fa-check"></i> Aplicar Categoria</button>
       </div>
     </div>
   </div>
@@ -1438,19 +1557,23 @@
       <span id="bulk-selected-count">0</span> selecionado(s)
     </div>
 
-    <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;" onclick="ProductStore.selectAllVisible()">
+    <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;"
+      onclick="ProductStore.selectAllVisible()">
       <i class="fa-solid fa-check-double"></i> Selecionar Todos
     </button>
 
-    <button class="btn btn-purple" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;" onclick="ModalEngine.open('bulk-category-modal')">
+    <button class="btn btn-purple" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;"
+      onclick="ModalEngine.open('bulk-category-modal')">
       <i class="fa-solid fa-tags"></i> Mudar Categoria
     </button>
 
-    <button class="btn btn-danger" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;" onclick="ProductStore.confirmDeleteSelected()">
+    <button class="btn btn-danger" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;"
+      onclick="ProductStore.confirmDeleteSelected()">
       <i class="fa-solid fa-trash-can"></i> Excluir Selecionados
     </button>
 
-    <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;" onclick="ProductStore.clearSelection()">
+    <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.88rem;"
+      onclick="ProductStore.clearSelection()">
       <i class="fa-solid fa-xmark"></i> Cancelar
     </button>
   </div>
@@ -1487,7 +1610,7 @@
 
             const compressed = canvas.toDataURL('image/jpeg', quality);
             resolve(compressed);
-          } catch(e) {
+          } catch (e) {
             console.error("Erro ao comprimir imagem:", e);
             resolve(base64Str);
           }
@@ -1528,10 +1651,10 @@
       if (!container) return;
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
-      
+
       const icon = type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check';
       toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
-      
+
       container.appendChild(toast);
       setTimeout(() => toast.classList.add('show'), 10);
 
@@ -1540,6 +1663,19 @@
         setTimeout(() => toast.remove(), 300);
       }, 3500);
     }
+
+    /* --------------------------------------------------------------------------
+       CONFIGURAÇÃO DE AMBIENTE (PRODUÇÃO vs HOMOLOGAÇÃO)
+       -------------------------------------------------------------------------- */
+    const APP_ENV = {
+      env: 'staging',
+      name: 'Homologação (Testes)',
+      isStaging: true,
+      collectionName: 'products_staging',
+      storageKey: 'catalog_products_staging_v1',
+      configKey: 'catalog_firebase_config_staging',
+      syncKey: 'catalog_last_cloud_sync_timestamp_staging'
+    };
 
     /* --------------------------------------------------------------------------
        SISTEMA NUVEM FIREBASE REALTIME E MODO CLIENTE
@@ -1555,7 +1691,7 @@
         this.isClientMode = true;
         document.body.classList.add('client-mode');
         const title = document.getElementById('app-title-text');
-        if (title) title.textContent = 'Catálogo de Produtos';
+        if (title) title.textContent = 'Catálogo [HOMOLOG]';
       },
 
       defaultConfig: {
@@ -1572,13 +1708,13 @@
 
         try {
           let config = null;
-          const storedConfig = localStorage.getItem('catalog_firebase_config');
+          const storedConfig = localStorage.getItem(APP_ENV.configKey);
           if (storedConfig) {
             config = JSON.parse(storedConfig);
           }
           if (!config || !config.apiKey) {
             config = this.defaultConfig;
-            localStorage.setItem('catalog_firebase_config', JSON.stringify(config));
+            localStorage.setItem(APP_ENV.configKey, JSON.stringify(config));
           }
 
           if (config && config.apiKey && config.projectId) {
@@ -1594,20 +1730,20 @@
                 firebase.initializeApp(config);
               }
               this.db = firebase.firestore();
-              
+
               // Ouve mudanças de Autenticação (Login / Logout)
               firebase.auth().onAuthStateChanged(user => {
                 if (user) {
                   this.isClientMode = false;
                   document.body.classList.remove('client-mode');
                   const title = document.getElementById('app-title-text');
-                  if (title) title.textContent = 'Gestor de Catálogo';
+                  if (title) title.textContent = 'Gestor [HOMOLOG]';
                   ProductStore.render();
                 } else {
                   this.isClientMode = true;
                   document.body.classList.add('client-mode');
                   const title = document.getElementById('app-title-text');
-                  if (title) title.textContent = 'Catálogo de Produtos';
+                  if (title) title.textContent = 'Catálogo [HOMOLOG]';
                   ProductStore.render();
                 }
               });
@@ -1672,7 +1808,7 @@
       },
 
       checkAutoSyncInterval() {
-        const lastSync = localStorage.getItem('catalog_last_cloud_sync_timestamp');
+        const lastSync = localStorage.getItem(APP_ENV.syncKey);
         const now = Date.now();
         const ONE_HOUR = 60 * 60 * 1000; // 1 hora (3.600.000 ms)
 
@@ -1684,7 +1820,7 @@
       async forceCloudFetch(source = 'server') {
         if (!this.db) return;
         try {
-          const snapshot = await this.db.collection('products').get({ source });
+          const snapshot = await this.db.collection(APP_ENV.collectionName).get({ source });
           if (!snapshot.empty) {
             const cloudProducts = [];
             snapshot.forEach(doc => {
@@ -1701,8 +1837,8 @@
               const newJson = JSON.stringify(cloudProducts);
               if (oldJson !== newJson) {
                 ProductStore.products = cloudProducts;
-                localStorage.setItem('catalog_products_v1', newJson);
-                localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now()));
+                localStorage.setItem(APP_ENV.storageKey, newJson);
+                localStorage.setItem(APP_ENV.syncKey, String(Date.now()));
                 ProductStore.render();
               }
             }
@@ -1739,7 +1875,7 @@
         }
 
         const config = { apiKey, projectId, authDomain };
-        localStorage.setItem('catalog_firebase_config', JSON.stringify(config));
+        localStorage.setItem(APP_ENV.configKey, JSON.stringify(config));
         showToast('Configurações salvas! Conectando...', 'info');
         ModalEngine.close('firebase-modal');
         this.init();
@@ -1749,7 +1885,7 @@
         if (!this.db) return;
         if (this.unsubscribe) this.unsubscribe();
 
-        this.unsubscribe = this.db.collection('products').onSnapshot(
+        this.unsubscribe = this.db.collection(APP_ENV.collectionName).onSnapshot(
           (snapshot) => {
             if (!snapshot.empty) {
               const cloudProducts = [];
@@ -1767,8 +1903,8 @@
                 const newJson = JSON.stringify(cloudProducts);
                 if (oldJson !== newJson) {
                   ProductStore.products = cloudProducts;
-                  localStorage.setItem('catalog_products_v1', newJson);
-                  localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now()));
+                  localStorage.setItem(APP_ENV.storageKey, newJson);
+                  localStorage.setItem(APP_ENV.syncKey, String(Date.now()));
                   ProductStore.render();
                 }
               }
@@ -1807,20 +1943,20 @@
               qtyPerBox: Number(p.qtyPerBox || 1),
               showBoxTotal: p.showBoxTotal !== false,
               active: p.active !== false && p.active !== 'false',
-              
+
               sortOrder: typeof p.sortOrder === 'number' ? p.sortOrder : 999999,
               category: getProductCategory(p),
               imageBase64: img
             });
           }
 
-          // Envia em documentos individuais na coleção 'products' (máximo 400 por lote)
+          // Envia em documentos individuais na coleção do ambiente (máximo 400 por lote)
           const batchSize = 400;
           for (let i = 0; i < cleanProducts.length; i += batchSize) {
             const chunk = cleanProducts.slice(i, i + batchSize);
             const batch = this.db.batch();
             chunk.forEach(prod => {
-              const docRef = this.db.collection('products').doc(prod.id);
+              const docRef = this.db.collection(APP_ENV.collectionName).doc(prod.id);
               batch.set(docRef, prod);
             });
             await batch.commit();
@@ -1859,15 +1995,15 @@
             qtyPerBox: Number(product.qtyPerBox || 1),
             showBoxTotal: product.showBoxTotal !== false,
             active: product.active !== false && product.active !== 'false',
-            
+
             sortOrder: typeof product.sortOrder === 'number' ? product.sortOrder : 999999,
             manualPosition: Number(product.manualPosition) || 0,
             category: getProductCategory(product),
             imageBase64: img
           };
-          await this.db.collection('products').doc(clean.id).set(clean);
-          localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
-        } catch(e) {
+          await this.db.collection(APP_ENV.collectionName).doc(clean.id).set(clean);
+          localStorage.setItem(APP_ENV.storageKey, JSON.stringify(ProductStore.products));
+        } catch (e) {
           console.error("Erro na auto sincronizacao do produto", e);
         }
       },
@@ -1875,8 +2011,8 @@
       async deleteProductFromCloud(productId) {
         if (!this.db || this.isClientMode || !productId) return;
         try {
-          await this.db.collection('products').doc(String(productId)).delete();
-        } catch(e) {
+          await this.db.collection(APP_ENV.collectionName).doc(String(productId)).delete();
+        } catch (e) {
           console.error("Erro ao deletar produto da nuvem", e);
         }
       }
@@ -2024,7 +2160,7 @@
         document.getElementById('lightbox-code').textContent = `CÓDIGO: ${p.code || 'S/N'}`;
         document.getElementById('lightbox-title').textContent = p.description;
         document.getElementById('lightbox-price-unit').textContent = formatCurrency(p.unitPrice);
-        
+
         const boxRow = document.getElementById('lightbox-price-box-row');
         if (showBox) {
           document.getElementById('lightbox-price-box-qty').textContent = `${p.qtyPerBox} un`;
@@ -2041,11 +2177,11 @@
           imgElem.src = p.imageBase64;
           imgElem.style.display = 'block';
           noImgElem.style.display = 'none';
-          if(container) container.style.background = '#ffffff';
+          if (container) container.style.background = '#ffffff';
         } else {
           imgElem.style.display = 'none';
           noImgElem.style.display = 'flex';
-          if(container) container.style.background = '#020617';
+          if (container) container.style.background = '#020617';
         }
 
         this.open('lightbox-modal');
@@ -2074,7 +2210,7 @@
 
     function getProductCategory(p) {
       if (p.category && p.category !== 'auto') return p.category;
-      const text = ( (p.description || '') + ' ' + (p.code || '') ).toLowerCase();
+      const text = ((p.description || '') + ' ' + (p.code || '')).toLowerCase();
       for (let i = 1; i < CATEGORIES.length - 1; i++) {
         const cat = CATEGORIES[i];
         for (const kw of cat.keywords) {
@@ -2137,11 +2273,11 @@
 
       async togglePricesGlobally() {
         const newState = !this.hidePrices;
-        
+
         if (FirebaseEngine.db) {
           try {
             showToast('Salvando configuração...', 'info');
-            await FirebaseEngine.db.collection('products').doc('9999999999999').set({ 
+            await FirebaseEngine.db.collection(APP_ENV.collectionName).doc('9999999999999').set({
               id: '9999999999999',
               code: 'CFG',
               description: 'System Config',
@@ -2152,9 +2288,9 @@
               sortOrder: 999999,
               imageBase64: '',
               active: false,
-              hidePrices: newState 
+              hidePrices: newState
             }, { merge: true });
-            
+
             this.setHidePrices(newState);
             showToast(newState ? 'Preços ocultados para clientes!' : 'Preços visíveis novamente!');
           } catch (e) {
@@ -2443,7 +2579,7 @@
         const p = this.getById(id);
         if (!p) return;
         HistoryStore.snapshot();
-        
+
         const newPos = parseInt(val, 10);
         const oldPos = p.manualPosition || 0;
 
@@ -2464,7 +2600,7 @@
 
         this.products.forEach(other => {
           if (other.id === p.id || !other.manualPosition) return;
-          
+
           if (oldPos > 0) {
             if (newPos < oldPos) {
               if (other.manualPosition >= newPos && other.manualPosition < oldPos) {
@@ -2506,7 +2642,7 @@
           }
         });
         if (count > 0) {
-          localStorage.setItem('catalog_products_v1', JSON.stringify(this.products));
+          localStorage.setItem(APP_ENV.storageKey, JSON.stringify(this.products));
         }
       },
 
@@ -2516,7 +2652,7 @@
         }
         FirebaseEngine.checkMode(); // Executa antes de qualquer renderizacao para que isClientMode seja 100% conhecido desde o milissegundo 0!
         try {
-          const stored = localStorage.getItem('catalog_products_v1');
+          const stored = localStorage.getItem(APP_ENV.storageKey);
           if (stored) {
             this.products = JSON.parse(stored);
           }
@@ -2534,7 +2670,7 @@
 
 
       saveWithoutSnapshot() {
-        localStorage.setItem('catalog_products_v1', JSON.stringify(this.products));
+        localStorage.setItem(APP_ENV.storageKey, JSON.stringify(this.products));
         this.render();
       },
 
@@ -2553,7 +2689,7 @@
         let list = this.products;
 
         if (q) {
-          list = list.filter(p => 
+          list = list.filter(p =>
             (p.code || '').toLowerCase().includes(q) ||
             (p.description || '').toLowerCase().includes(q)
           );
@@ -2577,7 +2713,7 @@
           const searchElem = document.getElementById('search-input');
           const query = this.currentSearchQuery !== undefined ? this.currentSearchQuery : (searchElem ? (searchElem.value || '').toLowerCase().trim() : '');
           if (query) {
-            list = list.filter(p => 
+            list = list.filter(p =>
               (p.code || '').toLowerCase().includes(query) ||
               (p.description || '').toLowerCase().includes(query)
             );
@@ -2602,7 +2738,7 @@
             else naturalItems.push(item);
           });
           naturalItems.sort((a, b) => {
-const catA = getProductCategory(a);
+            const catA = getProductCategory(a);
             const catB = getProductCategory(b);
             const idxA = CATEGORIES.findIndex(c => c.id === catA);
             const idxB = CATEGORIES.findIndex(c => c.id === catB);
@@ -2622,7 +2758,7 @@ const catA = getProductCategory(a);
           list = finalResult;
         } else {
           list = [...list].sort((a, b) => {
-const catA = getProductCategory(a);
+            const catA = getProductCategory(a);
             const catB = getProductCategory(b);
             const idxA = CATEGORIES.findIndex(c => c.id === catA);
             const idxB = CATEGORIES.findIndex(c => c.id === catB);
@@ -2648,7 +2784,7 @@ const catA = getProductCategory(a);
             totalItemsElem.textContent = `${this.products.length} (${activeCount} ativos)`;
           }
         }
-        
+
         const boxCount = this.products.filter(p => p.active !== false && p.showBoxTotal !== false && p.qtyPerBox > 1).length;
         const boxItemsElem = document.getElementById('stat-box-items');
         if (boxItemsElem) boxItemsElem.textContent = boxCount;
@@ -3390,17 +3526,5 @@ const catA = getProductCategory(a);
     });
   </script>
 </body>
+
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
