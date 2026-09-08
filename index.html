@@ -1630,10 +1630,21 @@
         reader.onload = (e) => {
           try {
             const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-            this.matrix = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-            if (!this.matrix || this.matrix.length < 2) { showToast('Planilha vazia!', 'error'); return; }
+            let bestMatrix = null;
+            for (const name of wb.SheetNames) {
+              const sheetData = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1 });
+              if (sheetData && sheetData.length >= 2) {
+                const txt = sheetData.slice(0, 10).map(row => Array.isArray(row) ? row.join(' ').toLowerCase() : '').join(' ');
+                if (txt.includes('descri') || txt.includes('produt') || txt.includes('preç') || txt.includes('cód') || txt.includes('cod') || txt.includes('seq')) {
+                  bestMatrix = sheetData; break;
+                }
+                if (!bestMatrix) bestMatrix = sheetData;
+              }
+            }
+            this.matrix = bestMatrix || [];
+            if (!this.matrix || this.matrix.length < 2) { showToast('Planilha vazia ou sem dados de produtos!', 'error'); return; }
             this.setupMappingOptions(); ModalEngine.open('mapping-modal');
-          } catch(err) { showToast('Erro: ' + err.message, 'error'); } finally { event.target.value = ''; }
+          } catch(err) { showToast('Erro ao ler planilha: ' + err.message, 'error'); } finally { event.target.value = ''; }
         };
         reader.readAsArrayBuffer(file);
       },
