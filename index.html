@@ -1675,12 +1675,12 @@
         this.headerRowIdx = this.findHeaderRowIndex();
         const headers = this.matrix[this.headerRowIdx] || [];
         const findBest = (kws) => { for (const g of kws) { const i = headers.findIndex(h => { const v = String(h || '').toLowerCase().trim(); return g.some(k => v === k || v.includes(k)); }); if (i >= 0) return i; } return -1; };
-        const autoCode = findBest([['seqproduto','cod item','codigo item'],['codigo','código','cod','seq']]);
-        const autoDesc = findBest([['desccompleta','descrição completa'],['descrição','descricao','desc','produto']]);
+        const autoCode = findBest([['seqproduto','cod item','codigo item'],['codigo','código','cod','seq','item']]);
+        const autoDesc = findBest([['desccompleta','descrição completa'],['descrição','descricao','desc','produto','nome']]);
         const autoComp = findBest([['nroempresa','empresa','filial']]);
-        const autoQty = findBest([['qtdembalagem','qtd embalagem','embalagem','qtd cx']]);
-        const autoPB = findBest([['preco caixa','preço caixa','preco_0_dias','valor caixa']]);
-        const autoPU = findBest([['preco un','preço un','unitario','unitário','valor un']]);
+        const autoQty = findBest([['qtdembalagem','qtd embalagem','embalagem','qtd cx','caixa','emb']]);
+        const autoPB = findBest([['preco caixa','preço caixa','preco_0_dias','valor caixa','total caixa']]);
+        const autoPU = findBest([['preco un','preço un','unitario','unitário','valor un','preco','preço','valor','vlr','tabela','venda','p.venda']]);
         const makeOpts = (sel) => { let h = '<option value="-1">-- Não Mapeado --</option>'; headers.forEach((hv, i) => { h += `<option value="${i}" ${i === sel ? 'selected' : ''}>${String(hv || `Col ${i+1}`).trim()}</option>`; }); return h; };
         document.getElementById('map-col-code').innerHTML = makeOpts(autoCode);
         document.getElementById('map-col-desc').innerHTML = makeOpts(autoDesc);
@@ -1712,7 +1712,7 @@
           else if (s.includes(',')) s = s.replace(',','.');
           const p = parseFloat(s); return isNaN(p) ? 0 : p;
         };
-        const normCode = (c) => { if (!c) return ''; const s = String(c).toLowerCase().trim(); return s.replace(/^0+/, '') || s; };
+        const normCode = (c) => { if (c == null || c === '') return ''; let s = String(c).trim().replace(/\.0+$/, ''); return s.replace(/^0+/, '').toLowerCase() || s.toLowerCase(); };
         const normDesc = (d) => { if (!d) return ''; return String(d).toLowerCase().replace(/[^a-z0-9]/g, ''); };
         const fuzzyMatch = (a, b) => {
           if (!a || !b) return false;
@@ -1731,7 +1731,6 @@
         const startLine = (this.headerRowIdx >= 0) ? (this.headerRowIdx + 1) : 0;
         for (let i = startLine; i < this.matrix.length; i++) {
           const row = this.matrix[i]; if (!row || !row.length) continue;
-          if (cComp >= 0) { const ev = String(row[cComp] || '').trim(); if (ev === '440' || (ev && ev !== '40')) continue; }
           const rawCode = cCode >= 0 ? String(row[cCode] || '').trim() : '';
           const rawDesc = cDesc >= 0 ? String(row[cDesc] || '').trim() : '';
           if (!rawDesc || isEmpty(rawDesc)) continue;
