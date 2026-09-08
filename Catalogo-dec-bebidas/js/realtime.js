@@ -75,9 +75,17 @@ class RealtimeEngine {
       const config = JSON.parse(rawConfig);
       if (!config.apiKey || !config.projectId) return;
 
+      const fullConfig = {
+        apiKey: config.apiKey,
+        authDomain: config.authDomain || `${config.projectId.toLowerCase()}.firebaseapp.com`,
+        projectId: config.projectId,
+        storageBucket: config.storageBucket || `${config.projectId.toLowerCase()}.appspot.com`,
+        appId: config.appId || undefined
+      };
+
       if (typeof firebase !== 'undefined' && firebase.initializeApp) {
         if (!firebase.apps.length) {
-          firebase.initializeApp(config);
+          firebase.initializeApp(fullConfig);
         }
         this.db = firebase.firestore();
         this.firebaseActive = true;

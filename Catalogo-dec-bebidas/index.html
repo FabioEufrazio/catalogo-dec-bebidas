@@ -412,23 +412,35 @@
 
   <!-- MODAL: Firebase Config -->
   <div id="firebaseModal" class="modal-overlay">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
-        <h3 class="modal-title"><i class="fa-solid fa-fire"></i> Configuração do Firebase Firestore</h3>
+        <h3 class="modal-title"><i class="fa-solid fa-fire"></i> Configuração do Firebase</h3>
         <button class="modal-close-btn" data-close-modal="firebaseModal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
-          Insira as credenciais do seu projeto Firebase para ativar a sincronização em nuvem Firestore em tempo real.
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">
+          Cole o bloco <code>const firebaseConfig = { ... }</code> do seu console Firebase ou preencha os campos abaixo:
         </p>
+
+        <div style="margin-bottom: 16px;">
+          <label class="form-label" for="fbSnippetArea">Cole o código do Firebase aqui (Auto-preenchimento)</label>
+          <textarea id="fbSnippetArea" class="form-control" rows="3" placeholder="const firebaseConfig = { apiKey: &quot;AIzaSy...&quot;, projectId: &quot;catalogo-dec-bebidas&quot;, appId: &quot;1:3784...&quot; };" style="font-family: monospace; font-size: 0.75rem;"></textarea>
+        </div>
+
+        <div id="fbWarningAlert" style="display:none; color: #f59e0b; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; margin-bottom: 14px;"></div>
+
         <div class="form-grid">
           <div class="form-group-full">
-            <label class="form-label" for="fbApiKey">API Key</label>
+            <label class="form-label" for="fbApiKey">API Key <span style="color: var(--accent-gold); font-size: 0.75rem;">(Começa com AIzaSy...)</span></label>
             <input type="text" id="fbApiKey" class="form-control" placeholder="AIzaSy...">
           </div>
           <div class="form-group-full">
-            <label class="form-label" for="fbProjectId">Project ID</label>
-            <input type="text" id="fbProjectId" class="form-control" placeholder="meu-catalogo-12345">
+            <label class="form-label" for="fbProjectId">Project ID <span style="color: var(--text-muted); font-size: 0.75rem;">(ex: catalogo-dec-bebidas)</span></label>
+            <input type="text" id="fbProjectId" class="form-control" placeholder="catalogo-dec-bebidas">
+          </div>
+          <div class="form-group-full">
+            <label class="form-label" for="fbAppId">App ID <span style="color: var(--text-muted); font-size: 0.75rem;">(ex: 1:378404909818:web:7f6f...)</span></label>
+            <input type="text" id="fbAppId" class="form-control" placeholder="1:378404909818:web:7f6fec7e86fa5baf5f4f43">
           </div>
         </div>
       </div>

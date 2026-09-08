@@ -988,20 +988,80 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Firebase Configuration Modal Handling
+  const fbSnippetArea = document.getElementById('fbSnippetArea');
+  const fbApiKeyInput = document.getElementById('fbApiKey');
+  const fbProjectIdInput = document.getElementById('fbProjectId');
+  const fbAppIdInput = document.getElementById('fbAppId');
+  const fbWarningAlert = document.getElementById('fbWarningAlert');
+
+  function loadFirebaseModalInputs() {
+    const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+    if (!rawConfig) return;
+    try {
+      const cfg = JSON.parse(rawConfig);
+      if (fbApiKeyInput && cfg.apiKey) fbApiKeyInput.value = cfg.apiKey;
+      if (fbProjectIdInput && cfg.projectId) fbProjectIdInput.value = cfg.projectId;
+      if (fbAppIdInput && cfg.appId) fbAppIdInput.value = cfg.appId;
+    } catch (e) {}
+  }
+  loadFirebaseModalInputs();
+
+  if (fbSnippetArea) {
+    fbSnippetArea.addEventListener('input', (e) => {
+      const text = e.target.value;
+      const apiKeyMatch = text.match(/apiKey["']?\s*:\s*["']([^"']+)["']/);
+      const projectIdMatch = text.match(/projectId["']?\s*:\s*["']([^"']+)["']/);
+      const appIdMatch = text.match(/appId["']?\s*:\s*["']([^"']+)["']/);
+
+      if (apiKeyMatch && fbApiKeyInput) fbApiKeyInput.value = apiKeyMatch[1];
+      if (projectIdMatch && fbProjectIdInput) fbProjectIdInput.value = projectIdMatch[1];
+      if (appIdMatch && fbAppIdInput) fbAppIdInput.value = appIdMatch[1];
+
+      if (apiKeyMatch || projectIdMatch || appIdMatch) {
+        showToast('Credenciais extraídas do código com sucesso!');
+      }
+    });
+  }
+
   const saveFirebaseBtn = document.getElementById('saveFirebaseBtn');
   if (saveFirebaseBtn) {
     saveFirebaseBtn.addEventListener('click', () => {
-      const apiKey = document.getElementById('fbApiKey').value.trim();
-      const projectId = document.getElementById('fbProjectId').value.trim();
-      if (!apiKey || !projectId) {
-        alert("Preencha a API Key e o Project ID.");
+      let apiKey = fbApiKeyInput ? fbApiKeyInput.value.trim() : '';
+      let projectId = fbProjectIdInput ? fbProjectIdInput.value.trim() : '';
+      let appId = fbAppIdInput ? fbAppIdInput.value.trim() : '';
+
+      // Auto-fix if user put App ID (starts with 1:) in API Key field
+      if (apiKey.startsWith('1:') && !appId) {
+        appId = apiKey;
+        apiKey = '';
+        if (fbAppIdInput) fbAppIdInput.value = appId;
+        if (fbApiKeyInput) fbApiKeyInput.value = '';
+      }
+
+      if (!apiKey || apiKey.startsWith('1:')) {
+        if (fbWarningAlert) {
+          fbWarningAlert.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <strong>Atenção:</strong> O código <code>1:3784...</code> é o <strong>App ID</strong>, não a API Key! A API Key começa com <code>AIzaSy...</code>. Por favor, insira a API Key correta no primeiro campo.';
+          fbWarningAlert.style.display = 'block';
+        }
         return;
       }
 
-      const config = { apiKey, projectId };
+      if (!projectId) {
+        if (fbWarningAlert) {
+          fbWarningAlert.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Por favor, informe o Project ID (ex: <code>catalogo-dec-bebidas</code>).';
+          fbWarningAlert.style.display = 'block';
+        }
+        return;
+      }
+
+      if (fbWarningAlert) fbWarningAlert.style.display = 'none';
+
+      const config = { apiKey, projectId, appId };
       localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(config));
-      showToast('Configuração do Firebase salva! Recarregue a página para conectar.');
+      showToast('Configuração do Firebase salva! Recarregando...');
       closeModal('firebaseModal');
+      setTimeout(() => location.reload(), 600);
     });
   }
 
