@@ -1802,18 +1802,8 @@
         const autoDesc = findExactKeyword([['desccompleta', 'descrição completa'], ['descrição', 'descricao', 'desc', 'produto', 'nome']]);
         const autoComp = findExactKeyword([['nroempresa', 'empresa', 'filial']]);
         const autoQty  = findExactKeyword([['qtdembalagem', 'qtd embalagem', 'embalagem', 'qtd cx', 'caixa', 'emb']]);
-        const autoPB   = findExactKeyword([['preco_0_dias', 'preco caixa', 'preço caixa', 'valor caixa', 'total caixa']]);
-
-        let autoPU = findExactKeyword([['preco un', 'preço un', 'unitario', 'unitário', 'valor un', 'preco unitario', 'preço unitário', 'unid']]);
-        if (autoPU < 0) {
-          headers.forEach((h, i) => {
-            if (i === autoPB) return;
-            const v = String(h || '').toLowerCase().trim();
-            if ((v.includes('preco') || v.includes('preço') || v.includes('valor') || v.includes('tabela')) && autoPU < 0) {
-              autoPU = i;
-            }
-          });
-        }
+        const autoPB   = findExactKeyword([['preco_0_dias', 'preco caixa', 'preço caixa', 'valor caixa', 'total caixa', 'preco_cx']]);
+        const autoPU   = findExactKeyword([['preco un', 'preço un', 'unitario', 'unitário', 'valor un', 'preco unitario', 'preço unitário', 'unid', 'preco_un']]);
 
         const makeOpts = (sel) => {
           let h = '<option value="-1">-- Não Mapeado --</option>';
@@ -1880,10 +1870,10 @@
           const rawQty = cQty >= 0 ? parseInt(row[cQty]) || 1 : 1;
 
           let price = 0;
-          if (rawPU > 0) {
-            price = rawPU;
-          } else if (rawPB > 0) {
+          if (cPB >= 0 && rawPB > 0) {
             price = rawQty > 0 ? (rawPB / rawQty) : rawPB;
+          } else if (cPU >= 0 && rawPU > 0) {
+            price = rawPU;
           }
           price = Math.round(price * 100) / 100;
           if (!price || price <= 0) continue;
