@@ -110,6 +110,18 @@ class ProductStore {
       return code !== 'CFG' && desc !== 'SYSTEM CONFIG' && p.id !== 'System Config';
     });
 
+    // Auto-categorize beverages automatically whenever products are loaded or modified
+    if (typeof excelEngine !== 'undefined' && typeof excelEngine.detectCategory === 'function') {
+      this.products.forEach(p => {
+        if (!p.category || p.category === 'outros') {
+          const detected = excelEngine.detectCategory(p.description);
+          if (detected && detected !== 'outros') {
+            p.category = detected;
+          }
+        }
+      });
+    }
+
     // Synchronize manualPosition property with array index sequence 1..N
     this.products.forEach((p, idx) => {
       p.manualPosition = idx + 1;
@@ -117,10 +129,11 @@ class ProductStore {
   }
 
   autoCategorizeAll(excelEngineRef) {
-    if (!excelEngineRef || typeof excelEngineRef.detectCategory !== 'function') return 0;
+    const engine = excelEngineRef || (typeof excelEngine !== 'undefined' ? excelEngine : null);
+    if (!engine || typeof engine.detectCategory !== 'function') return 0;
     let count = 0;
     this.products.forEach(p => {
-      const newCat = excelEngineRef.detectCategory(p.description);
+      const newCat = engine.detectCategory(p.description);
       if (newCat && newCat !== p.category) {
         p.category = newCat;
         count++;
