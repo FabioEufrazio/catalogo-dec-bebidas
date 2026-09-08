@@ -535,7 +535,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="ModalEngine.close('preview-modal')">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="ExcelEngine.applyChanges()"><i class="fa-solid fa-check-double"></i> Confirmar</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-import" onclick="ExcelEngine.applyChanges()"><i class="fa-solid fa-check-double"></i> Confirmar</button>
       </div>
     </div>
   </div>
@@ -1878,52 +1878,103 @@
         document.getElementById('preview-table-body').innerHTML = html;
       },
 
-      async applyChanges() {
-        HistoryStore.snapshot(); let updated = 0, created = 0;
-        const was = !!FirebaseEngine.unsubscribe;
-        if (was && FirebaseEngine.unsubscribe) { FirebaseEngine.unsubscribe(); FirebaseEngine.unsubscribe = null; }
+      applyChanges() {
+        const btn = document.getElementById('btn-confirm-import');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aplicando...'; }
 
-        const normCode = (c) => { if (c == null || c === '') return ''; let s = String(c).trim().replace(/\.0+$/, ''); return s.replace(/^0+/, '').toLowerCase() || s.toLowerCase(); };
-        const normDesc = (d) => { if (!d) return ''; return String(d).toLowerCase().replace(/[^a-z0-9]/g, ''); };
-
-        this.actions.forEach((a, idx) => {
-          const fp = Math.round((parseFloat(a.newPrice) || 0) * 100) / 100;
-          if (fp <= 0) return;
-
-          let target = null;
-          if (a.targetId) target = ProductStore.getById(a.targetId);
-          if (!target && a.targetIdx >= 0 && a.targetIdx < ProductStore.products.length) target = ProductStore.products[a.targetIdx];
-          if (!target && a.code) { const ck = normCode(a.code); target = ProductStore.products.find(p => normCode(p.code) === ck); }
-          if (!target && a.description) { const dk = normDesc(a.description); target = ProductStore.products.find(p => normDesc(p.description) === dk); }
-
-          if (a.type === 'UPDATE' || target) {
-            if (target) {
-              target.unitPrice = fp;
-              if (a.code && a.code !== 'S/N') target.code = String(a.code).toUpperCase().trim();
-              if (a.qtyPerBox > 1) target.qtyPerBox = a.qtyPerBox;
-              updated++;
-            }
-          } else if (a.type === 'NEW') {
-            let maxPos = 0; ProductStore.products.forEach(p => { if (typeof p.manualPosition === 'number' && p.manualPosition > maxPos) maxPos = p.manualPosition; });
-            ProductStore.products.push({
-              id: 'PROD_' + Date.now() + '_' + idx + '_' + Math.floor(Math.random() * 1000000),
-              code: String(a.code || 'S/N').toUpperCase().trim(), description: String(a.description || '').toUpperCase().trim(),
-              unitPrice: fp, qtyPerBox: a.qtyPerBox || 1, showBoxTotal: true, active: true, manualPosition: maxPos + 1 + idx, imageBase64: ''
-            });
-            created++;
-          }
-        });
-        ProductStore.saveWithoutSnapshot(); ModalEngine.close('preview-modal');
-        showToast(`${updated} atualizados, ${created} novos!`);
-        if (FirebaseEngine.db) {
+        setTimeout(() => {
           try {
-            await FirebaseEngine.syncToCloud();
-          } catch(e) {
-            console.error("Erro no syncToCloud:", e);
+            HistoryStore.snapshot();
+            let updated = 0, created = 0;
+            const was = !!FirebaseEngine.unsubscribe;
+            if (was && FirebaseEngine.unsubscribe) {
+              FirebaseEngine.unsubscribe();
+              FirebaseEngine.unsubscribe = null;
+            }
+
+            const normCode = (c) => { if (c == null || c === '') return ''; let s = String(c).trim().replace(/\.0+$/, ''); return s.replace(/^0+/, '').toLowerCase() || s.toLowerCase(); };
+            const normDesc = (d) => { if (!d) return ''; return String(d).toLowerCase().replace(/[^a-z0-9]/g, ''); };
+
+            // Otimização: mapas de busca O(1) e maxPos calculado uma única vez
+            const idMap = new Map();
+            const codeMap = new Map();
+            const descMap = new Map();
+            let maxPos = 0;
+
+            ProductStore.products.forEach(p => {
+              if (p.id) idMap.set(String(p.id), p);
+              const ck = normCode(p.code);
+              if (ck && !codeMap.has(ck)) codeMap.set(ck, p);
+              const dk = normDesc(p.description);
+              if (dk && !descMap.has(dk)) descMap.set(dk, p);
+              if (typeof p.manualPosition === 'number' && p.manualPosition > maxPos) {
+                maxPos = p.manualPosition;
+              }
+            });
+
+            this.actions.forEach((a, idx) => {
+              const fp = Math.round((parseFloat(a.newPrice) || 0) * 100) / 100;
+              if (fp <= 0) return;
+
+              let target = null;
+              if (a.targetId) target = idMap.get(String(a.targetId));
+              if (!target && a.targetIdx >= 0 && a.targetIdx < ProductStore.products.length) target = ProductStore.products[a.targetIdx];
+              if (!target && a.code) target = codeMap.get(normCode(a.code));
+              if (!target && a.description) target = descMap.get(normDesc(a.description));
+
+              if (a.type === 'UPDATE' || target) {
+                if (target) {
+                  target.unitPrice = fp;
+                  if (a.code && a.code !== 'S/N') target.code = String(a.code).toUpperCase().trim();
+                  if (a.qtyPerBox > 1) target.qtyPerBox = a.qtyPerBox;
+                  updated++;
+                }
+              } else if (a.type === 'NEW') {
+                maxPos++;
+                const newId = 'PROD_' + Date.now() + '_' + idx + '_' + Math.floor(Math.random() * 1000000);
+                const newProd = {
+                  id: newId,
+                  code: String(a.code || 'S/N').toUpperCase().trim(),
+                  description: String(a.description || '').toUpperCase().trim(),
+                  unitPrice: fp,
+                  qtyPerBox: a.qtyPerBox || 1,
+                  showBoxTotal: true,
+                  active: true,
+                  manualPosition: maxPos,
+                  imageBase64: ''
+                };
+                ProductStore.products.push(newProd);
+                const ck = normCode(newProd.code);
+                if (ck && !codeMap.has(ck)) codeMap.set(ck, newProd);
+                const dk = normDesc(newProd.description);
+                if (dk && !descMap.has(dk)) descMap.set(dk, newProd);
+                created++;
+              }
+            });
+
+            ProductStore.saveWithoutSnapshot();
+            ModalEngine.close('preview-modal');
+            showToast(`${updated} atualizados, ${created} novos!`, 'success');
+
+            // Disparar sincronização em segundo plano (fire-and-forget) para não travar a UI
+            if (FirebaseEngine.db) {
+              setTimeout(async () => {
+                try {
+                  await FirebaseEngine.syncToCloud();
+                } catch(e) {
+                  console.error("Erro no syncToCloud:", e);
+                } finally {
+                  if (was) FirebaseEngine.listenToCloud();
+                }
+              }, 50);
+            }
+          } catch(err) {
+            console.error("Erro ao aplicar alterações:", err);
+            showToast('Erro ao aplicar: ' + err.message, 'error');
           } finally {
-            if (was) FirebaseEngine.listenToCloud();
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Confirmar'; }
           }
-        }
+        }, 10);
       }
     };
 
