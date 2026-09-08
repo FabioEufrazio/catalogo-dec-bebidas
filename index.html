@@ -943,56 +943,46 @@
       mergeCloudProducts(prods) {
         if (!ProductStore.products || ProductStore.products.length === 0) return prods;
 
+        const normCode = (c) => { if (c == null || c === '') return ''; let s = String(c).trim().replace(/\.0+$/, ''); return s.replace(/^0+/, '').toLowerCase() || s.toLowerCase(); };
+        const normDesc = (d) => { if (!d) return ''; return String(d).toLowerCase().replace(/[^a-z0-9]/g, ''); };
+
+        const localCodeMap = new Map();
+        ProductStore.products.forEach(lp => {
+          const ck = normCode(lp.code) || String(lp.id);
+          if (ck && !localCodeMap.has(ck)) localCodeMap.set(ck, lp);
+        });
+
+        // Garantir que cada código de produto apareça UMA ÚNICA VEZ
+        const mergedMap = new Map();
+
+        // 1. Processar dados vindos da nuvem, sobrepondo com alterações locais se existirem
+        prods.forEach(cloudP => {
+          const ck = normCode(cloudP.code) || String(cloudP.id);
+          const localP = localCodeMap.get(ck);
+          if (localP) {
+            mergedMap.set(ck, { ...cloudP, ...localP }); // Local tem prioridade
+          } else {
+            mergedMap.set(ck, cloudP);
+          }
+        });
+
+        // 2. Adicionar produtos locais que ainda não foram sincronizados para a nuvem
+        ProductStore.products.forEach(lp => {
+          const ck = normCode(lp.code) || String(lp.id);
+          if (!mergedMap.has(ck)) {
+            mergedMap.set(ck, lp);
+          }
+        });
+
+        const merged = Array.from(mergedMap.values());
+
         const lastLocal = parseInt(localStorage.getItem('catalog_last_local_update_timestamp') || '0', 10);
         const lastCloud = parseInt(localStorage.getItem('catalog_last_cloud_sync_timestamp') || '0', 10);
-
-        if (lastLocal >= lastCloud) {
-          const normCode = (c) => { if (c == null || c === '') return ''; let s = String(c).trim().replace(/\.0+$/, ''); return s.replace(/^0+/, '').toLowerCase() || s.toLowerCase(); };
-          const normDesc = (d) => { if (!d) return ''; return String(d).toLowerCase().replace(/[^a-z0-9]/g, ''); };
-
-          const localIdMap = new Map();
-          const localCodeMap = new Map();
-          const localDescMap = new Map();
-
-          ProductStore.products.forEach(lp => {
-            if (lp.id) localIdMap.set(String(lp.id), lp);
-            const ck = normCode(lp.code);
-            if (ck && !localCodeMap.has(ck)) localCodeMap.set(ck, lp);
-            const dk = normDesc(lp.description);
-            if (dk && !localDescMap.has(dk)) localDescMap.set(dk, lp);
-          });
-
-          const mergedCloudIds = new Set();
-          const merged = prods.map(cloudP => {
-            const cid = String(cloudP.id || '');
-            const ck = normCode(cloudP.code);
-            const dk = normDesc(cloudP.description);
-
-            let localP = null;
-            if (cid) localP = localIdMap.get(cid);
-            if (!localP && ck) localP = localCodeMap.get(ck);
-            if (!localP && dk) localP = localDescMap.get(dk);
-
-            if (localP) {
-              mergedCloudIds.add(String(localP.id));
-              return { ...cloudP, ...localP }; // Manter os dados atualizados locais prioritários
-            }
-            return cloudP;
-          });
-
-          ProductStore.products.forEach(lp => {
-            if (!mergedCloudIds.has(String(lp.id))) {
-              merged.push(lp);
-            }
-          });
-
-          if (lastLocal > lastCloud) {
-            setTimeout(() => { if (!this.isSyncingCloud) this.syncToCloud(); }, 1500);
-          }
-          return merged;
+        if (lastLocal > lastCloud && !this.isSyncingCloud) {
+          setTimeout(() => { if (!this.isSyncingCloud) this.syncToCloud(); }, 1500);
         }
 
-        return prods;
+        return merged;
       },
 
       listenToCloud() {
@@ -1003,16 +993,25 @@
             this.updateStatusBadge(true);
             if (this.isSyncingCloud) return;
             if (!snap.empty) {
-              const prods = [];
+              const rawProdsMap = new Map();
               snap.forEach(doc => {
                 const d = doc.data();
                 if (doc.id === '__SETTINGS__' || doc.id === '9999999999999') {
                   ProductStore.setHidePrices(!!d.hidePrices);
                 } else if (d) {
                   const pid = String(d.id || doc.id);
-                  prods.push({ ...d, id: pid });
+                  const codeKey = (d.code ? String(d.code).trim().toUpperCase() : pid);
+                  if (!rawProdsMap.has(codeKey)) {
+                    rawProdsMap.set(codeKey, { ...d, id: pid });
+                  } else {
+                    const existing = rawProdsMap.get(codeKey);
+                    if ((d.imageBase64 && !existing.imageBase64) || (d.unitPrice && !existing.unitPrice)) {
+                      rawProdsMap.set(codeKey, { ...d, id: pid });
+                    }
+                  }
                 }
               });
+              const prods = Array.from(rawProdsMap.values());
               if (prods.length > 0) {
                 const mergedProds = this.mergeCloudProducts(prods);
                 mergedProds.sort((a, b) => {
