@@ -939,12 +939,14 @@
         localStorage.setItem('catalog_firebase_config', JSON.stringify({ apiKey, projectId, authDomain }));
         showToast('Configurações salvas! Conectando...', 'info'); ModalEngine.close('firebase-modal'); this.init();
       },
+      isSyncingCloud: false,
       listenToCloud() {
         if (!this.db) return;
         if (this.unsubscribe) this.unsubscribe();
         this.unsubscribe = this.db.collection('products').onSnapshot(
           (snap) => {
             this.updateStatusBadge(true);
+            if (this.isSyncingCloud) return; // Ignorar snapshots intermediários durante salvamento em lote
             if (!snap.empty) {
               const prods = [];
               snap.forEach(doc => {
@@ -970,20 +972,29 @@
       async syncToCloud() {
         if (!this.db) { showToast('Configure o Firebase primeiro!', 'info'); ModalEngine.open('firebase-modal'); return; }
         try {
+          this.isSyncingCloud = true;
           showToast('Sincronizando...', 'info');
           const clean = [];
           for (const p of ProductStore.products) {
             let img = p.imageBase64 || '';
             if (img && img.length > 150000) img = await compressBase64(img, 350);
-            clean.push({ id: String(p.id), code: String(p.code || 'S/N'), description: String(p.description || ''), unitPrice: Number(p.unitPrice || 0), qtyPerBox: Number(p.qtyPerBox || 1), showBoxTotal: p.showBoxTotal !== false, active: p.active !== false && p.active !== 'false', sortOrder: typeof p.sortOrder === 'number' ? p.sortOrder : 999999, category: getProductCategory(p), imageBase64: img });
+            clean.push({
+              id: String(p.id), code: String(p.code || 'S/N'), description: String(p.description || ''),
+              unitPrice: Number(p.unitPrice || 0), qtyPerBox: Number(p.qtyPerBox || 1),
+              showBoxTotal: p.showBoxTotal !== false, active: p.active !== false && p.active !== 'false',
+              manualPosition: Number(p.manualPosition) || 0,
+              sortOrder: typeof p.sortOrder === 'number' ? p.sortOrder : 999999,
+              category: getProductCategory(p), imageBase64: img
+            });
           }
           for (let i = 0; i < clean.length; i += 400) {
             const chunk = clean.slice(i, i + 400), batch = this.db.batch();
             chunk.forEach(prod => batch.set(this.db.collection('products').doc(prod.id), prod));
             await batch.commit();
           }
+          localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
           showToast(`${clean.length} itens sincronizados!`);
-        } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+        } catch(e) { showToast('Erro: ' + e.message, 'error'); } finally { this.isSyncingCloud = false; }
       },
       copyClientLink() {
         const url = window.location.href.split('?')[0] + '?view=public';
