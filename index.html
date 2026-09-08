@@ -940,13 +940,42 @@
         showToast('Configurações salvas! Conectando...', 'info'); ModalEngine.close('firebase-modal'); this.init();
       },
       isSyncingCloud: false,
+      mergeCloudProducts(prods) {
+        const lastLocal = parseInt(localStorage.getItem('catalog_last_local_update_timestamp') || '0', 10);
+        const lastCloud = parseInt(localStorage.getItem('catalog_last_cloud_sync_timestamp') || '0', 10);
+
+        if (lastLocal > lastCloud && ProductStore.products && ProductStore.products.length > 0) {
+          const cloudMap = new Map();
+          prods.forEach(p => cloudMap.set(String(p.id), p));
+
+          // Preservar os preços atualizados locais se forem mais recentes que a confirmação da nuvem
+          const merged = ProductStore.products.map(localP => {
+            const cloudP = cloudMap.get(String(localP.id));
+            if (!cloudP) return localP;
+            return { ...cloudP, ...localP }; // Manter prioridade nos dados locais recentemente editados
+          });
+
+          // Adicionar produtos que existiam na nuvem mas não no local
+          prods.forEach(p => {
+            if (!ProductStore.products.some(lp => String(lp.id) === String(p.id))) {
+              merged.push(p);
+            }
+          });
+
+          setTimeout(() => { if (!this.isSyncingCloud) this.syncToCloud(); }, 1500);
+          return merged;
+        }
+
+        return prods;
+      },
+
       listenToCloud() {
         if (!this.db) return;
         if (this.unsubscribe) this.unsubscribe();
         this.unsubscribe = this.db.collection('products').onSnapshot(
           (snap) => {
             this.updateStatusBadge(true);
-            if (this.isSyncingCloud) return; // Ignorar snapshots intermediários durante salvamento em lote
+            if (this.isSyncingCloud) return;
             if (!snap.empty) {
               const prods = [];
               snap.forEach(doc => {
@@ -955,14 +984,15 @@
                 else if (d && d.id) prods.push(d);
               });
               if (prods.length > 0) {
-                prods.sort((a, b) => {
+                const mergedProds = this.mergeCloudProducts(prods);
+                mergedProds.sort((a, b) => {
                   const pa = (typeof a.manualPosition === 'number' && a.manualPosition > 0) ? a.manualPosition : 999999;
                   const pb = (typeof b.manualPosition === 'number' && b.manualPosition > 0) ? b.manualPosition : 999999;
                   if (pa !== pb) return pa - pb;
                   return (a.description || '').localeCompare(b.description || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
                 });
-                const oldJ = JSON.stringify(ProductStore.products), newJ = JSON.stringify(prods);
-                if (oldJ !== newJ) { ProductStore.products = prods; localStorage.setItem('catalog_products_v1', newJ); localStorage.setItem('catalog_last_cloud_sync_timestamp', String(Date.now())); ProductStore.render(); }
+                const oldJ = JSON.stringify(ProductStore.products), newJ = JSON.stringify(mergedProds);
+                if (oldJ !== newJ) { ProductStore.products = mergedProds; localStorage.setItem('catalog_products_v1', newJ); ProductStore.render(); }
               }
             }
           },
@@ -992,6 +1022,9 @@
             chunk.forEach(prod => batch.set(this.db.collection('products').doc(prod.id), prod));
             await batch.commit();
           }
+          const nowTs = String(Date.now());
+          localStorage.setItem('catalog_last_cloud_sync_timestamp', nowTs);
+          localStorage.setItem('catalog_last_local_update_timestamp', nowTs);
           localStorage.setItem('catalog_products_v1', JSON.stringify(ProductStore.products));
           showToast(`${clean.length} itens sincronizados!`);
         } catch(e) { showToast('Erro: ' + e.message, 'error'); } finally { this.isSyncingCloud = false; }
@@ -1489,8 +1522,11 @@
         el.innerHTML = `<div class="pagination-container"><div class="pagination-info">Exibindo <b>${s}-${e}</b> de <b>${total}</b> (Página ${this.currentPage}/${pages})</div><div class="pagination-buttons"><button class="page-btn ${this.currentPage===1?'disabled':''}" ${this.currentPage===1?'disabled':''} onclick="ProductStore.goToPage(${this.currentPage-1})"><i class="fa-solid fa-chevron-left"></i></button>${btns}<button class="page-btn ${this.currentPage===pages?'disabled':''}" ${this.currentPage===pages?'disabled':''} onclick="ProductStore.goToPage(${this.currentPage+1})"><i class="fa-solid fa-chevron-right"></i></button></div></div>`;
       },
 
-      getById(id) { if (!id) return null; return this.products.find(p => String(p.id) === String(id)); },
-      saveWithoutSnapshot() { localStorage.setItem('catalog_products_v1', JSON.stringify(this.products)); this.render(); },
+      saveWithoutSnapshot() {
+        localStorage.setItem('catalog_last_local_update_timestamp', String(Date.now()));
+        localStorage.setItem('catalog_products_v1', JSON.stringify(this.products));
+        this.render();
+      },
 
       render(listToRender = null) {
         let scroll = window.scrollY || document.documentElement.scrollTop;
