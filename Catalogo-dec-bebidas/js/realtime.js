@@ -119,8 +119,11 @@ class RealtimeEngine {
 
       const remoteProducts = [];
       snapshot.forEach(doc => {
-        if (doc.id !== '__SETTINGS__') {
-          remoteProducts.push(doc.data());
+        const data = doc.data();
+        const code = String(data.code || '').trim().toUpperCase();
+        const desc = String(data.description || '').trim().toUpperCase();
+        if (doc.id !== '__SETTINGS__' && doc.id !== 'System Config' && code !== 'CFG' && desc !== 'SYSTEM CONFIG') {
+          remoteProducts.push(data);
         }
       });
 

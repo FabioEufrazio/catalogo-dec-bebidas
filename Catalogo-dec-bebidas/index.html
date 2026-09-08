@@ -81,6 +81,9 @@
       <button id="shareLinkBtn" class="btn btn-purple">
         <i class="fa-solid fa-link"></i> Link do Cliente
       </button>
+      <button id="autoCategorizeBtn" class="btn" title="Organizar bebidas automaticamente por nome em Whiskies, Cervejas, Gins, Vodkas, etc.">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Categorizar
+      </button>
     </div>
 
     <div class="toolbar-group">
@@ -177,14 +180,16 @@
               <select id="prodCategory" class="form-control" required>
                 <option value="whiskies">Whiskies</option>
                 <option value="vodkas">Vodkas</option>
+                <option value="cervejas">Cervejas</option>
+                <option value="gins">Gins</option>
+                <option value="vinhos">Vinhos</option>
+                <option value="espumantes">Espumantes</option>
+                <option value="energeticos">Energéticos</option>
+                <option value="refrigerantes">Refrigerantes</option>
+                <option value="aguadecoco">Água de Coco</option>
+                <option value="sucos">Sucos</option>
                 <option value="licores">Licores</option>
                 <option value="xaropes">Xaropes</option>
-                <option value="sucos">Sucos</option>
-                <option value="aguadecoco">Água de Coco</option>
-                <option value="espumantes">Espumantes</option>
-                <option value="vinhos">Vinhos</option>
-                <option value="gins">Gins</option>
-                <option value="cervejas">Cervejas</option>
                 <option value="outros" selected>Outros</option>
               </select>
             </div>
@@ -392,14 +397,16 @@
         <select id="bulkCategorySelect" class="form-control">
           <option value="whiskies">Whiskies</option>
           <option value="vodkas">Vodkas</option>
+          <option value="cervejas">Cervejas</option>
+          <option value="gins">Gins</option>
+          <option value="vinhos">Vinhos</option>
+          <option value="espumantes">Espumantes</option>
+          <option value="energeticos">Energéticos</option>
+          <option value="refrigerantes">Refrigerantes</option>
+          <option value="aguadecoco">Água de Coco</option>
+          <option value="sucos">Sucos</option>
           <option value="licores">Licores</option>
           <option value="xaropes">Xaropes</option>
-          <option value="sucos">Sucos</option>
-          <option value="aguadecoco">Água de Coco</option>
-          <option value="espumantes">Espumantes</option>
-          <option value="vinhos">Vinhos</option>
-          <option value="gins">Gins</option>
-          <option value="cervejas">Cervejas</option>
           <option value="outros">Outros</option>
         </select>
       </div>

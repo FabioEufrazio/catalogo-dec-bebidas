@@ -103,10 +103,33 @@ class ProductStore {
   }
 
   ensurePositions() {
+    // Remove system config dummy documents if present
+    this.products = this.products.filter(p => {
+      const code = String(p.code || '').trim().toUpperCase();
+      const desc = String(p.description || '').trim().toUpperCase();
+      return code !== 'CFG' && desc !== 'SYSTEM CONFIG' && p.id !== 'System Config';
+    });
+
     // Synchronize manualPosition property with array index sequence 1..N
     this.products.forEach((p, idx) => {
       p.manualPosition = idx + 1;
     });
+  }
+
+  autoCategorizeAll(excelEngineRef) {
+    if (!excelEngineRef || typeof excelEngineRef.detectCategory !== 'function') return 0;
+    let count = 0;
+    this.products.forEach(p => {
+      const newCat = excelEngineRef.detectCategory(p.description);
+      if (newCat && newCat !== p.category) {
+        p.category = newCat;
+        count++;
+      }
+    });
+    if (count > 0) {
+      this.saveToStorage(true);
+    }
+    return count;
   }
 
   getProducts() {

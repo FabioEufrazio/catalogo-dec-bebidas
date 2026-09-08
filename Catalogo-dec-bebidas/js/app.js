@@ -9,14 +9,16 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'all', label: 'Todos', icon: 'fa-layer-group' },
     { id: 'whiskies', label: 'Whiskies', icon: 'fa-bottle-droplet' },
     { id: 'vodkas', label: 'Vodkas', icon: 'fa-glass-water' },
+    { id: 'cervejas', label: 'Cervejas', icon: 'fa-beer-mug-empty' },
+    { id: 'gins', label: 'Gins', icon: 'fa-glass-whiskey' },
+    { id: 'vinhos', label: 'Vinhos', icon: 'fa-wine-glass' },
+    { id: 'espumantes', label: 'Espumantes', icon: 'fa-champagne-glasses' },
+    { id: 'energeticos', label: 'Energéticos', icon: 'fa-bolt' },
+    { id: 'refrigerantes', label: 'Refrigerantes', icon: 'fa-bottle-pop' },
+    { id: 'aguadecoco', label: 'Água de Coco', icon: 'fa-bottle-water' },
+    { id: 'sucos', label: 'Sucos', icon: 'fa-glass-water-droplet' },
     { id: 'licores', label: 'Licores', icon: 'fa-wine-glass-empty' },
     { id: 'xaropes', label: 'Xaropes', icon: 'fa-prescription-bottle' },
-    { id: 'sucos', label: 'Sucos', icon: 'fa-glass-water-droplet' },
-    { id: 'aguadecoco', label: 'Água de Coco', icon: 'fa-bottle-water' },
-    { id: 'espumantes', label: 'Espumantes', icon: 'fa-champagne-glasses' },
-    { id: 'vinhos', label: 'Vinhos', icon: 'fa-wine-glass' },
-    { id: 'gins', label: 'Gins', icon: 'fa-glass-whiskey' },
-    { id: 'cervejas', label: 'Cervejas', icon: 'fa-beer-mug-empty' },
     { id: 'outros', label: 'Outros', icon: 'fa-boxes-stacked' }
   ];
 
@@ -917,6 +919,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const shareLinkBtn = document.getElementById('shareLinkBtn');
   const headerClientLinkBtn = document.getElementById('headerClientLinkBtn');
 
+  const autoCategorizeBtn = document.getElementById('autoCategorizeBtn');
+  if (autoCategorizeBtn) {
+    autoCategorizeBtn.addEventListener('click', () => {
+      const updatedCount = productStore.autoCategorizeAll(excelEngine);
+      if (updatedCount > 0) {
+        showToast(`🪄 ${updatedCount} bebidas organizadas em suas categorias com sucesso!`);
+      } else {
+        showToast('Todas as bebidas já estão em suas categorias corretas.');
+      }
+    });
+  }
+
   function openShareLinkModal() {
     const input = document.getElementById('clientLinkInput');
     const publicUrl = `${window.location.origin}${window.location.pathname}?view=public`;
@@ -1289,6 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 12. Initial Kickoff
   checkMode();
+  productStore.autoCategorizeAll(excelEngine);
   syncPriceModeUI();
   renderCategoryPills();
   renderProducts();
