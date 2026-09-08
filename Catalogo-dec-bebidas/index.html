@@ -493,9 +493,12 @@
             <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
           </div>
         </div>
-        <div class="modal-footer" style="justify-content: space-between;">
-          <button type="button" id="bypassLoginBtn" class="btn btn-sm" title="Entrar sem login no modo local">Modo Local (Offline)</button>
-          <button type="submit" id="submitLoginBtn" class="btn btn-primary">Entrar no Gestor <i class="fa-solid fa-right-to-bracket"></i></button>
+        <div class="modal-footer" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <button type="submit" id="submitLoginBtn" class="btn btn-primary" style="flex: 1;">Entrar <i class="fa-solid fa-right-to-bracket"></i></button>
+            <button type="button" id="signupBtn" class="btn btn-purple" style="flex: 1;"><i class="fa-solid fa-user-plus"></i> Criar Nova Conta</button>
+          </div>
+          <button type="button" id="bypassLoginBtn" class="btn btn-sm btn-outline" style="width: 100%; font-size: 0.78rem; text-align: center;" title="Entrar sem login no modo local">⚡ Modo Local (Entrar sem Firebase)</button>
         </div>
       </form>
     </div>

@@ -154,14 +154,62 @@ class RealtimeEngine {
     if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) {
       throw new Error("Por favor, insira e salve suas credenciais do Firebase primeiro no botão 🔥 (Firebase) no topo.");
     }
-    return firebase.auth().signInWithEmailAndPassword(email, password);
+    try {
+      return await firebase.auth().signInWithEmailAndPassword(email, password);
+    } catch (err) {
+      throw this.translateAuthError(err);
+    }
+  }
+
+  async signUp(email, password) {
+    if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) {
+      throw new Error("Por favor, insira e salve suas credenciais do Firebase primeiro no botão 🔥 (Firebase) no topo.");
+    }
+    try {
+      return await firebase.auth().createUserWithEmailAndPassword(email, password);
+    } catch (err) {
+      throw this.translateAuthError(err);
+    }
   }
 
   async sendPasswordReset(email) {
     if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) {
       throw new Error("Por favor, insira e salve suas credenciais do Firebase primeiro no botão 🔥 (Firebase) no topo.");
     }
-    return firebase.auth().sendPasswordResetEmail(email);
+    try {
+      return await firebase.auth().sendPasswordResetEmail(email);
+    } catch (err) {
+      throw this.translateAuthError(err);
+    }
+  }
+
+  translateAuthError(err) {
+    const code = err ? (err.code || '') : '';
+    const message = err ? (err.message || '') : '';
+    console.warn("Firebase Auth Error:", code, message);
+
+    switch (code) {
+      case 'auth/user-not-found':
+        return new Error("Nenhum usuário cadastrado com este e-mail. Clique no botão 'Criar Nova Conta' para registrar este gestor.");
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return new Error("Senha incorreta. Verifique se o Caps Lock está ligado ou clique em 'Esqueci minha senha'.");
+      case 'auth/invalid-email':
+        return new Error("O formato do e-mail digitado é inválido.");
+      case 'auth/user-disabled':
+        return new Error("Esta conta de gestor foi desativada no Firebase.");
+      case 'auth/operation-not-allowed':
+        return new Error("O login por E-mail/Senha não está ativado no Firebase Console. Vá em Authentication > Sign-in method e ative 'E-mail/Senha'.");
+      case 'auth/email-already-in-use':
+        return new Error("Este e-mail já está cadastrado no Firebase. Tente entrar com a sua senha ou clique em 'Esqueci minha senha'.");
+      case 'auth/weak-password':
+        return new Error("A senha escolhida é muito fraca. Digite pelo menos 6 caracteres.");
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid-please-pass-a-valid-api-key':
+        return new Error("A API Key do Firebase digitada no botão 🔥 é inválida. Cole a API Key correta do seu projeto.");
+      default:
+        return new Error(message || "Erro de conexão/autenticação no Firebase. Verifique seus dados ou use o Modo Local.");
+    }
   }
 
   async logout() {

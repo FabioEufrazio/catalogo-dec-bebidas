@@ -1033,11 +1033,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         await realtimeEngine.login(email, password);
-        showToast(`Bem-vindo, ${email}! Login efetuado.`);
+        showToast(`Bem-vindo, ${email}! Login efetuado com sucesso.`);
         closeModal('adminLoginModal');
       } catch (err) {
         if (errorMsgEl) {
-          errorMsgEl.textContent = 'Erro ao realizar login: ' + err.message;
+          errorMsgEl.textContent = err.message;
+          errorMsgEl.style.display = 'block';
+        }
+      }
+    });
+  }
+
+  const signupBtn = document.getElementById('signupBtn');
+  if (signupBtn) {
+    signupBtn.addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errorMsgEl = document.getElementById('loginErrorMessage');
+
+      if (errorMsgEl) errorMsgEl.style.display = 'none';
+
+      if (!email || !password) {
+        if (errorMsgEl) {
+          errorMsgEl.textContent = "Preencha o e-mail e a senha desejada para criar sua conta de gestor.";
+          errorMsgEl.style.display = 'block';
+        }
+        return;
+      }
+
+      try {
+        await realtimeEngine.signUp(email, password);
+        showToast(`Conta criada com sucesso! Bem-vindo, ${email}!`);
+        closeModal('adminLoginModal');
+      } catch (err) {
+        if (errorMsgEl) {
+          errorMsgEl.textContent = err.message;
           errorMsgEl.style.display = 'block';
         }
       }
@@ -1048,15 +1078,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (forgotPasswordBtn) {
     forgotPasswordBtn.addEventListener('click', async () => {
       const email = document.getElementById('loginEmail').value.trim();
+      const errorMsgEl = document.getElementById('loginErrorMessage');
       if (!email) {
-        alert("Digite o seu e-mail de Gestor no campo acima primeiro.");
+        if (errorMsgEl) {
+          errorMsgEl.textContent = "Digite o seu e-mail de Gestor no campo acima e clique novamente em 'Esqueci minha senha'.";
+          errorMsgEl.style.display = 'block';
+        }
         return;
       }
       try {
         await realtimeEngine.sendPasswordReset(email);
-        alert(`Um e-mail de redefinição de senha foi enviado para "${email}". Verifique sua caixa de entrada e spam.`);
+        alert(`Um e-mail de redefinição de senha foi enviado para "${email}". Verifique sua caixa de entrada e pasta de spam.`);
       } catch (err) {
-        alert("Erro ao solicitar redefinição: " + err.message);
+        if (errorMsgEl) {
+          errorMsgEl.textContent = err.message;
+          errorMsgEl.style.display = 'block';
+        }
       }
     });
   }
