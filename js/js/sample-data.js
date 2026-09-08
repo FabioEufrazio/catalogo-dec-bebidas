@@ -1,0 +1,222 @@
+/* ==========================================================================
+   Sample Initial Data for Beverage Catalog
+   ========================================================================== */
+
+const INITIAL_SAMPLE_PRODUCTS = [
+  {
+    id: "PROD_1725820000000_10001",
+    code: "89848",
+    description: "WHISKY AMER JACK DANIELS 1L-TENNESSE",
+    unitPrice: 154.98,
+    qtyPerBox: 12,
+    showBoxTotal: true,
+    category: "whiskies",
+    active: true,
+    manualPosition: 1,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10002",
+    code: "89849",
+    description: "WHISKY JOHNNIE WALKER BLACK LABEL 1L",
+    unitPrice: 169.90,
+    qtyPerBox: 12,
+    showBoxTotal: true,
+    category: "whiskies",
+    active: true,
+    manualPosition: 2,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10003",
+    code: "89850",
+    description: "WHISKY JOHNNIE WALKER RED LABEL 1L",
+    unitPrice: 89.90,
+    qtyPerBox: 12,
+    showBoxTotal: true,
+    category: "whiskies",
+    active: true,
+    manualPosition: 3,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10004",
+    code: "75420",
+    description: "VODKA ABSOLUT SWEDISH 1L",
+    unitPrice: 94.50,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "vodkas",
+    active: true,
+    manualPosition: 4,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10005",
+    code: "75421",
+    description: "VODKA SMIRNOFF 998ML TRIPLE DISTILLED",
+    unitPrice: 42.90,
+    qtyPerBox: 12,
+    showBoxTotal: true,
+    category: "vodkas",
+    active: true,
+    manualPosition: 5,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10006",
+    code: "62100",
+    description: "GIN TANQUERAY LONDON DRY 750ML",
+    unitPrice: 119.90,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "gins",
+    active: true,
+    manualPosition: 6,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10007",
+    code: "62101",
+    description: "GIN BOMBAY SAPPHIRE 750ML",
+    unitPrice: 124.90,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "gins",
+    active: true,
+    manualPosition: 7,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10008",
+    code: "41002",
+    description: "CERVEJA HEINEKEN 330ML LONG NECK CX 24",
+    unitPrice: 6.49,
+    qtyPerBox: 24,
+    showBoxTotal: true,
+    category: "cervejas",
+    active: true,
+    manualPosition: 8,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10009",
+    code: "41003",
+    description: "CERVEJA CORONA EXTRA 330ML CX 24",
+    unitPrice: 6.89,
+    qtyPerBox: 24,
+    showBoxTotal: true,
+    category: "cervejas",
+    active: true,
+    manualPosition: 9,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10010",
+    code: "33100",
+    description: "VINHO CHILENO CASILLERO DEL DIABLO CABERNET 750ML",
+    unitPrice: 49.90,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "vinhos",
+    active: true,
+    manualPosition: 10,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10011",
+    code: "33101",
+    description: "ESPUMANTE CHANDON RESERVE BRUT 750ML",
+    unitPrice: 99.90,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "espumantes",
+    active: true,
+    manualPosition: 11,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10012",
+    code: "22010",
+    description: "LICOR BAILEYS IRISH CREAM 750ML",
+    unitPrice: 114.90,
+    qtyPerBox: 12,
+    showBoxTotal: true,
+    category: "licores",
+    active: true,
+    manualPosition: 12,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10013",
+    code: "22011",
+    description: "LICOR AMARETTO DELL ORSO 700ML",
+    unitPrice: 59.90,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "licores",
+    active: true,
+    manualPosition: 13,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10014",
+    code: "11005",
+    description: "XAROPEMOIN CURACAO BLUE 700ML",
+    unitPrice: 68.00,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "xaropes",
+    active: true,
+    manualPosition: 14,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10015",
+    code: "11006",
+    description: "XAROPE MONIN MAÇÃ VERDE 700ML",
+    unitPrice: 68.00,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "xaropes",
+    active: true,
+    manualPosition: 15,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10016",
+    code: "90010",
+    description: "SUCO INTEGRAL DE UVA AURORA 1L",
+    unitPrice: 14.90,
+    qtyPerBox: 6,
+    showBoxTotal: true,
+    category: "sucos",
+    active: true,
+    manualPosition: 16,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10017",
+    code: "90020",
+    description: "ÁGUA DE COCO KERO COCO 1L CX 12",
+    unitPrice: 9.80,
+    qtyPerBox: 12,
+    showBoxTotal: true,
+    category: "aguadecoco",
+    active: true,
+    manualPosition: 17,
+    imageBase64: ""
+  },
+  {
+    id: "PROD_1725820000000_10018",
+    code: "55001",
+    description: "ENERGÉTICO RED BULL 250ML CX 24",
+    unitPrice: 8.50,
+    qtyPerBox: 24,
+    showBoxTotal: true,
+    category: "outros",
+    active: true,
+    manualPosition: 18,
+    imageBase64: ""
+  }
+];
