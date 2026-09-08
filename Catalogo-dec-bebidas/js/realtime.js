@@ -151,26 +151,26 @@ class RealtimeEngine {
   }
 
   async login(email, password) {
-    if (!typeof firebase !== 'undefined' || !firebase.auth) {
-      throw new Error("Firebase Auth não está inicializado.");
+    if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) {
+      throw new Error("Por favor, insira e salve suas credenciais do Firebase primeiro no botão 🔥 (Firebase) no topo.");
     }
     return firebase.auth().signInWithEmailAndPassword(email, password);
   }
 
   async sendPasswordReset(email) {
-    if (!typeof firebase !== 'undefined' || !firebase.auth) {
-      throw new Error("Firebase Auth não está inicializado.");
+    if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) {
+      throw new Error("Por favor, insira e salve suas credenciais do Firebase primeiro no botão 🔥 (Firebase) no topo.");
     }
     return firebase.auth().sendPasswordResetEmail(email);
   }
 
   async logout() {
-    if (!typeof firebase !== 'undefined' || !firebase.auth) return;
+    if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) return;
     return firebase.auth().signOut();
   }
 
   onAuthStateChanged(callback) {
-    if (typeof firebase !== 'undefined' && firebase.auth) {
+    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 && firebase.auth) {
       return firebase.auth().onAuthStateChanged(callback);
     }
     return () => {};
