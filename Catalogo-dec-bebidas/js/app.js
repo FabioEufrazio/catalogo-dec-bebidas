@@ -237,9 +237,9 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="product-card-admin-bar admin-only-ui">
         <div class="product-checkbox-wrapper">
           <input type="checkbox" class="product-checkbox" ${selectedProductIds.has(p.id) ? 'checked' : ''}>
-          <div class="pos-badge-wrapper">
+          <div class="pos-badge-wrapper" title="Clique para digitar a nova posição (ex: 1, 5, 372)">
             <span>POS:</span>
-            <input type="number" class="pos-badge-input" value="${p.manualPosition}" min="1">
+            <input type="number" class="pos-badge-input" value="${p.manualPosition}" min="1" title="Digite a nova posição no catálogo">
           </div>
         </div>
         <div class="product-actions-bar">
@@ -310,9 +310,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 2. POS Input Change
+    // 2. POS Badge & Input Change
+    const posWrapper = card.querySelector('.pos-badge-wrapper');
     const posInput = card.querySelector('.pos-badge-input');
-    if (posInput) {
+
+    if (posWrapper && posInput) {
+      posWrapper.addEventListener('click', (e) => {
+        e.stopPropagation();
+        posInput.focus();
+        posInput.select();
+      });
+
       posInput.addEventListener('click', (e) => {
         e.stopPropagation();
       });

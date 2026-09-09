@@ -454,7 +454,7 @@ body {
 .product-checkbox-wrapper {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .product-checkbox {
@@ -467,31 +467,51 @@ body {
 .pos-badge-wrapper {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.75rem;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.pos-badge-wrapper:hover {
+  color: var(--accent-gold);
+}
+
+/* Hide Chrome, Safari, Edge, Opera spin buttons */
+.pos-badge-input::-webkit-outer-spin-button,
+.pos-badge-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .pos-badge-input {
-  width: 52px;
-  padding: 2px 4px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
+  -moz-appearance: textfield;
+  min-width: 64px;
+  width: 68px;
+  padding: 3px 6px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid var(--accent-gold);
   border-radius: var(--radius-sm);
   color: var(--accent-gold);
   font-weight: 700;
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   outline: none;
   cursor: text;
   position: relative;
   z-index: 5;
+  transition: all var(--transition-fast);
 }
 
+.pos-badge-input:hover,
 .pos-badge-input:focus {
   border-color: var(--accent-gold);
-  background: rgba(245, 158, 11, 0.15);
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.4);
 }
 
 .product-actions-bar {
