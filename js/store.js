@@ -114,6 +114,9 @@ class ProductStore {
     // Synchronize manualPosition property with array index sequence 1..N
     this.products.forEach((p, idx) => {
       p.manualPosition = idx + 1;
+      p.promoActive = !!p.promoActive;
+      p.promoPrice = parseFloat(p.promoPrice) || 0;
+      p.promoExpiry = String(p.promoExpiry || '');
     });
   }
 

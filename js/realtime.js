@@ -135,25 +135,45 @@ class RealtimeEngine {
     }, err => console.warn("Firestore catalog listen error:", err));
   }
 
+  sanitizeProductForCloud(p) {
+    return {
+      id: String(p.id || ''),
+      code: String(p.code || ''),
+      description: String(p.description || ''),
+      unitPrice: parseFloat(p.unitPrice) || 0,
+      qtyPerBox: parseInt(p.qtyPerBox) || 1,
+      showBoxTotal: p.showBoxTotal !== false,
+      category: String(p.category || 'outros'),
+      active: p.active !== false,
+      manualPosition: parseInt(p.manualPosition) || 1,
+      imageBase64: String(p.imageBase64 || ''),
+      promoActive: !!p.promoActive,
+      promoPrice: parseFloat(p.promoPrice) || 0,
+      promoExpiry: String(p.promoExpiry || '')
+    };
+  }
+
   async syncToCloud(products, hidePrices) {
     if (!this.db || !this.firebaseActive) return;
 
-    // Debounce cloud sync by 500ms to avoid unnecessary network requests
+    // Debounce cloud sync by 400ms to avoid unnecessary network requests
     if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
 
     this.cloudSyncTimeout = setTimeout(async () => {
       try {
+        const cleanProducts = (products || []).map(p => this.sanitizeProductForCloud(p));
         const payload = {
           hidePrices: !!hidePrices,
-          products: products || [],
+          products: cleanProducts,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
         await this.db.collection('catalogs').doc('active').set(payload);
+        console.log("Firestore cloud sync succeeded:", cleanProducts.length, "products synced.");
       } catch (e) {
         console.error("Cloud sync error:", e);
       }
-    }, 500);
+    }, 400);
   }
 
   async login(email, password) {
