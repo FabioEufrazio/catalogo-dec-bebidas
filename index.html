@@ -70,7 +70,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=4.2">
+  <link rel="stylesheet" href="css/styles.css?v=4.3">
 </head>
 <body>
 
@@ -174,6 +174,29 @@
         0 Ofertas Ativas
       </div>
     </div>
+
+    <!-- Laminas de Ofertas Section (Exibido na Aba de Ofertas) -->
+    <section id="laminasSection" class="laminas-section" style="display: none;">
+      <!-- Gestor Toolbar for Laminas (Admin Only) -->
+      <div class="laminas-admin-bar admin-only-ui" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; background: rgba(245, 158, 11, 0.06); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: var(--radius-lg); padding: 14px 18px;">
+        <div>
+          <h4 style="color: var(--accent-gold); font-size: 1.05rem; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <i class="fa-solid fa-newspaper"></i> Encartes e Lâminas de Ofertas
+          </h4>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
+            Suba as imagens prontas dos encartes para que seus clientes vejam todas as ofertas diretamente.
+          </p>
+        </div>
+        <button type="button" id="addNewLaminaBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #ef4444, #f97316); border: none; font-weight: 700; padding: 9px 18px;">
+          <i class="fa-solid fa-plus"></i> Adicionar Nova Lâmina / Encarte
+        </button>
+      </div>
+
+      <!-- Laminas Grid -->
+      <div id="laminasGrid" class="laminas-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
 
     <div id="productsGrid" class="products-grid">
       <!-- Products rendered dynamically -->
@@ -821,15 +844,87 @@
     </div>
   </div>
 
+  <!-- MODAL: Visualizador de Lâmina em Tela Cheia com Zoom -->
+  <div id="laminaViewerModal" class="modal-overlay lamina-viewer-overlay">
+    <div class="lamina-viewer-card">
+      <div class="lamina-viewer-header">
+        <div class="lamina-viewer-info">
+          <h3 id="viewerLaminaTitle" class="modal-title">Encarte de Ofertas</h3>
+          <span id="viewerLaminaValidity" class="lamina-validity-tag"></span>
+        </div>
+        <div class="lamina-viewer-actions">
+          <button type="button" id="viewerZoomInBtn" class="btn btn-sm btn-icon" title="Aumentar Zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+          <button type="button" id="viewerZoomResetBtn" class="btn btn-sm btn-icon" title="Redefinir Zoom"><i class="fa-solid fa-compress"></i></button>
+          <a id="viewerOrderWhatsAppBtn" class="btn btn-sm btn-success" style="background: #25d366; color: #fff; border:none; font-weight:700; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" target="_blank" rel="noopener noreferrer">
+            <i class="fa-brands fa-whatsapp"></i> Fazer Pedido
+          </a>
+          <button class="modal-close-btn" data-close-modal="laminaViewerModal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+      <div class="lamina-viewer-body" id="laminaViewerBody">
+        <div class="lamina-zoom-container" id="laminaZoomContainer">
+          <img id="viewerLaminaImg" src="" alt="Lâmina de Ofertas" class="viewer-lamina-img">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Adicionar Nova Lâmina / Encarte -->
+  <div id="addLaminaModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-file-image" style="color: var(--accent-gold);"></i> Adicionar Lâmina de Ofertas</h3>
+        <button class="modal-close-btn" data-close-modal="addLaminaModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="addLaminaForm">
+        <div class="modal-body">
+          <div style="margin-bottom: 14px;">
+            <label class="form-label" for="laminaTitleInput">Título ou Marca do Encarte *</label>
+            <input type="text" id="laminaTitleInput" class="form-control" placeholder="Ex: Ofertas Diageo, Encarte Baly, etc." required>
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label class="form-label" for="laminaValidityInput">Período de Validade (Opcional)</label>
+            <input type="text" id="laminaValidityInput" class="form-control" placeholder="Ex: 01/09/2026 a 12/09/2026">
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label class="form-label" for="laminaDescInput">Descrição Resumida (Opcional)</label>
+            <input type="text" id="laminaDescInput" class="form-control" placeholder="Ex: Whiskies, Vodkas, Gin e Energéticos">
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label class="form-label">Imagem da Lâmina / Encarte *</label>
+            <div class="image-upload-box" id="laminaUploadDropzone" style="min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center; cursor: pointer; background: rgba(10, 12, 18, 0.4);">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--accent-gold); margin-bottom: 8px;"></i>
+              <span style="font-size: 0.85rem; font-weight: 600;">Clique ou arraste a imagem do encarte</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">PNG, JPG ou WEBP de alta resolução</span>
+              <input type="file" id="laminaFileInput" accept="image/*" style="display: none;">
+            </div>
+            <div id="laminaFilePreviewContainer" style="display: none; margin-top: 10px; text-align: center;">
+              <img id="laminaPreviewImg" src="" style="max-height: 180px; max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border-color);" alt="Prévia">
+              <div>
+                <button type="button" id="removeLaminaPreviewBtn" class="btn btn-sm btn-outline" style="margin-top: 6px; font-size: 0.75rem;">
+                  <i class="fa-solid fa-trash"></i> Trocar Imagem
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn" data-close-modal="addLaminaModal">Cancelar</button>
+          <button type="submit" id="submitAddLaminaBtn" class="btn btn-primary">Salvar Lâmina <i class="fa-solid fa-check"></i></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast Notifications Container -->
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/sample-data.js?v=4.0"></script>
-  <script src="js/store.js?v=4.0"></script>
-  <script src="js/realtime.js?v=4.0"></script>
-  <script src="js/excel.js?v=4.0"></script>
-  <script src="js/image-utils.js?v=4.0"></script>
-  <script src="js/app.js?v=4.0"></script>
+  <script src="js/sample-data.js?v=4.3"></script>
+  <script src="js/store.js?v=4.3"></script>
+  <script src="js/realtime.js?v=4.3"></script>
+  <script src="js/excel.js?v=4.3"></script>
+  <script src="js/image-utils.js?v=4.3"></script>
+  <script src="js/app.js?v=4.3"></script>
 </body>
 </html>

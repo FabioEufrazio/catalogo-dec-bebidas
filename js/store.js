@@ -6,8 +6,30 @@
 const STORAGE_KEYS = {
   PRODUCTS: 'catalog_products_v1',
   HIDE_PRICES: 'catalog_hide_prices',
-  FIREBASE_CONFIG: 'catalog_firebase_config'
+  FIREBASE_CONFIG: 'catalog_firebase_config',
+  LAMINAS: 'catalog_laminas_v1'
 };
+
+const DEFAULT_LAMINAS = [
+  {
+    id: "LAM_DIAGEO_01",
+    title: "Ofertas Exclusivas Diageo",
+    imageUrl: "assets/laminas/diageo-ofertas.jpg",
+    validity: "01/09/2026 a 12/09/2026",
+    description: "Smirnoff Ice, Ypióca, Cîroc, Gordon's e Smirnoff Vodka",
+    active: true,
+    createdAt: "2026-09-01T00:00:00.000Z"
+  },
+  {
+    id: "LAM_BALY_02",
+    title: "Encarte Promocional Baly",
+    imageUrl: "assets/laminas/baly-ofertas.jpg",
+    validity: "01/09/2026 a 12/09/2026",
+    description: "Baly Energy Drink 2L, 1L, Lata 473ml e 250ml",
+    active: true,
+    createdAt: "2026-09-01T00:00:00.000Z"
+  }
+];
 
 class HistoryStore {
   constructor(maxSize = 40) {
@@ -58,7 +80,7 @@ class HistoryStore {
     if (!this.canRedo()) return null;
     const nextState = this.redoStack.pop();
     if (currentState) {
-      this.undoStack.push({
+      this.redoStack.push({
         products: JSON.parse(JSON.stringify(currentState.products || [])),
         hidePrices: Boolean(currentState.hidePrices)
       });
@@ -77,6 +99,7 @@ const historyStore = new HistoryStore(40);
 class ProductStore {
   constructor() {
     this.products = [];
+    this.laminas = [];
     this.hidePrices = false;
     this.listeners = new Set();
     this.init();
@@ -86,6 +109,9 @@ class ProductStore {
     // Load Hide Prices
     const savedHide = localStorage.getItem(STORAGE_KEYS.HIDE_PRICES);
     this.hidePrices = savedHide === 'true';
+
+    // Load Laminas de Ofertas
+    this.loadLaminas();
 
     // Load Products
     const urlParams = new URLSearchParams(window.location.search);
@@ -484,6 +510,45 @@ class ProductStore {
       return true;
     }
     return false;
+  }
+
+  loadLaminas() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.LAMINAS);
+      if (raw) {
+        this.laminas = JSON.parse(raw);
+      } else {
+        this.laminas = JSON.parse(JSON.stringify(DEFAULT_LAMINAS));
+        this.saveLaminas();
+      }
+    } catch (e) {
+      this.laminas = JSON.parse(JSON.stringify(DEFAULT_LAMINAS));
+    }
+  }
+
+  getLaminas() {
+    return Array.isArray(this.laminas) ? this.laminas : [];
+  }
+
+  saveLaminas() {
+    try {
+      localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(this.laminas));
+    } catch (e) {
+      console.warn("Erro ao salvar laminas:", e);
+    }
+    this.notify('laminas_updated');
+  }
+
+  addLamina(lamina) {
+    if (!this.laminas) this.laminas = [];
+    this.laminas.unshift(lamina);
+    this.saveLaminas();
+  }
+
+  deleteLamina(id) {
+    if (!this.laminas) return;
+    this.laminas = this.laminas.filter(l => l.id !== id);
+    this.saveLaminas();
   }
 }
 

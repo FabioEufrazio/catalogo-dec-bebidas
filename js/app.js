@@ -338,6 +338,243 @@ document.addEventListener('DOMContentLoaded', () => {
     return (category || 'OUTROS').toUpperCase();
   }
 
+  // 4.5. Lâminas e Encartes de Ofertas Controller
+  let viewerIsZoomed = false;
+
+  function renderLaminas() {
+    const laminasGrid = document.getElementById('laminasGrid');
+    if (!laminasGrid) return;
+
+    const laminas = productStore.getLaminas();
+    if (laminas.length === 0) {
+      laminasGrid.innerHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1; padding: 40px 20px;">
+          <i class="fa-solid fa-newspaper" style="color: var(--accent-gold); font-size: 2.5rem; margin-bottom: 12px;"></i>
+          <h3>Nenhum encarte de ofertas cadastrado</h3>
+          <p>Novos encartes e lâminas de promoções aparecerão aqui com destaque.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const isGestor = !isClientMode && (localStorage.getItem('catalog_gestor_logged') === 'true');
+    const fragment = document.createDocumentFragment();
+
+    laminas.forEach(lamina => {
+      const card = document.createElement('article');
+      card.className = 'lamina-card';
+      card.dataset.id = lamina.id;
+
+      const whatsAppMsg = encodeURIComponent(`Olá! Gostaria de fazer um pedido com base nas ofertas do encarte "${lamina.title}".`);
+      const whatsAppLink = `https://wa.me/5581999999999?text=${whatsAppMsg}`;
+
+      card.innerHTML = `
+        <div class="lamina-img-container" title="Clique para abrir em tela cheia com zoom">
+          <img src="${lamina.imageUrl}" alt="${lamina.title}" class="lamina-img" loading="lazy">
+          <div class="lamina-zoom-badge">
+            <i class="fa-solid fa-magnifying-glass-plus"></i> Toque para Zoom
+          </div>
+        </div>
+        <div class="lamina-card-body">
+          <div class="lamina-card-header">
+            <h3 class="lamina-card-title">${lamina.title}</h3>
+            ${lamina.validity ? `<span class="lamina-validity-badge"><i class="fa-regular fa-clock"></i> ${lamina.validity}</span>` : ''}
+          </div>
+          ${lamina.description ? `<p class="lamina-card-desc">${lamina.description}</p>` : ''}
+          <div class="lamina-card-actions">
+            <button type="button" class="btn btn-primary btn-sm lamina-btn-zoom">
+              <i class="fa-solid fa-expand"></i> Ver Encarte Completo
+            </button>
+            <a href="${whatsAppLink}" target="_blank" rel="noopener noreferrer" class="lamina-btn-whatsapp" title="Fazer Pedido no WhatsApp">
+              <i class="fa-brands fa-whatsapp"></i> Fazer Pedido
+            </a>
+            ${isGestor ? `
+              <button type="button" class="btn btn-danger btn-sm lamina-btn-delete" title="Excluir Encarte">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      const openViewer = () => openLaminaViewer(lamina);
+      card.querySelector('.lamina-img-container').addEventListener('click', openViewer);
+      card.querySelector('.lamina-btn-zoom').addEventListener('click', openViewer);
+
+      const deleteBtn = card.querySelector('.lamina-btn-delete');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm(`Tem certeza que deseja excluir o encarte "${lamina.title}"?`)) {
+            productStore.deleteLamina(lamina.id);
+            renderLaminas();
+            showToast('Encarte excluído com sucesso.', 'info');
+          }
+        });
+      }
+
+      fragment.appendChild(card);
+    });
+
+    laminasGrid.replaceChildren(fragment);
+  }
+
+  function openLaminaViewer(lamina) {
+    const modal = document.getElementById('laminaViewerModal');
+    const titleEl = document.getElementById('viewerLaminaTitle');
+    const validityEl = document.getElementById('viewerLaminaValidity');
+    const imgEl = document.getElementById('viewerLaminaImg');
+    const whatsAppBtn = document.getElementById('viewerOrderWhatsAppBtn');
+    const zoomInBtn = document.getElementById('viewerZoomInBtn');
+
+    if (!modal || !imgEl) return;
+
+    if (titleEl) titleEl.textContent = lamina.title || 'Encarte de Ofertas';
+    if (validityEl) {
+      validityEl.textContent = lamina.validity ? `Validade: ${lamina.validity}` : '';
+      validityEl.style.display = lamina.validity ? 'inline-block' : 'none';
+    }
+    imgEl.src = lamina.imageUrl;
+    imgEl.classList.remove('is-zoomed');
+    viewerIsZoomed = false;
+    if (zoomInBtn) zoomInBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+
+    if (whatsAppBtn) {
+      const msg = encodeURIComponent(`Olá! Gostaria de fazer um pedido com base nas ofertas do encarte "${lamina.title}".`);
+      whatsAppBtn.href = `https://wa.me/5581999999999?text=${msg}`;
+    }
+
+    modal.classList.add('is-open');
+  }
+
+  function setupLaminaViewerEvents() {
+    const imgEl = document.getElementById('viewerLaminaImg');
+    const zoomInBtn = document.getElementById('viewerZoomInBtn');
+    const zoomResetBtn = document.getElementById('viewerZoomResetBtn');
+
+    const toggleZoom = () => {
+      if (!imgEl) return;
+      viewerIsZoomed = !viewerIsZoomed;
+      imgEl.classList.toggle('is-zoomed', viewerIsZoomed);
+      if (zoomInBtn) {
+        zoomInBtn.innerHTML = viewerIsZoomed 
+          ? '<i class="fa-solid fa-magnifying-glass-minus"></i>' 
+          : '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+      }
+    };
+
+    if (imgEl) imgEl.addEventListener('click', toggleZoom);
+    if (zoomInBtn) zoomInBtn.addEventListener('click', toggleZoom);
+    if (zoomResetBtn) {
+      zoomResetBtn.addEventListener('click', () => {
+        if (!imgEl) return;
+        viewerIsZoomed = false;
+        imgEl.classList.remove('is-zoomed');
+        if (zoomInBtn) zoomInBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+      });
+    }
+  }
+
+  let newLaminaBase64 = '';
+
+  function setupAddLaminaModalEvents() {
+    const addBtn = document.getElementById('addNewLaminaBtn');
+    const modal = document.getElementById('addLaminaModal');
+    const form = document.getElementById('addLaminaForm');
+    const dropzone = document.getElementById('laminaUploadDropzone');
+    const fileInput = document.getElementById('laminaFileInput');
+    const previewContainer = document.getElementById('laminaFilePreviewContainer');
+    const previewImg = document.getElementById('laminaPreviewImg');
+    const removePreviewBtn = document.getElementById('removeLaminaPreviewBtn');
+
+    if (addBtn && modal) {
+      addBtn.addEventListener('click', () => {
+        if (form) form.reset();
+        newLaminaBase64 = '';
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (dropzone) dropzone.style.display = 'flex';
+        modal.classList.add('is-open');
+      });
+    }
+
+    const handleFile = (file) => {
+      if (!file || !file.type.startsWith('image/')) {
+        showToast('Por favor, selecione um arquivo de imagem válido.', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newLaminaBase64 = e.target.result;
+        if (previewImg) previewImg.src = newLaminaBase64;
+        if (previewContainer) previewContainer.style.display = 'block';
+        if (dropzone) dropzone.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    };
+
+    if (dropzone && fileInput) {
+      dropzone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleFile(e.target.files[0]);
+        }
+      });
+
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'var(--accent-gold)';
+      });
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.style.borderColor = 'var(--border-color)';
+      });
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'var(--border-color)';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    if (removePreviewBtn) {
+      removePreviewBtn.addEventListener('click', () => {
+        newLaminaBase64 = '';
+        if (fileInput) fileInput.value = '';
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (dropzone) dropzone.style.display = 'flex';
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!newLaminaBase64) {
+          showToast('Por favor, selecione ou arraste a imagem do encarte.', 'error');
+          return;
+        }
+
+        const title = document.getElementById('laminaTitleInput').value.trim();
+        const validity = document.getElementById('laminaValidityInput').value.trim();
+        const description = document.getElementById('laminaDescInput').value.trim();
+
+        const newLamina = {
+          id: 'LAM_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          title: title,
+          imageUrl: newLaminaBase64,
+          validity: validity,
+          description: description,
+          active: true,
+          createdAt: new Date().toISOString()
+        };
+
+        productStore.addLamina(newLamina);
+        modal.classList.remove('is-open');
+        renderLaminas();
+        showToast('Novo encarte de ofertas adicionado com sucesso!', 'success');
+      });
+    }
+  }
+
   // 5. Render Product Grid & Pagination
   function renderProducts() {
     const grid = document.getElementById('productsGrid');
@@ -370,141 +607,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // Products on sale stay in their original position without messing up catalog sequence.
     products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
 
-    // When inside the dedicated "Ofertas" tab:
-    // Group similar products by description/family side-by-side so identical brands stay together!
     const ofertasBanner = document.getElementById('ofertasBanner');
     const ofertasBannerCount = document.getElementById('ofertasBannerCount');
+    const laminasSection = document.getElementById('laminasSection');
+    const paginationContainer = document.getElementById('paginationContainer');
 
+    // When inside the dedicated "Ofertas" tab:
+    // Display the Laminas / Encartes de Ofertas gallery!
     if (currentCategory === 'ofertas') {
-      grid.classList.add('ofertas-active-view');
+      grid.style.display = 'none';
+      if (paginationContainer) paginationContainer.style.display = 'none';
+      if (laminasSection) {
+        laminasSection.style.display = 'block';
+        renderLaminas();
+      }
       if (ofertasBanner) {
         ofertasBanner.style.display = 'flex';
+        const count = productStore.getLaminas().length;
         if (ofertasBannerCount) {
-          ofertasBannerCount.innerHTML = `<i class="fa-solid fa-fire"></i> ${products.length} ${products.length === 1 ? 'Oferta Ativa' : 'Ofertas Ativas'}`;
+          ofertasBannerCount.innerHTML = `<i class="fa-solid fa-fire"></i> ${count} ${count === 1 ? 'Encarte Ativo' : 'Encartes Ativos'}`;
         }
       }
 
-      // Organização solicitada na aba de Ofertas:
-      // Organização solicitada na aba de Ofertas:
-      // Critério 1: Categoria (todos os produtos da mesma categoria ficam rigorosamente agrupados)
-      // Critério 2: Linha / Marca / Família (itens da mesma marca/linha ficam colados lado a lado)
-      // Critério 3: Litragem / Volume (o produto com maior litragem vem na frente: ex. 1L > 750ml > 500ml)
-      // Desempate: Código (SKU)
-      const CATEGORY_SORT_ORDER = [
-        'whiskies',
-        'vodkas',
-        'cervejas',
-        'gins',
-        'vinhos',
-        'espumantes',
-        'energeticos',
-        'refrigerantes',
-        'aguadecoco',
-        'sucos',
-        'licores',
-        'xaropes',
-        'outros'
-      ];
-
-      function getCategorySortIndex(cat) {
-        const norm = String(cat || '').toLowerCase().trim();
-        const idx = CATEGORY_SORT_ORDER.indexOf(norm);
-        return idx === -1 ? 999 : idx;
+      // Update Header Total Badge
+      const headerBadge = document.getElementById('headerTotalBadge');
+      if (headerBadge) {
+        const count = productStore.getLaminas().length;
+        headerBadge.textContent = `${count} ${count === 1 ? 'encarte' : 'encartes'}`;
       }
-
-      function extractVolumeMl(description) {
-        if (!description) return 0;
-        const text = String(description).toUpperCase();
-        // 1. Litros (ex: 1,750L, 1.750L, 1,75L, 1.75L, 2L, 1.5L, 1L, 1LT, 2LTS)
-        const literMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:L|LT|LTS|LITRO|LITROS)\b/);
-        if (literMatch) {
-          let numStr = literMatch[1].replace(',', '.');
-          const val = parseFloat(numStr);
-          if (!isNaN(val) && val > 0) {
-            return Math.round(val * 1000);
-          }
-        }
-        // 2. Mililitros (ex: 1,750ML, 1.750ML, 1750ML, 1000ML, 998ML, 750ML, 500ML, 473ML, 355ML, 269ML)
-        const mlMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:ML)\b/);
-        if (mlMatch) {
-          let numStr = mlMatch[1];
-          if (numStr.includes('.') || numStr.includes(',')) {
-            numStr = numStr.replace(/[,.]/g, '');
-          }
-          const val = parseInt(numStr, 10);
-          if (!isNaN(val) && val > 0) return val;
-        }
-        return 0;
-      }
-
-      function getBaseDescription(desc) {
-        let text = String(desc || '').toUpperCase().trim();
-        // Normaliza variações de prefixo
-        text = text.replace(/^ICE\s+SMIRNOFF\b/i, 'SMIRNOFF ICE');
-        text = text.replace(/^51\s+ICE\b/i, 'ICE 51');
-        text = text.replace(/^WHIK\b/i, 'WHISKY');
-        text = text.replace(/^WHISKEY\b/i, 'WHISKY');
-
-        // Remove menção a idade / anos (ex: 8A, 12A, 15A, 18A, 8 ANOS, 12 ANOS) para que Red Label 8A agrupe com Red Label 1L e 750ML
-        text = text.replace(/\b\d+\s*A(?:NOS)?\b/gi, ' ');
-
-        // Remove menções de tamanho e volume para isolar a linha do produto
-        text = text.replace(/\b\d+(?:[.,]\d+)?\s*(?:ML|L|LT|LTS|LITRO|LITROS)\b/gi, ' ');
-
-        // Remove menções de tipo de embalagem (GF, GARRAFA, LT, LATA, LATAO, PET, LN, LONG NECK)
-        text = text.replace(/\b(GF|GARRAFA|LT|LATA|LAT[ÃA]O|PET|LN|LONG NECK|PACK|FARDO|CX|CAIXA)\b/gi, ' ');
-
-        // Remove traços e pontuações soltas
-        text = text.replace(/[-_]/g, ' ');
-
-        return text.replace(/\s+/g, ' ').trim();
-      }
-
-      function compareProductsForOfertas(a, b) {
-        // 1. CRITÉRIO NÚMERO 1: Categoria (Whiskies, Vodkas, Cervejas, Gins, etc.)
-        const catA = String(a.category || '').toLowerCase().trim();
-        const catB = String(b.category || '').toLowerCase().trim();
-        if (catA !== catB) {
-          const idxA = getCategorySortIndex(catA);
-          const idxB = getCategorySortIndex(catB);
-          if (idxA !== idxB) {
-            return idxA - idxB;
-          }
-          const catComp = catA.localeCompare(catB, 'pt-BR');
-          if (catComp !== 0) return catComp;
-        }
-
-        // 2. CRITÉRIO NÚMERO 2: Base da Descrição (Linha / Marca / Família)
-        // Garante que variações da mesma marca/linha fiquem estritamente juntas (ex: todos os Red Label juntos, todos os Smirnoff Ice juntos, etc.)
-        const baseA = getBaseDescription(a.description);
-        const baseB = getBaseDescription(b.description);
-        const baseComp = baseA.localeCompare(baseB, 'pt-BR', { sensitivity: 'base' });
-        if (baseComp !== 0) return baseComp;
-
-        // 3. CRITÉRIO NÚMERO 3: Litragem / Volume (Maior volume vem sempre na frente dentro da mesma linha: 1,750L > 1L > 750ml > 500ml)
-        const volA = extractVolumeMl(a.description);
-        const volB = extractVolumeMl(b.description);
-        if (volA !== volB) {
-          return volB - volA; // Ordem decrescente de volume
-        }
-
-        // 4. Desempate por descrição completa (ex: Smirnoff Ice Maçã Verde ao lado de Raspberry)
-        const descComp = String(a.description || '').localeCompare(String(b.description || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
-        if (descComp !== 0) return descComp;
-
-        // 5. Desempate final (mesma descrição exata e mesmo volume): Código (SKU)
-        const codeA = String(a.code || '').trim();
-        const codeB = String(b.code || '').trim();
-        const numA = parseInt(codeA, 10);
-        const numB = parseInt(codeB, 10);
-        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
-          return numA - numB;
-        }
-        return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
-      }
-
-      products.sort(compareProductsForOfertas);
+      return;
     } else {
+      grid.style.display = '';
+      if (paginationContainer) paginationContainer.style.display = '';
+      if (laminasSection) laminasSection.style.display = 'none';
       grid.classList.remove('ofertas-active-view');
       if (ofertasBanner) ofertasBanner.style.display = 'none';
     }
@@ -2686,6 +2821,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // 12. Initial Kickoff
+  setupLaminaViewerEvents();
+  setupAddLaminaModalEvents();
   checkMode();
   syncPriceModeUI();
   renderCategoryPills();
