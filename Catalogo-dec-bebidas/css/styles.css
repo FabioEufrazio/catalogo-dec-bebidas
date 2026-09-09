@@ -1401,7 +1401,8 @@ body {
     padding-right: 16px;
   }
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
   }
   .form-grid {
     grid-template-columns: 1fr;
@@ -1425,9 +1426,83 @@ body {
   }
 }
 
-@media (max-width: 480px) {
+/* Mobile Devices (Smartphones): Grade compacta de 2 colunas para caber muito mais itens na tela */
+@media (max-width: 640px) {
+  .search-container,
+  .main-container,
+  .categories-wrapper {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .product-card {
+    border-radius: var(--radius-md);
+  }
+  .product-image-container {
+    height: 125px;
+  }
+  .product-img {
+    padding: 6px;
+  }
+  .product-card-body {
+    padding: 8px;
+    gap: 6px;
+  }
+  .product-title {
+    font-size: 0.78rem;
+    line-height: 1.25;
+    height: 2.5em;
+  }
+  .price-details-box {
+    padding: 6px 8px;
+    gap: 2px;
+  }
+  .price-label {
+    font-size: 0.65rem;
+  }
+  .price-unit-val {
+    font-size: 1.05rem;
+  }
+  .price-box-row {
+    font-size: 0.65rem;
+    padding-top: 3px;
+  }
+  .product-corner-badges {
+    top: 5px;
+    left: 5px;
+    gap: 3px;
+  }
+  .category-tag,
+  .promo-badge-tag {
+    font-size: 0.62rem;
+    padding: 2px 5px;
+  }
+  .sku-code-tag {
+    font-size: 0.6rem;
+    padding: 2px 4px;
+    bottom: 5px;
+    right: 5px;
+  }
+  .product-card-admin-bar {
+    padding: 4px 6px;
+  }
   .pos-badge-wrapper span {
     display: none;
+  }
+  .pos-badge-input {
+    width: 32px;
+    min-width: 28px;
+    height: 24px;
+    font-size: 0.72rem;
+    padding: 0 2px;
+  }
+  .icon-action-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 0.75rem;
   }
 }
 
