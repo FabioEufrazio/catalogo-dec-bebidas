@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  let newLaminaBase64 = '';
+  let pendingLaminas = [];
 
   function setupAddLaminaModalEvents() {
     const addBtn = document.getElementById('addNewLaminaBtn');
@@ -472,17 +472,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropzone = document.getElementById('laminaUploadDropzone');
     const fileInput = document.getElementById('laminaFileInput');
     const previewContainer = document.getElementById('laminaFilePreviewContainer');
-    const previewImg = document.getElementById('laminaPreviewImg');
+    const previewGrid = document.getElementById('laminaPreviewGrid');
+    const countBadge = document.getElementById('laminaPreviewCountBadge');
     const removePreviewBtn = document.getElementById('removeLaminaPreviewBtn');
+    const addMoreBtn = document.getElementById('addMoreLaminasBtn');
+
+    function updatePreviewsUI() {
+      if (!previewContainer || !previewGrid) return;
+
+      if (pendingLaminas.length === 0) {
+        previewContainer.style.display = 'none';
+        if (dropzone) dropzone.style.display = 'flex';
+        return;
+      }
+
+      previewContainer.style.display = 'block';
+      if (countBadge) {
+        countBadge.innerHTML = `<i class="fa-solid fa-images"></i> ${pendingLaminas.length} ${pendingLaminas.length === 1 ? 'lâmina selecionada' : 'lâminas selecionadas'}`;
+      }
+
+      previewGrid.innerHTML = pendingLaminas.map((item, idx) => `
+        <div style="position: relative; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-color); background: #0b0d13;">
+          <img src="${item.base64}" alt="Lâmina ${idx+1}" style="width: 100%; height: 110px; object-fit: contain; background: #05070a; display: block;">
+          <button type="button" class="remove-single-lamina-btn" data-index="${idx}" style="position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(239,68,68,0.92); color: #fff; border: none; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);" title="Remover esta lâmina">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <span style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.75); color: var(--accent-gold); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 800;">
+            #${idx + 1}
+          </span>
+        </div>
+      `).join('');
+
+      previewGrid.querySelectorAll('.remove-single-lamina-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const index = parseInt(btn.dataset.index);
+          if (!isNaN(index) && index >= 0 && index < pendingLaminas.length) {
+            pendingLaminas.splice(index, 1);
+            updatePreviewsUI();
+          }
+        });
+      });
+    }
 
     if (addBtn && modal) {
       addBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (form) form.reset();
-        newLaminaBase64 = '';
-        if (previewContainer) previewContainer.style.display = 'none';
-        if (dropzone) dropzone.style.display = 'flex';
+        pendingLaminas = [];
+        updatePreviewsUI();
         modal.classList.add('active');
       });
     }
@@ -495,26 +534,37 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    const handleFile = (file) => {
-      if (!file || !file.type.startsWith('image/')) {
-        showToast('Por favor, selecione um arquivo de imagem válido.', 'error');
+    const processFiles = (files) => {
+      const fileList = Array.from(files).filter(f => f.type && f.type.startsWith('image/'));
+      if (fileList.length === 0) {
+        showToast('Por favor, selecione arquivos de imagem válidos (PNG, JPG, WEBP).', 'error');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        newLaminaBase64 = e.target.result;
-        if (previewImg) previewImg.src = newLaminaBase64;
-        if (previewContainer) previewContainer.style.display = 'block';
-        if (dropzone) dropzone.style.display = 'none';
-      };
-      reader.readAsDataURL(file);
+
+      let loaded = 0;
+      fileList.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          pendingLaminas.push({
+            name: file.name,
+            base64: e.target.result
+          });
+          loaded++;
+          if (loaded === fileList.length) {
+            updatePreviewsUI();
+            showToast(`${fileList.length} ${fileList.length === 1 ? 'lâmina carregada' : 'lâminas carregadas'}!`, 'info');
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     };
 
     if (dropzone && fileInput) {
       dropzone.addEventListener('click', () => fileInput.click());
       fileInput.addEventListener('change', (e) => {
-        if (e.target.files && e.target.files[0]) {
-          handleFile(e.target.files[0]);
+        if (e.target.files && e.target.files.length > 0) {
+          processFiles(e.target.files);
+          fileInput.value = '';
         }
       });
 
@@ -528,48 +578,53 @@ document.addEventListener('DOMContentLoaded', () => {
       dropzone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropzone.style.borderColor = 'var(--border-color)';
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-          handleFile(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          processFiles(e.dataTransfer.files);
         }
       });
     }
 
+    if (addMoreBtn && fileInput) {
+      addMoreBtn.addEventListener('click', () => fileInput.click());
+    }
+
     if (removePreviewBtn) {
       removePreviewBtn.addEventListener('click', () => {
-        newLaminaBase64 = '';
+        pendingLaminas = [];
         if (fileInput) fileInput.value = '';
-        if (previewContainer) previewContainer.style.display = 'none';
-        if (dropzone) dropzone.style.display = 'flex';
+        updatePreviewsUI();
       });
     }
 
     if (form) {
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        if (!newLaminaBase64) {
-          showToast('Por favor, selecione ou arraste a imagem do encarte.', 'error');
+        if (pendingLaminas.length === 0) {
+          showToast('Por favor, selecione ou arraste pelo menos uma imagem de encarte.', 'error');
           return;
         }
 
-        const titleInput = document.getElementById('laminaTitleInput');
         const validityInput = document.getElementById('laminaValidityInput');
-        const title = titleInput ? titleInput.value.trim() : '';
         const validity = validityInput ? validityInput.value.trim() : '';
 
-        const newLamina = {
-          id: 'LAM_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-          title: title || 'Encarte Promocional',
-          imageUrl: newLaminaBase64,
-          validity: validity,
-          description: '',
-          active: true,
-          createdAt: new Date().toISOString()
-        };
+        pendingLaminas.forEach((item, idx) => {
+          const newLamina = {
+            id: 'LAM_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + idx,
+            title: validity ? `Promoção ${validity}` : 'Encarte de Ofertas',
+            imageUrl: item.base64,
+            validity: validity,
+            description: '',
+            active: true,
+            createdAt: new Date().toISOString()
+          };
+          productStore.addLamina(newLamina);
+        });
 
-        productStore.addLamina(newLamina);
+        const count = pendingLaminas.length;
+        pendingLaminas = [];
         modal.classList.remove('active');
         renderLaminas();
-        showToast('Novo encarte de ofertas adicionado com sucesso!', 'success');
+        showToast(`Sucesso! ${count} ${count === 1 ? 'nova lâmina adicionada' : 'novas lâminas adicionadas'} com o período definido!`, 'success');
       });
     }
   }

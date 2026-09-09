@@ -70,7 +70,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=4.7">
+  <link rel="stylesheet" href="css/styles.css?v=4.8">
 </head>
 <body>
 
@@ -863,11 +863,11 @@
     </div>
   </div>
 
-  <!-- MODAL: Adicionar Nova Lâmina / Encarte -->
+  <!-- MODAL: Adicionar Lâminas / Encartes (Upload Único ou em Lote) -->
   <div id="addLaminaModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 480px;">
+    <div class="modal-card" style="max-width: 560px;">
       <div class="modal-header">
-        <h3 class="modal-title"><i class="fa-solid fa-file-image" style="color: var(--accent-gold);"></i> Adicionar Lâmina de Ofertas</h3>
+        <h3 class="modal-title"><i class="fa-solid fa-images" style="color: var(--accent-gold);"></i> Adicionar Lâminas de Ofertas</h3>
         <button class="modal-close-btn" data-close-modal="addLaminaModal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="addLaminaForm">
@@ -875,28 +875,46 @@
           <div style="margin-bottom: 14px;">
             <label class="form-label" for="laminaValidityInput">Período da Promoção (Opcional)</label>
             <input type="text" id="laminaValidityInput" class="form-control" placeholder="Ex: 01/09/2026 a 12/09/2026">
+            <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
+              <i class="fa-solid fa-circle-info"></i> Este período será aplicado a todas as lâminas selecionadas neste envio.
+            </small>
           </div>
+
           <div style="margin-bottom: 14px;">
-            <label class="form-label">Imagem da Lâmina / Encarte *</label>
-            <div class="image-upload-box" id="laminaUploadDropzone" style="min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center; cursor: pointer; background: rgba(10, 12, 18, 0.4);">
-              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--accent-gold); margin-bottom: 8px;"></i>
-              <span style="font-size: 0.85rem; font-weight: 600;">Clique ou arraste a imagem do encarte</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">PNG, JPG ou WEBP de alta resolução</span>
-              <input type="file" id="laminaFileInput" accept="image/*" style="display: none;">
+            <label class="form-label">Imagens dos Encartes / Lâminas *</label>
+            <div class="image-upload-box" id="laminaUploadDropzone" style="min-height: 130px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 18px 14px; text-align: center; cursor: pointer; background: rgba(10, 12, 18, 0.4); transition: border-color 0.2s ease;">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.2rem; color: var(--accent-gold); margin-bottom: 8px;"></i>
+              <span style="font-size: 0.9rem; font-weight: 700;">Clique ou arraste uma ou VÁRIAS imagens de uma vez</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">PNG, JPG, JPEG ou WEBP (Pode selecionar múltiplos arquivos)</span>
+              <input type="file" id="laminaFileInput" accept="image/*" multiple style="display: none;">
             </div>
-            <div id="laminaFilePreviewContainer" style="display: none; margin-top: 10px; text-align: center;">
-              <img id="laminaPreviewImg" src="" style="max-height: 180px; max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border-color);" alt="Prévia">
-              <div>
-                <button type="button" id="removeLaminaPreviewBtn" class="btn btn-sm btn-outline" style="margin-top: 6px; font-size: 0.75rem;">
-                  <i class="fa-solid fa-trash"></i> Trocar Imagem
-                </button>
+
+            <!-- Multi-preview Container -->
+            <div id="laminaFilePreviewContainer" style="display: none; margin-top: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border-color);">
+                <span id="laminaPreviewCountBadge" style="font-weight: 700; color: var(--accent-gold); font-size: 0.85rem;">
+                  0 lâminas selecionadas
+                </span>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" id="addMoreLaminasBtn" class="btn btn-sm btn-outline" style="font-size: 0.75rem; padding: 3px 8px;">
+                    <i class="fa-solid fa-plus"></i> Adicionar Mais
+                  </button>
+                  <button type="button" id="removeLaminaPreviewBtn" class="btn btn-sm btn-danger" style="font-size: 0.75rem; padding: 3px 8px;">
+                    <i class="fa-solid fa-trash"></i> Limpar Todas
+                  </button>
+                </div>
+              </div>
+              <div id="laminaPreviewGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; max-height: 240px; overflow-y: auto; padding: 4px;">
+                <!-- Previews rendered dynamically -->
               </div>
             </div>
           </div>
         </div>
         <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
           <button type="button" class="btn" data-close-modal="addLaminaModal">Cancelar</button>
-          <button type="submit" id="submitAddLaminaBtn" class="btn btn-primary">Salvar Lâmina <i class="fa-solid fa-check"></i></button>
+          <button type="submit" id="submitAddLaminaBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #ef4444, #f97316); border: none; font-weight: 700;">
+            Salvar Lâminas <i class="fa-solid fa-check"></i>
+          </button>
         </div>
       </form>
     </div>
@@ -906,11 +924,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/sample-data.js?v=4.7"></script>
-  <script src="js/store.js?v=4.7"></script>
-  <script src="js/realtime.js?v=4.7"></script>
-  <script src="js/excel.js?v=4.7"></script>
-  <script src="js/image-utils.js?v=4.7"></script>
-  <script src="js/app.js?v=4.7"></script>
+  <script src="js/sample-data.js?v=4.8"></script>
+  <script src="js/store.js?v=4.8"></script>
+  <script src="js/realtime.js?v=4.8"></script>
+  <script src="js/excel.js?v=4.8"></script>
+  <script src="js/image-utils.js?v=4.8"></script>
+  <script src="js/app.js?v=4.8"></script>
 </body>
 </html>
