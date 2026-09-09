@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       function compareProductsForOfertas(a, b) {
-        // 1. CRITÉRIO NÚMERO 1: Categoria
+        // 1. CRITÉRIO NÚMERO 1: Categoria (Whiskies, Vodkas, Cervejas, Gins, etc.)
         const catA = String(a.category || '').toLowerCase().trim();
         const catB = String(b.category || '').toLowerCase().trim();
         if (catA !== catB) {
@@ -474,21 +474,21 @@ document.addEventListener('DOMContentLoaded', () => {
           if (catComp !== 0) return catComp;
         }
 
-        // 2. CRITÉRIO NÚMERO 2: Base da Descrição (Linha / Marca / Família)
-        // Garante que variações da mesma marca (ex: Red Label, Smirnoff Ice, Baly) fiquem estritamente juntas
+        // 2. CRITÉRIO NÚMERO 2: Litragem / Volume Decrescente (Maior volume vem sempre na frente na categoria: 1,750L > 1L > 750ml > 500ml > 269ml)
+        const volA = extractVolumeMl(a.description);
+        const volB = extractVolumeMl(b.description);
+        if (volA !== volB) {
+          return volB - volA; // Ordem decrescente de volume (1,750L / 1L primeiro)
+        }
+
+        // 3. CRITÉRIO NÚMERO 3: Base da Descrição (Linha / Marca / Família)
+        // Garante que variações da mesma marca de mesmo volume (ex: todas as latas 269ml de Smirnoff Ice, Baly, etc.) fiquem estritamente juntas
         const baseA = getBaseDescription(a.description);
         const baseB = getBaseDescription(b.description);
         const baseComp = baseA.localeCompare(baseB, 'pt-BR', { sensitivity: 'base' });
         if (baseComp !== 0) return baseComp;
 
-        // 3. CRITÉRIO NÚMERO 3: Litragem / Volume (Maior volume vem primeiro: 1L antes de 750ml, 750ml antes de 500ml)
-        const volA = extractVolumeMl(a.description);
-        const volB = extractVolumeMl(b.description);
-        if (volA !== volB) {
-          return volB - volA; // Ordem decrescente de volume
-        }
-
-        // 4. Desempate por descrição completa
+        // 4. Desempate por descrição completa (ex: Smirnoff Ice Maçã Verde ao lado de Raspberry)
         const descComp = String(a.description || '').localeCompare(String(b.description || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
         if (descComp !== 0) return descComp;
 
