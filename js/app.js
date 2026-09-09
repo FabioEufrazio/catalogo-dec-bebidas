@@ -373,16 +373,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.innerHTML = `
         <div class="lamina-img-container">
-          <img src="${lamina.imageUrl}" alt="${lamina.title}" class="lamina-img" loading="lazy">
+          <img src="${lamina.imageUrl}" alt="${lamina.validity || 'Encarte Promocional'}" class="lamina-img" loading="lazy">
         </div>
-        ${isGestor ? `
-          <div class="lamina-card-body" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
-            <h4 class="lamina-card-title" style="font-size: 0.95rem; margin: 0;">${lamina.title}</h4>
-            <button type="button" class="btn btn-danger btn-sm lamina-btn-delete" title="Excluir Encarte">
+        <div class="lamina-card-body" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border-top: 1px solid var(--border-color);">
+          ${lamina.validity ? `
+            <span class="lamina-validity-text" style="font-size: 0.85rem; color: #f59e0b; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+              <i class="fa-regular fa-clock"></i> ${lamina.validity}
+            </span>
+          ` : '<span></span>'}
+          ${isGestor ? `
+            <button type="button" class="btn btn-danger btn-sm lamina-btn-delete" title="Excluir Encarte" style="padding: 4px 10px; font-size: 0.8rem;">
               <i class="fa-solid fa-trash-can"></i> Excluir
             </button>
-          </div>
-        ` : ''}
+          ` : ''}
+        </div>
       `;
 
       const deleteBtn = card.querySelector('.lamina-btn-delete');
