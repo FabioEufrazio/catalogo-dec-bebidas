@@ -1083,7 +1083,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (clearFirebaseBtn) {
     clearFirebaseBtn.addEventListener('click', () => {
       localStorage.removeItem(STORAGE_KEYS.FIREBASE_CONFIG);
-      showToast('Firebase desconectado.', 'error');
+      if (fbApiKeyInput) fbApiKeyInput.value = '';
+      if (fbProjectIdInput) fbProjectIdInput.value = '';
+      if (fbAppIdInput) fbAppIdInput.value = '';
+      if (fbSnippetArea) fbSnippetArea.value = '';
+      showToast('Firebase desconectado e credenciais removidas.', 'error');
       closeModal('firebaseModal');
       setTimeout(() => location.reload(), 500);
     });
