@@ -26,7 +26,7 @@ class RealtimeEngine {
         this.channel = new BroadcastChannel('catalog_realtime_sync');
         this.channel.onmessage = (event) => {
           if (this.isSyncingFromRemote) return;
-          const { type, products, hidePrices } = event.data || {};
+          const { type, products, hidePrices, laminas } = event.data || {};
           if (type === 'SYNC_ALL' && Array.isArray(products)) {
             this.isSyncingFromRemote = true;
             this.store.hidePrices = !!hidePrices;
@@ -35,6 +35,11 @@ class RealtimeEngine {
             localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
             localStorage.setItem(STORAGE_KEYS.HIDE_PRICES, String(hidePrices));
             this.store.notify('broadcast');
+            this.isSyncingFromRemote = false;
+          }
+          if (type === 'SYNC_LAMINAS' && Array.isArray(laminas)) {
+            this.isSyncingFromRemote = true;
+            this.store.setAllLaminas(laminas, 'broadcast');
             this.isSyncingFromRemote = false;
           }
         };
@@ -52,10 +57,29 @@ class RealtimeEngine {
         this.store.notify('storage_event');
         this.isSyncingFromRemote = false;
       }
+      if (e.key === STORAGE_KEYS.LAMINAS) {
+        this.isSyncingFromRemote = true;
+        this.store.loadLaminas();
+        this.store.notify('storage_event');
+        this.isSyncingFromRemote = false;
+      }
     });
 
     // Subscribe to store changes to broadcast locally
     this.store.subscribe((products, hidePrices, source) => {
+      if (source === 'laminas_updated') {
+        if (this.channel) {
+          this.channel.postMessage({
+            type: 'SYNC_LAMINAS',
+            laminas: this.store.getLaminas()
+          });
+        }
+        if (!this.isLocal && !this.isClientView && this.firebaseActive) {
+          this.syncLaminasToCloud(this.store.getLaminas());
+        }
+        return;
+      }
+
       if (source !== 'broadcast' && source !== 'cloud' && source !== 'storage_event') {
         if (this.channel) {
           this.channel.postMessage({
@@ -124,10 +148,56 @@ class RealtimeEngine {
         this.firebaseActive = true;
         this.setupCloudListeners();
         this.updateCloudBadgeUI(true);
+        this.fetchInitialLaminasFromCloud();
+        this.syncInitialGestorLaminasToCloud();
+      } else {
+        this.fetchInitialLaminasFromCloud();
       }
     } catch (err) {
       console.warn("Firebase initialization error:", err);
       this.updateCloudBadgeUI(false);
+      this.fetchInitialLaminasFromCloud();
+    }
+  }
+
+  async fetchInitialLaminasFromCloud() {
+    const isGestor = localStorage.getItem('catalog_gestor_logged') === 'true';
+    if (isGestor) return;
+
+    try {
+      if (this.db && this.firebaseActive) {
+        const doc = await this.db.collection('catalogs').doc('laminas').get();
+        if (doc.exists && doc.data() && Array.isArray(doc.data().laminas)) {
+          this.applyRemoteLaminas(doc.data().laminas);
+          return;
+        }
+      }
+      const remoteLaminas = await this.readLaminasViaRest();
+      if (remoteLaminas.length > 0) {
+        this.applyRemoteLaminas(remoteLaminas);
+      }
+    } catch (e) {
+      console.warn("Tentativa inicial de buscar encartes via nuvem:", e);
+    }
+  }
+
+  async syncInitialGestorLaminasToCloud() {
+    const isGestor = !this.isClientView && (localStorage.getItem('catalog_gestor_logged') === 'true');
+    if (!isGestor || this.isLocal || !this.firebaseActive) return;
+
+    try {
+      const localLaminas = this.store.getLaminas();
+      if (localLaminas && localLaminas.length > 0) {
+        const cleanLaminas = localLaminas.map(l => this.sanitizeLaminaForCloud(l));
+        if (this.db) {
+          await this.writeLaminasViaSDK(cleanLaminas);
+        } else {
+          await this.writeLaminasViaRest(cleanLaminas);
+        }
+        console.log("Encartes do gestor sincronizados com a nuvem na inicialização:", cleanLaminas.length);
+      }
+    } catch (e) {
+      console.warn("Auto-sync inicial de encartes do gestor:", e);
     }
   }
 
@@ -190,6 +260,35 @@ class RealtimeEngine {
         this.applyRemoteProducts(remoteProducts);
       }
     }, err => console.warn("Firestore catalog listen error:", err));
+
+    // Escuta remota de encartes/lâminas de ofertas em tempo real
+    this.db.collection('catalogs').doc('laminas').onSnapshot({ includeMetadataChanges: true }, (doc) => {
+      if (this.isSyncingFromRemote || !doc.exists) return;
+      if (doc.metadata && doc.metadata.hasPendingWrites) return;
+
+      const isGestor = localStorage.getItem('catalog_gestor_logged') === 'true';
+      if (isGestor) {
+        return;
+      }
+
+      const data = doc.data();
+      if (data && Array.isArray(data.laminas)) {
+        this.applyRemoteLaminas(data.laminas);
+      }
+    }, err => console.warn("Firestore laminas listen error:", err));
+  }
+
+  applyRemoteLaminas(remoteLaminas) {
+    const current = this.store.getLaminas() || [];
+    const localSig = current.map(l => `${l.id}:${l.validity}:${l.manualPosition || 0}:${(l.imageUrl || '').length}`).join(';');
+    const remoteSig = (remoteLaminas || []).map(l => `${l.id}:${l.validity}:${l.manualPosition || 0}:${(l.imageUrl || '').length}`).join(';');
+
+    if (localSig !== remoteSig) {
+      console.log(`Recebendo atualização de encartes da nuvem para clientes: ${(remoteLaminas || []).length} encartes.`);
+      this.isSyncingFromRemote = true;
+      this.store.setAllLaminas(remoteLaminas, 'cloud');
+      this.isSyncingFromRemote = false;
+    }
   }
 
   applyRemoteProducts(remoteProducts) {
@@ -481,12 +580,179 @@ class RealtimeEngine {
       setTimeout(() => reject(new Error("TIMEOUT_SDK")), 4000)
     );
 
+    let resultCount = 0;
     try {
-      return await Promise.race([sdkPromise, timeoutPromise]);
+      resultCount = await Promise.race([sdkPromise, timeoutPromise]);
     } catch (err) {
       console.warn("SDK write falhou ou demorou. Usando fallback REST API imediato em chunks...", err);
-      return await this.writeChunksViaRest(chunks, hidePrices);
+      resultCount = await this.writeChunksViaRest(chunks, hidePrices);
     }
+
+    // 4. Publicar também encartes/lâminas de ofertas na nuvem
+    const currentLaminas = (this.store.getLaminas() || []).map(l => this.sanitizeLaminaForCloud(l));
+    try {
+      if (this.db && this.firebaseActive) {
+        await this.writeLaminasViaSDK(currentLaminas);
+      } else {
+        await this.writeLaminasViaRest(currentLaminas);
+      }
+      console.log(`Encartes publicados na nuvem com sucesso: ${currentLaminas.length} encartes.`);
+    } catch (errL) {
+      console.warn("Publicação de encartes via SDK falhou, tentando via REST...", errL);
+      try {
+        await this.writeLaminasViaRest(currentLaminas);
+        console.log(`Encartes publicados via REST: ${currentLaminas.length} encartes.`);
+      } catch (errL2) {
+        console.warn("Publicação de encartes via REST também falhou:", errL2);
+      }
+    }
+
+    return resultCount;
+  }
+
+  sanitizeLaminaForCloud(l) {
+    return {
+      id: String(l.id || ''),
+      title: String(l.title || ''),
+      imageUrl: String(l.imageUrl || ''),
+      validity: String(l.validity || ''),
+      description: String(l.description || ''),
+      active: l.active !== false,
+      manualPosition: parseInt(l.manualPosition) || 1,
+      createdAt: String(l.createdAt || new Date().toISOString())
+    };
+  }
+
+  async writeLaminasViaSDK(laminas) {
+    if (!this.db || !this.firebaseActive) throw new Error("SDK não ativo");
+    const laminasRef = this.db.collection('catalogs').doc('laminas');
+    await laminasRef.set({
+      laminas: laminas || [],
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  formatRestLaminaValue(l) {
+    return {
+      mapValue: {
+        fields: {
+          id: { stringValue: String(l.id || '') },
+          title: { stringValue: String(l.title || '') },
+          imageUrl: { stringValue: String(l.imageUrl || '') },
+          validity: { stringValue: String(l.validity || '') },
+          description: { stringValue: String(l.description || '') },
+          active: { booleanValue: l.active !== false },
+          manualPosition: { integerValue: String(l.manualPosition || 1) },
+          createdAt: { stringValue: String(l.createdAt || '') }
+        }
+      }
+    };
+  }
+
+  parseRestLaminas(docJson) {
+    if (!docJson || !docJson.fields || !docJson.fields.laminas || !docJson.fields.laminas.arrayValue) {
+      return [];
+    }
+    const values = docJson.fields.laminas.arrayValue.values || [];
+    return values.map(v => {
+      const f = v.mapValue?.fields || {};
+      return {
+        id: f.id?.stringValue || '',
+        title: f.title?.stringValue || '',
+        imageUrl: f.imageUrl?.stringValue || '',
+        validity: f.validity?.stringValue || '',
+        description: f.description?.stringValue || '',
+        active: f.active?.booleanValue !== false,
+        manualPosition: parseInt(f.manualPosition?.integerValue || 1),
+        createdAt: f.createdAt?.stringValue || ''
+      };
+    });
+  }
+
+  async writeLaminasViaRest(laminas) {
+    let projectId = 'catalogo-online-dec';
+    try {
+      const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+      if (rawConfig) {
+        const parsed = JSON.parse(rawConfig);
+        if (parsed.projectId && parsed.projectId !== 'catalogo-dec-bebidas' && parsed.projectId !== 'catalogo-de-bebidas-1') {
+          projectId = parsed.projectId;
+        }
+      }
+    } catch (e) {}
+
+    const restPayload = {
+      fields: {
+        laminas: {
+          arrayValue: {
+            values: (laminas || []).map(l => this.formatRestLaminaValue(l))
+          }
+        }
+      }
+    };
+
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/laminas`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(restPayload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Falha HTTP ao salvar encartes: ${errText}`);
+    }
+    return true;
+  }
+
+  async readLaminasViaRest() {
+    let projectId = 'catalogo-online-dec';
+    try {
+      const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+      if (rawConfig) {
+        const parsed = JSON.parse(rawConfig);
+        if (parsed.projectId && parsed.projectId !== 'catalogo-dec-bebidas' && parsed.projectId !== 'catalogo-de-bebidas-1') {
+          projectId = parsed.projectId;
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/laminas`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        return this.parseRestLaminas(json);
+      }
+    } catch (e) {
+      console.warn("Erro ao buscar encartes via REST:", e);
+    }
+    return [];
+  }
+
+  async syncLaminasToCloud(laminas) {
+    if (this.isClientView) return;
+    if (this.cloudLaminasTimeout) clearTimeout(this.cloudLaminasTimeout);
+
+    this.cloudLaminasTimeout = setTimeout(async () => {
+      try {
+        const cleanLaminas = (laminas || []).map(l => this.sanitizeLaminaForCloud(l));
+        if (this.db && this.firebaseActive) {
+          await this.writeLaminasViaSDK(cleanLaminas);
+        } else {
+          await this.writeLaminasViaRest(cleanLaminas);
+        }
+        console.log("Firestore cloud sync de encartes concluído:", cleanLaminas.length);
+      } catch (e) {
+        console.warn("Firestore sync encartes erro (tentando REST):", e);
+        try {
+          const cleanLaminas = (laminas || []).map(l => this.sanitizeLaminaForCloud(l));
+          await this.writeLaminasViaRest(cleanLaminas);
+        } catch (restErr) {
+          console.warn("REST encartes também falhou:", restErr);
+        }
+      }
+    }, 800);
   }
 
   async syncToCloud(products, hidePrices) {

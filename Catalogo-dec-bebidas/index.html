@@ -70,7 +70,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=4.8">
+  <link rel="stylesheet" href="css/styles.css?v=4.9">
 </head>
 <body>
 
@@ -184,9 +184,14 @@
             Suba as imagens prontas dos encartes para que seus clientes vejam todas as ofertas diretamente.
           </p>
         </div>
-        <button type="button" id="addNewLaminaBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #ef4444, #f97316); border: none; font-weight: 700; padding: 9px 18px;">
-          <i class="fa-solid fa-plus"></i> Adicionar Nova Lâmina / Encarte
-        </button>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <button type="button" id="deleteAllLaminasBtn" class="btn btn-danger" style="font-weight: 700; padding: 9px 16px;" title="Apagar todos os encartes de ofertas de uma só vez">
+            <i class="fa-solid fa-trash-can"></i> Apagar Todos os Encartes
+          </button>
+          <button type="button" id="addNewLaminaBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #ef4444, #f97316); border: none; font-weight: 700; padding: 9px 18px;">
+            <i class="fa-solid fa-plus"></i> Adicionar Nova Lâmina / Encarte
+          </button>
+        </div>
       </div>
 
       <!-- Laminas Grid -->
@@ -924,11 +929,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/sample-data.js?v=4.8"></script>
-  <script src="js/store.js?v=4.8"></script>
-  <script src="js/realtime.js?v=4.8"></script>
-  <script src="js/excel.js?v=4.8"></script>
-  <script src="js/image-utils.js?v=4.8"></script>
-  <script src="js/app.js?v=4.8"></script>
+  <script src="js/sample-data.js?v=5.0"></script>
+  <script src="js/store.js?v=5.0"></script>
+  <script src="js/realtime.js?v=5.0"></script>
+  <script src="js/excel.js?v=5.0"></script>
+  <script src="js/image-utils.js?v=5.0"></script>
+  <script src="js/app.js?v=5.0"></script>
 </body>
 </html>

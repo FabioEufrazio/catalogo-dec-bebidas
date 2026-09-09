@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isGestor = !isClientMode && (localStorage.getItem('catalog_gestor_logged') === 'true');
     const fragment = document.createDocumentFragment();
 
-    laminas.forEach(lamina => {
+    laminas.forEach((lamina, idx) => {
       const card = document.createElement('article');
       card.className = 'lamina-card';
       card.dataset.id = lamina.id;
@@ -375,30 +375,84 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="lamina-img-container">
           <img src="${lamina.imageUrl}" alt="${lamina.validity || 'Encarte Promocional'}" class="lamina-img" loading="lazy">
         </div>
-        <div class="lamina-card-body" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border-top: 1px solid var(--border-color);">
+        <div class="lamina-card-body" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
           ${lamina.validity ? `
             <span class="lamina-validity-text" style="font-size: 0.85rem; color: #f59e0b; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
               <i class="fa-regular fa-clock"></i> ${lamina.validity}
             </span>
           ` : '<span></span>'}
           ${isGestor ? `
-            <button type="button" class="btn btn-danger btn-sm lamina-btn-delete" title="Excluir Encarte" style="padding: 4px 10px; font-size: 0.8rem;">
-              <i class="fa-solid fa-trash-can"></i> Excluir
-            </button>
+            <div class="lamina-gestor-controls" style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+              <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">POS:</span>
+                <input type="number" min="1" max="${laminas.length}" value="${lamina.manualPosition || idx + 1}" class="lamina-pos-input" style="width: 44px; padding: 2px 4px; font-size: 0.8rem; font-weight: bold; text-align: center; background: var(--bg-dark); color: var(--accent-gold); border: 1px solid var(--border-color); border-radius: 4px;" title="Digite a posição e pressione Enter">
+              </div>
+              <button type="button" class="btn btn-outline btn-sm lamina-move-prev" title="Mover para trás" ${idx === 0 ? 'disabled style="opacity: 0.35; cursor: not-allowed; padding: 4px 8px; font-size: 0.8rem;"' : 'style="padding: 4px 8px; font-size: 0.8rem;"'}>
+                <i class="fa-solid fa-arrow-left"></i>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm lamina-move-next" title="Mover para frente" ${idx === laminas.length - 1 ? 'disabled style="opacity: 0.35; cursor: not-allowed; padding: 4px 8px; font-size: 0.8rem;"' : 'style="padding: 4px 8px; font-size: 0.8rem;"'}>
+                <i class="fa-solid fa-arrow-right"></i>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm lamina-btn-delete" title="Excluir Encarte" style="padding: 4px 8px; font-size: 0.8rem;">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
           ` : ''}
         </div>
       `;
 
-      const deleteBtn = card.querySelector('.lamina-btn-delete');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (confirm(`Tem certeza que deseja excluir o encarte "${lamina.title}"?`)) {
-            productStore.deleteLamina(lamina.id);
+      if (isGestor) {
+        const posInput = card.querySelector('.lamina-pos-input');
+        if (posInput) {
+          const handlePosChange = () => {
+            const newPos = parseInt(posInput.value, 10);
+            if (!isNaN(newPos) && newPos >= 1 && newPos !== (lamina.manualPosition || idx + 1)) {
+              productStore.reorderLamina(lamina.id, newPos);
+              renderLaminas();
+              showToast(`Encarte reposicionado para a posição ${newPos}.`, 'success');
+            }
+          };
+          posInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handlePosChange();
+            }
+          });
+          posInput.addEventListener('blur', handlePosChange);
+          posInput.addEventListener('click', (e) => e.stopPropagation());
+        }
+
+        const prevBtn = card.querySelector('.lamina-move-prev');
+        if (prevBtn && idx > 0) {
+          prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            productStore.moveLamina(lamina.id, -1);
             renderLaminas();
-            showToast('Encarte excluído com sucesso.', 'info');
-          }
-        });
+            showToast('Posição alterada.', 'info');
+          });
+        }
+
+        const nextBtn = card.querySelector('.lamina-move-next');
+        if (nextBtn && idx < laminas.length - 1) {
+          nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            productStore.moveLamina(lamina.id, 1);
+            renderLaminas();
+            showToast('Posição alterada.', 'info');
+          });
+        }
+
+        const deleteBtn = card.querySelector('.lamina-btn-delete');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Tem certeza que deseja excluir este encarte?')) {
+              productStore.deleteLamina(lamina.id);
+              renderLaminas();
+              showToast('Encarte excluído com sucesso.', 'info');
+            }
+          });
+        }
       }
 
       fragment.appendChild(card);
@@ -515,6 +569,24 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    const deleteAllBtn = document.getElementById('deleteAllLaminasBtn');
+    if (deleteAllBtn) {
+      deleteAllBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const count = productStore.getLaminas().length;
+        if (count === 0) {
+          showToast('Não há nenhum encarte cadastrado para apagar.', 'info');
+          return;
+        }
+        if (confirm(`⚠️ ATENÇÃO: Deseja realmente apagar TODOS os ${count} encartes de ofertas de uma só vez?\n\nEsta ação removerá todos os encartes do catálogo.`)) {
+          productStore.deleteAllLaminas();
+          renderLaminas();
+          showToast('Todos os encartes foram apagados com sucesso!', 'success');
+        }
+      });
+    }
+
     if (addBtn && modal) {
       addBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -544,11 +616,23 @@ document.addEventListener('DOMContentLoaded', () => {
       let loaded = 0;
       fileList.forEach(file => {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          pendingLaminas.push({
-            name: file.name,
-            base64: e.target.result
-          });
+        reader.onload = async (e) => {
+          try {
+            let compressed = e.target.result;
+            if (typeof ImageUtils !== 'undefined' && ImageUtils.compressImage) {
+              // Comprime mantendo alta definição para encartes (até 1080x1440, qualidade 78%)
+              compressed = await ImageUtils.compressImage(e.target.result, 1080, 1440, 0.78);
+            }
+            pendingLaminas.push({
+              name: file.name,
+              base64: compressed
+            });
+          } catch (err) {
+            pendingLaminas.push({
+              name: file.name,
+              base64: e.target.result
+            });
+          }
           loaded++;
           if (loaded === fileList.length) {
             updatePreviewsUI();

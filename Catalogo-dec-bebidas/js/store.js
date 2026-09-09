@@ -501,6 +501,13 @@ class ProductStore {
     return false;
   }
 
+  ensureLaminaPositions() {
+    if (!Array.isArray(this.laminas)) this.laminas = [];
+    this.laminas.forEach((l, idx) => {
+      l.manualPosition = idx + 1;
+    });
+  }
+
   loadLaminas() {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.LAMINAS);
@@ -511,35 +518,80 @@ class ProductStore {
         }
       } else {
         this.laminas = JSON.parse(JSON.stringify(DEFAULT_LAMINAS));
-        this.saveLaminas();
       }
     } catch (e) {
       this.laminas = JSON.parse(JSON.stringify(DEFAULT_LAMINAS));
     }
+    this.ensureLaminaPositions();
+    this.saveLaminas();
   }
 
   getLaminas() {
-    return Array.isArray(this.laminas) ? this.laminas : [];
+    if (!Array.isArray(this.laminas)) return [];
+    return [...this.laminas].sort((a, b) => (a.manualPosition || 9999) - (b.manualPosition || 9999));
   }
 
-  saveLaminas() {
+  saveLaminas(source = 'laminas_updated') {
     try {
       localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(this.laminas));
     } catch (e) {
       console.warn("Erro ao salvar laminas:", e);
     }
-    this.notify('laminas_updated');
+    this.notify(source);
+  }
+
+  setAllLaminas(laminas, source = 'cloud') {
+    if (!Array.isArray(laminas)) return;
+    this.laminas = laminas;
+    this.ensureLaminaPositions();
+    try {
+      localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(this.laminas));
+    } catch (e) {
+      console.warn("Erro ao salvar laminas recebidas:", e);
+    }
+    this.notify(source);
   }
 
   addLamina(lamina) {
     if (!this.laminas) this.laminas = [];
-    this.laminas.unshift(lamina);
+    this.laminas.push(lamina);
+    this.ensureLaminaPositions();
     this.saveLaminas();
   }
 
   deleteLamina(id) {
     if (!this.laminas) return;
     this.laminas = this.laminas.filter(l => l.id !== id);
+    this.ensureLaminaPositions();
+    this.saveLaminas();
+  }
+
+  deleteAllLaminas() {
+    this.laminas = [];
+    this.saveLaminas();
+  }
+
+  reorderLamina(id, newPosition) {
+    if (!Array.isArray(this.laminas)) return;
+    const index = this.laminas.findIndex(l => l.id === id);
+    if (index === -1) return;
+    const targetIndex = Math.max(0, Math.min(this.laminas.length - 1, newPosition - 1));
+    const [item] = this.laminas.splice(index, 1);
+    this.laminas.splice(targetIndex, 0, item);
+    this.ensureLaminaPositions();
+    this.saveLaminas();
+  }
+
+  moveLamina(id, direction) {
+    if (!Array.isArray(this.laminas)) return;
+    const index = this.laminas.findIndex(l => l.id === id);
+    if (index === -1) return;
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= this.laminas.length) return;
+    const temp = this.laminas[index];
+    this.laminas[index] = this.laminas[targetIndex];
+    this.laminas[targetIndex] = temp;
+    this.ensureLaminaPositions();
     this.saveLaminas();
   }
 }
