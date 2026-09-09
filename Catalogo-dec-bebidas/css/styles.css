@@ -1238,6 +1238,34 @@ body {
   font-weight: 700;
 }
 
+/* Promo Preset Buttons */
+.promo-preset-btn {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.promo-preset-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.btn-promo-action {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+  transition: all var(--transition-fast);
+}
+
+.btn-promo-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.55);
+}
+
 /* Toast Notifications */
 .toast-container {
   position: fixed;
