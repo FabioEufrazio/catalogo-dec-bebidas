@@ -1286,7 +1286,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const cfg = JSON.parse(rawConfig);
       if (fbApiKeyInput && cfg.apiKey) fbApiKeyInput.value = cfg.apiKey;
-      if (fbProjectIdInput && cfg.projectId) fbProjectIdInput.value = cfg.projectId;
+      if (fbProjectIdInput) {
+        fbProjectIdInput.value = (cfg.projectId === 'catalogo-dec-bebidas' || cfg.projectId === 'catalogo-de-bebidas-1') 
+          ? 'catalogo-online-dec' 
+          : (cfg.projectId || 'catalogo-online-dec');
+      }
       if (fbAppIdInput && cfg.appId) fbAppIdInput.value = cfg.appId;
     } catch (e) {}
   }
@@ -1334,7 +1338,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!projectId) {
         if (fbWarningAlert) {
-          fbWarningAlert.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Por favor, informe o Project ID (ex: <code>catalogo-dec-bebidas</code>).';
+          fbWarningAlert.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Por favor, informe o Project ID (ex: <code>catalogo-online-dec</code>).';
           fbWarningAlert.style.display = 'block';
         }
         return;

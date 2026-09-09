@@ -71,15 +71,33 @@ class RealtimeEngine {
   }
 
   initFirebaseSync() {
+    const DEFAULT_CONFIG = {
+      apiKey: "AIzaSyB2ArO22BUXnqIKc_Nelm3EapuQAiRRM80",
+      projectId: "catalogo-online-dec",
+      appId: "1:963138199795:web:da56b25b1da777193cd786",
+      authDomain: "catalogo-online-dec.firebaseapp.com"
+    };
+
     let rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+    if (rawConfig) {
+      try {
+        const parsed = JSON.parse(rawConfig);
+        // Auto-fix if user has catalogo-dec-bebidas which doesn't exist in Google Cloud
+        if (parsed.projectId === 'catalogo-dec-bebidas' || parsed.projectId === 'catalogo-de-bebidas-1') {
+          parsed.projectId = DEFAULT_CONFIG.projectId;
+          parsed.apiKey = DEFAULT_CONFIG.apiKey;
+          parsed.appId = DEFAULT_CONFIG.appId;
+          parsed.authDomain = DEFAULT_CONFIG.authDomain;
+          rawConfig = JSON.stringify(parsed);
+          localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, rawConfig);
+        }
+      } catch (e) {
+        rawConfig = null;
+      }
+    }
+
     if (!rawConfig) {
-      const defaultConfig = {
-        apiKey: "AIzaSyB2ArO22BUXnqIKc_Nelm3EapuQAiRRM80",
-        projectId: "catalogo-online-dec",
-        appId: "1:963138199795:web:da56b25b1da777193cd786",
-        authDomain: "catalogo-online-dec.firebaseapp.com"
-      };
-      rawConfig = JSON.stringify(defaultConfig);
+      rawConfig = JSON.stringify(DEFAULT_CONFIG);
       localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, rawConfig);
     }
 
@@ -167,7 +185,9 @@ class RealtimeEngine {
       const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
       if (rawConfig) {
         const parsed = JSON.parse(rawConfig);
-        if (parsed.projectId) projectId = parsed.projectId;
+        if (parsed.projectId && parsed.projectId !== 'catalogo-dec-bebidas' && parsed.projectId !== 'catalogo-de-bebidas-1') {
+          projectId = parsed.projectId;
+        }
       }
     } catch (e) {}
 
