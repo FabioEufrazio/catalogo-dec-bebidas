@@ -1198,9 +1198,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const publishCloudBtn = document.getElementById('publishCloudBtn');
   if (publishCloudBtn) {
     publishCloudBtn.addEventListener('click', async () => {
+      const confirmPublish = window.confirm(
+        "⚠️ ATENÇÃO: PUBLICAR EM PRODUÇÃO\n\n" +
+        "Você está prestes a enviar as alterações do seu ambiente de teste local diretamente para o catálogo ONLINE oficial dos clientes.\n\n" +
+        "Deseja realmente atualizar o catálogo online agora?"
+      );
+      if (!confirmPublish) return;
+
       try {
         publishCloudBtn.disabled = true;
-        publishCloudBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publicando...';
+        publishCloudBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publicando na Nuvem...';
         const count = await realtimeEngine.forcePublishToCloud();
         showToast(`Catálogo publicado com sucesso! ${count} produtos sincronizados na nuvem.`);
       } catch (err) {
