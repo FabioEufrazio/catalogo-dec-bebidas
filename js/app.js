@@ -472,12 +472,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const removePreviewBtn = document.getElementById('removeLaminaPreviewBtn');
 
     if (addBtn && modal) {
-      addBtn.addEventListener('click', () => {
+      addBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (form) form.reset();
         newLaminaBase64 = '';
         if (previewContainer) previewContainer.style.display = 'none';
         if (dropzone) dropzone.style.display = 'flex';
-        modal.classList.add('is-open');
+        modal.classList.add('active');
+      });
+    }
+
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+        }
       });
     }
 
@@ -537,22 +547,23 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        const title = document.getElementById('laminaTitleInput').value.trim();
-        const validity = document.getElementById('laminaValidityInput').value.trim();
-        const description = document.getElementById('laminaDescInput').value.trim();
+        const titleInput = document.getElementById('laminaTitleInput');
+        const validityInput = document.getElementById('laminaValidityInput');
+        const title = titleInput ? titleInput.value.trim() : '';
+        const validity = validityInput ? validityInput.value.trim() : '';
 
         const newLamina = {
           id: 'LAM_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-          title: title,
+          title: title || 'Encarte Promocional',
           imageUrl: newLaminaBase64,
           validity: validity,
-          description: description,
+          description: '',
           active: true,
           createdAt: new Date().toISOString()
         };
 
         productStore.addLamina(newLamina);
-        modal.classList.remove('is-open');
+        modal.classList.remove('active');
         renderLaminas();
         showToast('Novo encarte de ofertas adicionado com sucesso!', 'success');
       });
