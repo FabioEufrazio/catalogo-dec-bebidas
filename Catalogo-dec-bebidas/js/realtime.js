@@ -68,8 +68,17 @@ class RealtimeEngine {
   }
 
   initFirebaseSync() {
-    const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
-    if (!rawConfig) return;
+    let rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+    if (!rawConfig) {
+      const defaultConfig = {
+        apiKey: "AIzaSyB2ArO22BUXnqIKc_Nelm3EapuQAiRRM80",
+        projectId: "catalogo-online-dec",
+        appId: "1:963138199795:web:da56b25b1da777193cd786",
+        authDomain: "catalogo-online-dec.firebaseapp.com"
+      };
+      rawConfig = JSON.stringify(defaultConfig);
+      localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, rawConfig);
+    }
 
     try {
       const config = JSON.parse(rawConfig);
