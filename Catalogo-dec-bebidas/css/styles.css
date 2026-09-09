@@ -772,6 +772,31 @@ body {
   box-shadow: 0 6px 25px rgba(245, 158, 11, 0.25);
 }
 
+/* Dedicated Ofertas Tab Enhanced Presentation */
+.ofertas-active-view .product-card {
+  border: 1.5px solid rgba(239, 68, 68, 0.4);
+  background: linear-gradient(180deg, rgba(22, 25, 34, 0.95) 0%, rgba(35, 18, 18, 0.45) 100%);
+  box-shadow: 0 4px 22px rgba(239, 68, 68, 0.15);
+  transition: all var(--transition-fast);
+}
+
+.ofertas-active-view .product-card:hover {
+  border-color: #ef4444;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(239, 68, 68, 0.32);
+}
+
+.ofertas-active-view .promo-badge-tag {
+  background: linear-gradient(135deg, #dc2626, #f97316);
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.7);
+  animation: promoPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes promoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
 /* Fiery Promo Badge Tag on Image */
 .promo-badge-tag {
   position: absolute;

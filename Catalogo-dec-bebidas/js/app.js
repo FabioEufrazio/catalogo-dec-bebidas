@@ -196,16 +196,23 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     }
 
-    // When viewing "Todos", products with active promos appear highlighted at the front
-    if (currentCategory === 'all') {
+    // Always preserve the natural order (POS) defined by the user in general views!
+    // Products on sale stay in their original position without messing up catalog sequence.
+    products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
+
+    // When inside the dedicated "Ofertas" tab, highlight best discounts first or preserve natural sequence
+    if (currentCategory === 'ofertas') {
+      grid.classList.add('ofertas-active-view');
       products.sort((a, b) => {
-        const aPromo = productStore.isProductPromoActive(a) ? 1 : 0;
-        const bPromo = productStore.isProductPromoActive(b) ? 1 : 0;
-        if (bPromo !== aPromo) {
-          return bPromo - aPromo;
+        const discA = a.unitPrice > 0 ? (a.unitPrice - a.promoPrice) / a.unitPrice : 0;
+        const discB = b.unitPrice > 0 ? (b.unitPrice - b.promoPrice) / b.unitPrice : 0;
+        if (Math.abs(discB - discA) > 0.001) {
+          return discB - discA; // Biggest discount percentage first
         }
         return (a.manualPosition || 999999) - (b.manualPosition || 999999);
       });
+    } else {
+      grid.classList.remove('ofertas-active-view');
     }
 
     // Update Header Total Badge
@@ -215,13 +222,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (products.length === 0) {
-      grid.innerHTML = `
-        <div class="empty-state">
-          <i class="fa-solid fa-wine-bottle"></i>
-          <h3>Nenhum produto encontrado</h3>
-          <p>Tente ajustar os filtros de categoria ou busca.</p>
-        </div>
-      `;
+      if (currentCategory === 'ofertas') {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-fire" style="color: #ef4444;"></i>
+            <h3>Nenhum produto em oferta no momento</h3>
+            <p>Quando produtos forem colocados em oferta com prazo, eles aparecerão com destaque exclusivo nesta aba.</p>
+          </div>
+        `;
+      } else {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-wine-bottle"></i>
+            <h3>Nenhum produto encontrado</h3>
+            <p>Tente ajustar os filtros de categoria ou busca.</p>
+          </div>
+        `;
+      }
       renderPagination(0);
       return;
     }
