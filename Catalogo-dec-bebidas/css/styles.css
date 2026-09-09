@@ -481,25 +481,17 @@ body {
   color: var(--accent-gold);
 }
 
-/* Hide Chrome, Safari, Edge, Opera spin buttons */
-.pos-badge-input::-webkit-outer-spin-button,
-.pos-badge-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
 .pos-badge-input {
-  -moz-appearance: textfield;
-  min-width: 64px;
-  width: 68px;
+  min-width: 66px;
+  width: 72px;
   padding: 3px 6px;
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(245, 158, 11, 0.12);
   border: 1px solid var(--accent-gold);
   border-radius: var(--radius-sm);
   color: var(--accent-gold);
   font-weight: 700;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   outline: none;
   cursor: text;
   position: relative;

@@ -241,9 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="product-card-admin-bar admin-only-ui">
         <div class="product-checkbox-wrapper">
           <input type="checkbox" class="product-checkbox" ${selectedProductIds.has(p.id) ? 'checked' : ''}>
-          <div class="pos-badge-wrapper" title="Clique para digitar a nova posição (ex: 1, 5, 372)">
+          <div class="pos-badge-wrapper">
             <span>POS:</span>
-            <input type="number" class="pos-badge-input" value="${p.manualPosition}" min="1" title="Digite a nova posição no catálogo">
+            <input type="text" inputmode="numeric" class="pos-badge-input" value="${p.manualPosition}">
           </div>
         </div>
         <div class="product-actions-bar">
@@ -319,6 +319,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const posInput = card.querySelector('.pos-badge-input');
 
     if (posWrapper && posInput) {
+      let isEditing = false;
+
       const stopEvents = ['mousedown', 'mouseup', 'click', 'pointerdown', 'focusin'];
       stopEvents.forEach(evt => {
         posWrapper.addEventListener(evt, (e) => e.stopPropagation());
@@ -333,21 +335,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
       posInput.addEventListener('focus', (e) => {
         e.stopPropagation();
-        posInput.select(); // Auto-select number on focus for instant typing
+        isEditing = true;
+        posInput.select(); // Highlight entire text for instant typing
       });
+
+      const commitChange = () => {
+        if (!isEditing) return;
+        isEditing = false;
+        const val = parseInt(posInput.value.trim());
+        if (!isNaN(val) && val > 0 && val !== p.manualPosition) {
+          productStore.reorderProduct(p.id, val);
+          showToast(`Posição de "${p.description}" alterada para ${val}.`);
+        } else {
+          posInput.value = p.manualPosition; // reset if invalid or unchanged
+        }
+      };
 
       posInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-          posInput.blur(); // Apply change on Enter
+          e.preventDefault();
+          commitChange();
+          posInput.blur();
+        } else if (e.key === 'Escape') {
+          isEditing = false;
+          posInput.value = p.manualPosition;
+          posInput.blur();
         }
       });
 
-      posInput.addEventListener('change', (e) => {
-        const val = parseInt(e.target.value);
-        if (!isNaN(val) && val > 0) {
-          productStore.reorderProduct(p.id, val);
-          showToast(`Posição de "${p.description}" alterada para ${val}.`);
-        }
+      posInput.addEventListener('blur', () => {
+        commitChange();
       });
     }
 
