@@ -347,40 +347,126 @@ body {
   font-weight: 700;
 }
 
-/* Special Promo Category Pill */
+/* Special Promo Category Pill - High Visibility */
 .pill-btn.pill-promo {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(245, 158, 11, 0.15));
+  border: 1.5px solid rgba(239, 68, 68, 0.6);
+  color: #fef08a;
+  font-weight: 700;
+  padding: 8px 18px;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.28);
+  position: relative;
 }
 
 .pill-btn.pill-promo i {
   color: #ef4444;
-  animation: flamePulse 1.8s infinite alternate;
+  animation: flamePulse 1.5s infinite alternate ease-in-out;
 }
 
 .pill-btn.pill-promo:hover {
-  background: rgba(239, 68, 68, 0.22);
-  border-color: #ef4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.38), rgba(245, 158, 11, 0.28));
+  border-color: #f97316;
   color: #fff;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+  transform: translateY(-1px);
 }
 
 .pill-btn.pill-promo.active {
-  background: linear-gradient(135deg, #ef4444, #f97316);
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 50%, #eab308 100%);
   color: #fff;
-  border-color: transparent;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+  border-color: #fef08a;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.6), 0 0 25px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+
+.pill-btn.pill-promo .pill-count {
+  background: #ef4444;
+  color: #fff;
+  font-weight: 800;
 }
 
 .pill-btn.pill-promo.active .pill-count {
   background: #fff;
-  color: #ef4444;
+  color: #dc2626;
   font-weight: 800;
 }
 
 @keyframes flamePulse {
   0% { transform: scale(1); filter: drop-shadow(0 0 2px #ef4444); }
-  100% { transform: scale(1.15); filter: drop-shadow(0 0 6px #f59e0b); }
+  100% { transform: scale(1.18); filter: drop-shadow(0 0 7px #f59e0b); }
+}
+
+/* Ofertas Tab Hero Banner */
+.ofertas-banner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(28, 20, 22, 0.88) 50%, rgba(245, 158, 11, 0.15) 100%);
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.18);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.ofertas-banner-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.55);
+  animation: flamePulse 2s infinite alternate ease-in-out;
+}
+
+.ofertas-banner-text {
+  flex: 1;
+}
+
+.ofertas-banner-text h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ofertas-banner-text p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.ofertas-banner-badge {
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  background: rgba(239, 68, 68, 0.28);
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  color: #fef08a;
+  font-weight: 800;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 768px) {
+  .ofertas-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 14px;
+  }
+  .ofertas-banner-text h3 {
+    justify-content: center;
+    font-size: 1rem;
+  }
 }
 
 /* Search Bar & Stats Container */

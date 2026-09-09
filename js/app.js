@@ -200,9 +200,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Products on sale stay in their original position without messing up catalog sequence.
     products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
 
-    // When inside the dedicated "Ofertas" tab, highlight best discounts first or preserve natural sequence
+    // When inside the dedicated "Ofertas" tab, highlight best discounts first and display banner
+    const ofertasBanner = document.getElementById('ofertasBanner');
+    const ofertasBannerCount = document.getElementById('ofertasBannerCount');
+
     if (currentCategory === 'ofertas') {
       grid.classList.add('ofertas-active-view');
+      if (ofertasBanner) {
+        ofertasBanner.style.display = 'flex';
+        if (ofertasBannerCount) {
+          ofertasBannerCount.innerHTML = `<i class="fa-solid fa-fire"></i> ${products.length} ${products.length === 1 ? 'Oferta Ativa' : 'Ofertas Ativas'}`;
+        }
+      }
       products.sort((a, b) => {
         const discA = a.unitPrice > 0 ? (a.unitPrice - a.promoPrice) / a.unitPrice : 0;
         const discB = b.unitPrice > 0 ? (b.unitPrice - b.promoPrice) / b.unitPrice : 0;
@@ -213,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     } else {
       grid.classList.remove('ofertas-active-view');
+      if (ofertasBanner) ofertasBanner.style.display = 'none';
     }
 
     // Update Header Total Badge
