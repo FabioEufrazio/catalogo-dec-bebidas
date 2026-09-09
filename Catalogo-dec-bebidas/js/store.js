@@ -158,6 +158,9 @@ class ProductStore {
       showBoxTotal: productData.showBoxTotal !== false,
       category: String(productData.category || 'outros').toLowerCase(),
       active: productData.active !== false,
+      promoActive: !!productData.promoActive,
+      promoPrice: parseFloat(productData.promoPrice) || 0,
+      promoExpiry: productData.promoExpiry || '',
       manualPosition: this.products.length + 1,
       imageBase64: productData.imageBase64 || ''
     };
@@ -166,6 +169,43 @@ class ProductStore {
     this.ensurePositions();
     this.saveToStorage(true);
     return newProduct;
+  }
+
+  isProductPromoActive(product) {
+    if (!product || !product.promoActive) return false;
+    const promoPrice = parseFloat(product.promoPrice);
+    const regularPrice = parseFloat(product.unitPrice);
+    if (isNaN(promoPrice) || promoPrice <= 0) return false;
+    // Promo price must be less than regular price to be valid discount
+    if (regularPrice > 0 && promoPrice >= regularPrice) return false;
+    if (!product.promoExpiry) return true;
+
+    try {
+      const parts = String(product.promoExpiry).split('-');
+      if (parts.length === 3) {
+        const expiryDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 23, 59, 59, 999);
+        return new Date() <= expiryDate;
+      }
+      return new Date() <= new Date(product.promoExpiry);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  setProductPromo(id, promoData) {
+    if (!promoData || !promoData.active) {
+      return this.updateProduct(id, {
+        promoActive: false,
+        promoPrice: 0,
+        promoExpiry: ''
+      });
+    }
+
+    return this.updateProduct(id, {
+      promoActive: true,
+      promoPrice: parseFloat(promoData.price) || 0,
+      promoExpiry: promoData.expiry || ''
+    });
   }
 
   updateProduct(id, updatedData) {
@@ -180,7 +220,10 @@ class ProductStore {
       description: updatedData.description !== undefined ? String(updatedData.description).trim().toUpperCase() : existing.description,
       unitPrice: updatedData.unitPrice !== undefined ? parseFloat(updatedData.unitPrice) : existing.unitPrice,
       qtyPerBox: updatedData.qtyPerBox !== undefined ? parseInt(updatedData.qtyPerBox) : existing.qtyPerBox,
-      category: updatedData.category !== undefined ? String(updatedData.category).toLowerCase() : existing.category
+      category: updatedData.category !== undefined ? String(updatedData.category).toLowerCase() : existing.category,
+      promoActive: updatedData.promoActive !== undefined ? !!updatedData.promoActive : existing.promoActive,
+      promoPrice: updatedData.promoPrice !== undefined ? parseFloat(updatedData.promoPrice) : existing.promoPrice,
+      promoExpiry: updatedData.promoExpiry !== undefined ? updatedData.promoExpiry : existing.promoExpiry
     };
 
     this.ensurePositions();
