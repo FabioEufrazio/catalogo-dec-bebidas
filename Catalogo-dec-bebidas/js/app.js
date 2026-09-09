@@ -313,6 +313,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. POS Input Change
     const posInput = card.querySelector('.pos-badge-input');
     if (posInput) {
+      posInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      posInput.addEventListener('focus', (e) => {
+        e.stopPropagation();
+        posInput.select(); // Auto-select number on focus for instant typing
+      });
+
+      posInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          posInput.blur(); // Apply change on Enter
+        }
+      });
+
       posInput.addEventListener('change', (e) => {
         const val = parseInt(e.target.value);
         if (!isNaN(val) && val > 0) {

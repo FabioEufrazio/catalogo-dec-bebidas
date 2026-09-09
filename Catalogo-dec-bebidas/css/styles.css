@@ -473,20 +473,25 @@ body {
 }
 
 .pos-badge-input {
-  width: 48px;
-  padding: 2px 6px;
+  width: 52px;
+  padding: 2px 4px;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--accent-gold);
   font-weight: 700;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   outline: none;
+  cursor: text;
+  position: relative;
+  z-index: 5;
 }
 
 .pos-badge-input:focus {
   border-color: var(--accent-gold);
+  background: rgba(245, 158, 11, 0.15);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
 }
 
 .product-actions-bar {
