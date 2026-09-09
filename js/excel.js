@@ -227,18 +227,43 @@ class ExcelEngine {
 
   detectCategory(description) {
     if (!description) return 'outros';
-    const text = description.toLowerCase();
+    const text = String(description).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-    if (text.includes('whisky') || text.includes('whiskey') || text.includes('jack') || text.includes('black label') || text.includes('red label')) return 'whiskies';
-    if (text.includes('vodka') || text.includes('smirnoff') || text.includes('absolut') || text.includes('ciroc')) return 'vodkas';
-    if (text.includes('licor') || text.includes('baileys') || text.includes('amaretto') || text.includes('jagermeister')) return 'licores';
-    if (text.includes('xarope') || text.includes('monin') || text.includes('curacao')) return 'xaropes';
-    if (text.includes('suco') || text.includes('aurora') || text.includes('integral')) return 'sucos';
-    if (text.includes('coco') || text.includes('kero')) return 'aguadecoco';
-    if (text.includes('espumante') || text.includes('chandon') || text.includes('prosecco') || text.includes('champagne')) return 'espumantes';
-    if (text.includes('vinho') || text.includes('cabernet') || text.includes('merlot') || text.includes('malbec')) return 'vinhos';
-    if (text.includes('gin') || text.includes('tanqueray') || text.includes('bombay') || text.includes('beefeater')) return 'gins';
-    if (text.includes('cerveja') || text.includes('heineken') || text.includes('corona') || text.includes('stella') || text.includes('chopp')) return 'cervejas';
+    // Whiskies & Bourbon
+    if (text.includes('whisky') || text.includes('whiskey') || text.includes('jack') || text.includes('label') || text.includes('chivas') || text.includes('parr') || text.includes('ballantine') || text.includes('passport') || text.includes('white horse') || text.includes('buchanan') || text.includes('uisq') || text.includes('bourbon') || text.match(/\bwh\b/)) return 'whiskies';
+
+    // Vodkas
+    if (text.includes('vodka') || text.includes('vodk') || text.includes('smirnoff') || text.includes('absolut') || text.includes('ciroc') || text.includes('orloff') || text.includes('askov') || text.includes('grey goose') || text.includes('stolichnaya') || text.includes('ketel')) return 'vodkas';
+
+    // Cervejas & Chopp
+    if (text.includes('cerveja') || text.includes('cerv') || text.includes('chopp') || text.includes('heineken') || text.includes('corona') || text.includes('stella') || text.includes('spaten') || text.includes('budweiser') || text.includes('amstel') || text.includes('eisenbahn') || text.includes('becks') || text.includes('skol') || text.includes('brahma') || text.includes('antarctica') || text.includes('petra') || text.includes('itaipava') || text.includes('long neck')) return 'cervejas';
+
+    // Gins
+    if (text.includes('gin') || text.includes('tanqueray') || text.includes('bombay') || text.includes('beefeater') || text.includes('gordon') || text.includes('seagers') || text.includes('bulldog') || text.includes('amazoni') || text.includes('toronto')) return 'gins';
+
+    // Vinhos
+    if (text.includes('vinho') || text.includes('vin') || text.includes('cabernet') || text.includes('merlot') || text.includes('malbec') || text.includes('chardonnay') || text.includes('sauvignon') || text.includes('tinto') || text.includes('rose') || text.includes('pergola') || text.includes('almaden') || text.includes('santa helena') || text.includes('reservado')) return 'vinhos';
+
+    // Espumantes & Champagne
+    if (text.includes('espumante') || text.includes('esp') || text.includes('champagne') || text.includes('champ') || text.includes('prosecco') || text.includes('moscatel') || text.includes('brut') || text.includes('chandon') || text.includes('salton') || text.includes('perini')) return 'espumantes';
+
+    // Licores & Aperitivos
+    if (text.includes('licor') || text.includes('lic') || text.includes('baileys') || text.includes('amaretto') || text.includes('jager') || text.includes('stock') || text.includes('fireball') || text.includes('cointreau') || text.includes('curacao') || text.includes('campari') || text.includes('vermouth') || text.includes('martini')) return 'licores';
+
+    // Xaropes
+    if (text.includes('xarope') || text.includes('xar') || text.includes('monin') || text.includes('1883') || text.includes('dilute')) return 'xaropes';
+
+    // Água de Coco
+    if (text.includes('coco') || text.includes('ducoco') || text.includes('kero') || text.includes('sococo') || text.includes('quadrata')) return 'aguadecoco';
+
+    // Energéticos
+    if (text.includes('energ') || text.includes('baly') || text.includes('red bull') || text.includes('monster') || text.includes('vibe') || text.includes('fusion') || text.includes('tnt')) return 'energeticos';
+
+    // Sucos
+    if (text.includes('suco') || text.includes('suc') || text.includes('aurora') || text.includes('integral') || text.includes('prats') || text.includes('del valle') || text.includes('maguary') || text.includes('ades')) return 'sucos';
+
+    // Refrigerantes
+    if (text.includes('refri') || text.includes('coca') || text.includes('pepsi') || text.includes('guarana') || text.includes('sprite') || text.includes('fanta') || text.includes('tonica') || text.includes('schweppes') || text.includes('soda')) return 'refrigerantes';
 
     return 'outros';
   }

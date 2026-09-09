@@ -7,16 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. Category Definitions
   const CATEGORIES = [
     { id: 'all', label: 'Todos', icon: 'fa-layer-group' },
+    { id: 'ofertas', label: 'Ofertas', icon: 'fa-fire', isPromo: true },
     { id: 'whiskies', label: 'Whiskies', icon: 'fa-bottle-droplet' },
     { id: 'vodkas', label: 'Vodkas', icon: 'fa-glass-water' },
+    { id: 'cervejas', label: 'Cervejas', icon: 'fa-beer-mug-empty' },
+    { id: 'gins', label: 'Gins', icon: 'fa-glass-whiskey' },
+    { id: 'vinhos', label: 'Vinhos', icon: 'fa-wine-glass' },
+    { id: 'espumantes', label: 'Espumantes', icon: 'fa-champagne-glasses' },
+    { id: 'energeticos', label: 'Energéticos', icon: 'fa-bolt' },
+    { id: 'refrigerantes', label: 'Refrigerantes', icon: 'fa-bottle-pop' },
+    { id: 'aguadecoco', label: 'Água de Coco', icon: 'fa-bottle-water' },
+    { id: 'sucos', label: 'Sucos', icon: 'fa-glass-water-droplet' },
     { id: 'licores', label: 'Licores', icon: 'fa-wine-glass-empty' },
     { id: 'xaropes', label: 'Xaropes', icon: 'fa-prescription-bottle' },
-    { id: 'sucos', label: 'Sucos', icon: 'fa-glass-water-droplet' },
-    { id: 'aguadecoco', label: 'Água de Coco', icon: 'fa-bottle-water' },
-    { id: 'espumantes', label: 'Espumantes', icon: 'fa-champagne-glasses' },
-    { id: 'vinhos', label: 'Vinhos', icon: 'fa-wine-glass' },
-    { id: 'gins', label: 'Gins', icon: 'fa-glass-whiskey' },
-    { id: 'cervejas', label: 'Cervejas', icon: 'fa-beer-mug-empty' },
     { id: 'outros', label: 'Outros', icon: 'fa-boxes-stacked' }
   ];
 
@@ -39,6 +42,16 @@ document.addEventListener('DOMContentLoaded', () => {
       style: 'currency',
       currency: 'BRL'
     }).format(value || 0);
+  }
+
+  // Helper: Format Date BR (DD/MM/YYYY)
+  function formatDateBR(dateStr) {
+    if (!dateStr) return '';
+    const parts = String(dateStr).split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
   }
 
   // Toast Helper
@@ -66,10 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isClientMode) {
       document.body.classList.add('client-mode');
+      document.documentElement.classList.add('client-mode');
       const titleEl = document.getElementById('appHeaderTitle');
       if (titleEl) titleEl.textContent = 'Catálogo de Produtos';
     } else {
       document.body.classList.remove('client-mode');
+      document.documentElement.classList.remove('client-mode');
     }
   }
 
@@ -79,7 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const html = document.documentElement;
     const body = document.body;
 
-    if (hidePrices) {
+    // Os preços SÓ são ocultados na interface do cliente. O gestor sempre vê os preços.
+    if (hidePrices && isClientMode) {
       html.classList.add('prices-hidden');
       body.classList.add('prices-hidden');
     } else {
@@ -91,9 +107,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (toggleBtn) {
       if (hidePrices) {
-        toggleBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Exibir Preços';
+        toggleBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Exibir Preços (Clientes)';
+        toggleBtn.style.borderColor = 'var(--accent-gold)';
+        toggleBtn.style.color = 'var(--accent-gold)';
+        toggleBtn.title = 'Preços estão OCULTOS para os clientes (mas visíveis para você no gestor). Clique para exibir aos clientes.';
       } else {
-        toggleBtn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Ocultar Preços';
+        toggleBtn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Ocultar Preços (Clientes)';
+        toggleBtn.style.borderColor = '';
+        toggleBtn.style.color = '';
+        toggleBtn.title = 'Preços estão VISÍVEIS para os clientes. Clique para ocultar dos clientes.';
       }
     }
   }
@@ -112,6 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
     allProducts.forEach(p => {
       if (isClientMode && !p.active) return;
       counts['all']++;
+      if (productStore.isProductPromoActive(p)) {
+        counts['ofertas']++;
+      }
       const catKey = counts[p.category] !== undefined ? p.category : 'outros';
       counts[catKey]++;
     });
@@ -120,11 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     CATEGORIES.forEach(cat => {
       const count = counts[cat.id] || 0;
-      // Hide empty categories in client mode (except 'all')
+      // In client mode, if no active promos exist, hide 'ofertas' tab; also hide empty categories (except 'all')
       if (cat.id !== 'all' && count === 0) return;
 
+      const isPromoTab = cat.isPromo;
       const btn = document.createElement('button');
-      btn.className = `pill-btn ${currentCategory === cat.id ? 'active' : ''}`;
+      btn.className = `pill-btn ${isPromoTab ? 'pill-promo' : ''} ${currentCategory === cat.id ? 'active' : ''}`;
       btn.innerHTML = `
         <i class="fa-solid ${cat.icon}"></i>
         <span>${cat.label}</span>
@@ -155,7 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Filter by Category
-    if (currentCategory !== 'all') {
+    if (currentCategory === 'ofertas') {
+      products = products.filter(p => productStore.isProductPromoActive(p));
+    } else if (currentCategory !== 'all') {
       products = products.filter(p => p.category === currentCategory);
     }
 
@@ -166,6 +194,18 @@ document.addEventListener('DOMContentLoaded', () => {
         (p.description && p.description.toLowerCase().includes(q)) ||
         (p.code && String(p.code).toLowerCase().includes(q))
       );
+    }
+
+    // When viewing "Todos", products with active promos appear highlighted at the front
+    if (currentCategory === 'all') {
+      products.sort((a, b) => {
+        const aPromo = productStore.isProductPromoActive(a) ? 1 : 0;
+        const bPromo = productStore.isProductPromoActive(b) ? 1 : 0;
+        if (bPromo !== aPromo) {
+          return bPromo - aPromo;
+        }
+        return (a.manualPosition || 999999) - (b.manualPosition || 999999);
+      });
     }
 
     // Update Header Total Badge
@@ -206,9 +246,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Helper: Set Active Paste Target Card
   function setActivePasteTarget(productId) {
+    if (focusedCardProductId === productId && productId !== null) return;
     focusedCardProductId = productId;
     document.querySelectorAll('.product-card').forEach(card => {
-      if (card.dataset.id === productId) {
+      if (productId && card.dataset.id === productId) {
         card.classList.add('active-paste-target');
       } else {
         card.classList.remove('active-paste-target');
@@ -219,13 +260,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // Create Individual Product Card DOM Element
   function createProductCard(p) {
     const isTarget = focusedCardProductId === p.id;
-    const card = document.createElement('div');
-    card.className = `product-card ${!p.active ? 'inactive-product' : ''} ${selectedProductIds.has(p.id) ? 'selected-card' : ''} ${isTarget ? 'active-paste-target' : ''}`;
-    card.dataset.id = p.id;
-    card.tabIndex = 0; // Accessible for key bindings like Ctrl+V
+    const isPromo = productStore.isProductPromoActive(p);
+    const discountPercent = isPromo && p.unitPrice > 0 
+      ? Math.round(((p.unitPrice - p.promoPrice) / p.unitPrice) * 100) 
+      : 0;
 
-    card.addEventListener('click', () => setActivePasteTarget(p.id));
-    card.addEventListener('focus', () => setActivePasteTarget(p.id));
+    const card = document.createElement('div');
+    card.className = `product-card ${!p.active ? 'inactive-product' : ''} ${isPromo ? 'has-promo' : ''} ${selectedProductIds.has(p.id) ? 'selected-card' : ''} ${isTarget ? 'active-paste-target' : ''}`;
+    card.dataset.id = p.id;
+
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.admin-only-ui') || ['INPUT', 'BUTTON', 'I', 'LABEL', 'SELECT'].includes(e.target.tagName)) {
+        return;
+      }
+      setActivePasteTarget(p.id);
+    });
 
     const boxTotal = p.unitPrice * p.qtyPerBox;
     const catLabel = (CATEGORIES.find(c => c.id === p.category) || {}).label || 'Outros';
@@ -237,11 +286,15 @@ document.addEventListener('DOMContentLoaded', () => {
           <input type="checkbox" class="product-checkbox" ${selectedProductIds.has(p.id) ? 'checked' : ''}>
           <div class="pos-badge-wrapper">
             <span>POS:</span>
-            <input type="number" class="pos-badge-input" value="${p.manualPosition}" min="1">
+            <input type="text" inputmode="numeric" class="pos-badge-input" value="${p.manualPosition}">
           </div>
         </div>
         <div class="product-actions-bar">
-          <button class="icon-action-btn toggle-active-btn" title="${p.active ? 'Desativar Produto' : 'Ativar Produto'}">
+          <button class="btn-promo-action promo-btn ${isPromo ? 'is-active-promo' : ''}" title="${isPromo ? `Oferta Ativa: ${formatCurrency(p.promoPrice)} até ${formatDateBR(p.promoExpiry)}. Clique para editar ou remover.` : 'Colocar produto em oferta com prazo'}">
+            <i class="fa-solid ${isPromo ? 'fa-fire' : 'fa-tag'}"></i>
+            <span>Oferta</span>
+          </button>
+          <button class="icon-action-btn toggle-active-btn" title="${p.active ? 'Produto Ativo (Visível para clientes). Clique para ocultar do cliente.' : 'Produto Oculto/Desativado! Clique para ativar e exibir aos clientes.'}">
             <i class="fa-solid ${p.active ? 'fa-toggle-on' : 'fa-toggle-off'}" style="color:${p.active ? 'var(--status-active)' : 'var(--text-dim)'}; font-size:1.1rem;"></i>
           </button>
           <button class="icon-action-btn edit-btn" title="Editar Produto">
@@ -259,6 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- Image Area -->
       <div class="product-image-container ${p.imageBase64 ? 'has-image' : ''}">
         <span class="category-tag">${catLabel}</span>
+        ${isPromo ? `<span class="promo-badge-tag"><i class="fa-solid fa-fire"></i> ${discountPercent > 0 ? `-${discountPercent}%` : 'OFERTA'}</span>` : ''}
+        ${!p.active ? `<span class="inactive-status-tag admin-only-ui"><i class="fa-solid fa-eye-slash"></i> Oculto no Cliente</span>` : ''}
         ${p.code ? `<span class="sku-code-tag">COD: ${p.code}</span>` : ''}
         ${p.imageBase64 ? 
           `<img src="${p.imageBase64}" alt="${p.description}" class="product-img" loading="lazy" decoding="async">` :
@@ -276,18 +331,43 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="product-card-body">
         <h4 class="product-title" title="${p.description}">${p.description}</h4>
 
-        <div class="price-details-box">
-          <div class="price-unit-row">
-            <span class="price-label">Unidade:</span>
-            <span class="price-unit-val">${formatCurrency(p.unitPrice)}</span>
-          </div>
-          ${p.showBoxTotal && p.qtyPerBox > 1 ? `
-            <div class="price-box-row">
-              <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
-              <span class="price-box-val">${formatCurrency(boxTotal)}</span>
+        ${isPromo ? `
+          <div class="price-details-box is-promo">
+            <div class="price-original-row">
+              <span class="price-label">De:</span>
+              <span class="price-original-val">${formatCurrency(p.unitPrice)}</span>
             </div>
-          ` : ''}
-        </div>
+            <div class="price-unit-row">
+              <span class="price-label">Por unidade:</span>
+              <span class="price-promo-val">${formatCurrency(p.promoPrice)}</span>
+            </div>
+            ${p.showBoxTotal && p.qtyPerBox > 1 ? `
+              <div class="price-box-row">
+                <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
+                <span class="price-box-val" style="color: #10b981;">${formatCurrency(p.promoPrice * p.qtyPerBox)}</span>
+              </div>
+            ` : ''}
+            ${p.promoExpiry ? `
+              <div class="promo-expiry-row">
+                <i class="fa-regular fa-clock"></i>
+                <span>Válido até ${formatDateBR(p.promoExpiry)}</span>
+              </div>
+            ` : ''}
+          </div>
+        ` : `
+          <div class="price-details-box">
+            <div class="price-unit-row">
+              <span class="price-label">Unidade:</span>
+              <span class="price-unit-val">${formatCurrency(p.unitPrice)}</span>
+            </div>
+            ${p.showBoxTotal && p.qtyPerBox > 1 ? `
+              <div class="price-box-row">
+                <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
+                <span class="price-box-val">${formatCurrency(boxTotal)}</span>
+              </div>
+            ` : ''}
+          </div>
+        `}
       </div>
     `;
 
@@ -308,15 +388,69 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 2. POS Input Change
+    // 2. POS Badge & Input Change
+    const posWrapper = card.querySelector('.pos-badge-wrapper');
     const posInput = card.querySelector('.pos-badge-input');
-    if (posInput) {
-      posInput.addEventListener('change', (e) => {
-        const val = parseInt(e.target.value);
-        if (!isNaN(val) && val > 0) {
+
+    if (posWrapper && posInput) {
+      let isEditing = false;
+
+      const stopEvents = ['mousedown', 'mouseup', 'click', 'pointerdown', 'focusin'];
+      stopEvents.forEach(evt => {
+        posWrapper.addEventListener(evt, (e) => e.stopPropagation());
+        posInput.addEventListener(evt, (e) => e.stopPropagation());
+      });
+
+      posWrapper.addEventListener('click', (e) => {
+        e.stopPropagation();
+        posInput.focus();
+        posInput.select();
+      });
+
+      posWrapper.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        const res = prompt(`Digite a nova posição para "${p.description}" (Atual: ${p.manualPosition}):`, p.manualPosition);
+        if (res !== null) {
+          const val = parseInt(res.trim());
+          if (!isNaN(val) && val > 0 && val !== p.manualPosition) {
+            productStore.reorderProduct(p.id, val);
+            showToast(`Posição de "${p.description}" alterada para ${val}.`);
+          }
+        }
+      });
+
+      posInput.addEventListener('focus', (e) => {
+        e.stopPropagation();
+        isEditing = true;
+        posInput.select(); // Highlight entire text for instant typing
+      });
+
+      const commitChange = () => {
+        if (!isEditing) return;
+        isEditing = false;
+        const val = parseInt(posInput.value.trim());
+        if (!isNaN(val) && val > 0 && val !== p.manualPosition) {
           productStore.reorderProduct(p.id, val);
           showToast(`Posição de "${p.description}" alterada para ${val}.`);
+        } else {
+          posInput.value = p.manualPosition; // reset if invalid or unchanged
         }
+        posInput.blur();
+      };
+
+      posInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitChange();
+        } else if (e.key === 'Escape') {
+          isEditing = false;
+          posInput.value = p.manualPosition;
+          posInput.blur();
+        }
+      });
+
+      posInput.addEventListener('blur', () => {
+        commitChange();
       });
     }
 
@@ -327,6 +461,15 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         setActivePasteTarget(p.id);
         ImageUtils.openGoogleImageSearch(p.description);
+      });
+    }
+
+    // 3.1 Promo Offer Button
+    const promoBtn = card.querySelector('.promo-btn');
+    if (promoBtn) {
+      promoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openPromoModal(p);
       });
     }
 
@@ -489,6 +632,121 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal(modalId);
     });
   });
+
+  // Promo Modal Handlers
+  let currentPromoProduct = null;
+
+  function openPromoModal(product) {
+    currentPromoProduct = product;
+    if (!product) return;
+
+    const titleEl = document.getElementById('promoProductTitle');
+    const origPriceEl = document.getElementById('promoOriginalPriceText');
+    const idInput = document.getElementById('promoProductId');
+    const priceInput = document.getElementById('promoPriceInput');
+    const expiryInput = document.getElementById('promoExpiryInput');
+    const removeBtn = document.getElementById('removePromoBtn');
+
+    if (titleEl) titleEl.textContent = product.description;
+    if (origPriceEl) origPriceEl.textContent = formatCurrency(product.unitPrice);
+    if (idInput) idInput.value = product.id;
+
+    // Set min date to today (YYYY-MM-DD)
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    if (expiryInput) {
+      expiryInput.min = todayStr;
+      expiryInput.value = product.promoExpiry || '';
+    }
+
+    const isPromo = productStore.isProductPromoActive(product);
+    if (priceInput) {
+      priceInput.value = isPromo && product.promoPrice ? product.promoPrice : '';
+    }
+
+    if (removeBtn) {
+      removeBtn.style.display = isPromo ? 'inline-flex' : 'none';
+    }
+
+    updatePromoPreview();
+    openModal('promoModal');
+  }
+
+  function updatePromoPreview() {
+    if (!currentPromoProduct) return;
+    const priceInput = document.getElementById('promoPriceInput');
+    const previewBox = document.getElementById('promoPreviewBox');
+    const badgeEl = document.getElementById('promoDiscountBadge');
+    const savingsEl = document.getElementById('promoSavingsText');
+
+    const promoVal = parseFloat(priceInput ? priceInput.value : 0);
+    const origVal = parseFloat(currentPromoProduct.unitPrice) || 0;
+
+    if (promoVal > 0 && origVal > 0 && promoVal < origVal) {
+      const discount = Math.round(((origVal - promoVal) / origVal) * 100);
+      const savings = origVal - promoVal;
+      if (badgeEl) badgeEl.textContent = `-${discount}% OFF`;
+      if (savingsEl) savingsEl.textContent = formatCurrency(savings);
+      if (previewBox) previewBox.style.display = 'block';
+    } else {
+      if (previewBox) previewBox.style.display = 'none';
+    }
+  }
+
+  const promoPriceInput = document.getElementById('promoPriceInput');
+  if (promoPriceInput) {
+    promoPriceInput.addEventListener('input', updatePromoPreview);
+  }
+
+  const promoForm = document.getElementById('promoForm');
+  if (promoForm) {
+    promoForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!currentPromoProduct) return;
+
+      const id = document.getElementById('promoProductId').value;
+      const priceVal = parseFloat(document.getElementById('promoPriceInput').value);
+      const expiryVal = document.getElementById('promoExpiryInput').value;
+
+      if (isNaN(priceVal) || priceVal <= 0) {
+        showToast('Informe um preço promocional válido.', 'error');
+        return;
+      }
+
+      if (priceVal >= currentPromoProduct.unitPrice) {
+        showToast('O preço promocional deve ser menor que o preço normal.', 'error');
+        return;
+      }
+
+      if (!expiryVal) {
+        showToast('Informe a data de validade da oferta.', 'error');
+        return;
+      }
+
+      productStore.setProductPromo(id, {
+        active: true,
+        price: priceVal,
+        expiry: expiryVal
+      });
+
+      showToast(`Oferta salva para "${currentPromoProduct.description}" até ${formatDateBR(expiryVal)}!`);
+      closeModal('promoModal');
+    });
+  }
+
+  const removePromoBtn = document.getElementById('removePromoBtn');
+  if (removePromoBtn) {
+    removePromoBtn.addEventListener('click', () => {
+      if (!currentPromoProduct) return;
+      productStore.setProductPromo(currentPromoProduct.id, { active: false });
+      showToast(`Oferta encerrada. "${currentPromoProduct.description}" voltou ao preço normal.`);
+      closeModal('promoModal');
+    });
+  }
 
   // Lightbox Handler
   function openLightbox(product) {
@@ -905,7 +1163,12 @@ document.addEventListener('DOMContentLoaded', () => {
     togglePricesBtn.addEventListener('click', () => {
       const current = productStore.getHidePrices();
       productStore.setHidePrices(!current);
-      showToast(current ? 'Preços estão VISÍVEIS para o cliente.' : 'Preços estão OCULTOS para o cliente.', current ? 'success' : 'error');
+      showToast(
+        !current
+          ? 'Preços OCULTOS para os clientes (Gestor continua vendo tudo).'
+          : 'Preços VISÍVEIS para os clientes.',
+        !current ? 'warning' : 'success'
+      );
     });
   }
 
@@ -916,6 +1179,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const shareLinkBtn = document.getElementById('shareLinkBtn');
   const headerClientLinkBtn = document.getElementById('headerClientLinkBtn');
+
+  // Removed autoCategorizeBtn logic as requested
 
   function openShareLinkModal() {
     const input = document.getElementById('clientLinkInput');
@@ -988,20 +1253,80 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Firebase Configuration Modal Handling
+  const fbSnippetArea = document.getElementById('fbSnippetArea');
+  const fbApiKeyInput = document.getElementById('fbApiKey');
+  const fbProjectIdInput = document.getElementById('fbProjectId');
+  const fbAppIdInput = document.getElementById('fbAppId');
+  const fbWarningAlert = document.getElementById('fbWarningAlert');
+
+  function loadFirebaseModalInputs() {
+    const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+    if (!rawConfig) return;
+    try {
+      const cfg = JSON.parse(rawConfig);
+      if (fbApiKeyInput && cfg.apiKey) fbApiKeyInput.value = cfg.apiKey;
+      if (fbProjectIdInput && cfg.projectId) fbProjectIdInput.value = cfg.projectId;
+      if (fbAppIdInput && cfg.appId) fbAppIdInput.value = cfg.appId;
+    } catch (e) {}
+  }
+  loadFirebaseModalInputs();
+
+  if (fbSnippetArea) {
+    fbSnippetArea.addEventListener('input', (e) => {
+      const text = e.target.value;
+      const apiKeyMatch = text.match(/apiKey["']?\s*:\s*["']([^"']+)["']/);
+      const projectIdMatch = text.match(/projectId["']?\s*:\s*["']([^"']+)["']/);
+      const appIdMatch = text.match(/appId["']?\s*:\s*["']([^"']+)["']/);
+
+      if (apiKeyMatch && fbApiKeyInput) fbApiKeyInput.value = apiKeyMatch[1];
+      if (projectIdMatch && fbProjectIdInput) fbProjectIdInput.value = projectIdMatch[1];
+      if (appIdMatch && fbAppIdInput) fbAppIdInput.value = appIdMatch[1];
+
+      if (apiKeyMatch || projectIdMatch || appIdMatch) {
+        showToast('Credenciais extraídas do código com sucesso!');
+      }
+    });
+  }
+
   const saveFirebaseBtn = document.getElementById('saveFirebaseBtn');
   if (saveFirebaseBtn) {
     saveFirebaseBtn.addEventListener('click', () => {
-      const apiKey = document.getElementById('fbApiKey').value.trim();
-      const projectId = document.getElementById('fbProjectId').value.trim();
-      if (!apiKey || !projectId) {
-        alert("Preencha a API Key e o Project ID.");
+      let apiKey = fbApiKeyInput ? fbApiKeyInput.value.trim() : '';
+      let projectId = fbProjectIdInput ? fbProjectIdInput.value.trim() : '';
+      let appId = fbAppIdInput ? fbAppIdInput.value.trim() : '';
+
+      // Auto-fix if user put App ID (starts with 1:) in API Key field
+      if (apiKey.startsWith('1:') && !appId) {
+        appId = apiKey;
+        apiKey = '';
+        if (fbAppIdInput) fbAppIdInput.value = appId;
+        if (fbApiKeyInput) fbApiKeyInput.value = '';
+      }
+
+      if (!apiKey || apiKey.startsWith('1:')) {
+        if (fbWarningAlert) {
+          fbWarningAlert.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <strong>Atenção:</strong> O código <code>1:3784...</code> é o <strong>App ID</strong>, não a API Key! A API Key começa com <code>AIzaSy...</code>. Por favor, insira a API Key correta no primeiro campo.';
+          fbWarningAlert.style.display = 'block';
+        }
         return;
       }
 
-      const config = { apiKey, projectId };
+      if (!projectId) {
+        if (fbWarningAlert) {
+          fbWarningAlert.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Por favor, informe o Project ID (ex: <code>catalogo-dec-bebidas</code>).';
+          fbWarningAlert.style.display = 'block';
+        }
+        return;
+      }
+
+      if (fbWarningAlert) fbWarningAlert.style.display = 'none';
+
+      const config = { apiKey, projectId, appId };
       localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(config));
-      showToast('Configuração do Firebase salva! Recarregue a página para conectar.');
+      showToast('Configuração do Firebase salva! Recarregando...');
       closeModal('firebaseModal');
+      setTimeout(() => location.reload(), 600);
     });
   }
 
@@ -1009,7 +1334,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (clearFirebaseBtn) {
     clearFirebaseBtn.addEventListener('click', () => {
       localStorage.removeItem(STORAGE_KEYS.FIREBASE_CONFIG);
-      showToast('Firebase desconectado.', 'error');
+      if (fbApiKeyInput) fbApiKeyInput.value = '';
+      if (fbProjectIdInput) fbProjectIdInput.value = '';
+      if (fbAppIdInput) fbAppIdInput.value = '';
+      if (fbSnippetArea) fbSnippetArea.value = '';
+      showToast('Firebase desconectado e credenciais removidas.', 'error');
       closeModal('firebaseModal');
       setTimeout(() => location.reload(), 500);
     });
@@ -1033,11 +1362,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         await realtimeEngine.login(email, password);
-        showToast(`Bem-vindo, ${email}! Login efetuado.`);
+        showToast(`Bem-vindo, ${email}! Login efetuado com sucesso.`);
         closeModal('adminLoginModal');
       } catch (err) {
         if (errorMsgEl) {
-          errorMsgEl.textContent = 'Erro ao realizar login: ' + err.message;
+          errorMsgEl.textContent = err.message;
+          errorMsgEl.style.display = 'block';
+        }
+      }
+    });
+  }
+
+  const signupBtn = document.getElementById('signupBtn');
+  if (signupBtn) {
+    signupBtn.addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errorMsgEl = document.getElementById('loginErrorMessage');
+
+      if (errorMsgEl) errorMsgEl.style.display = 'none';
+
+      if (!email || !password) {
+        if (errorMsgEl) {
+          errorMsgEl.textContent = "Preencha o e-mail e a senha desejada para criar sua conta de gestor.";
+          errorMsgEl.style.display = 'block';
+        }
+        return;
+      }
+
+      try {
+        await realtimeEngine.signUp(email, password);
+        showToast(`Conta criada com sucesso! Bem-vindo, ${email}!`);
+        closeModal('adminLoginModal');
+      } catch (err) {
+        if (errorMsgEl) {
+          errorMsgEl.textContent = err.message;
+          errorMsgEl.style.display = 'block';
+        }
+      }
+    });
+  }
+
+  const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+  if (forgotPasswordBtn) {
+    forgotPasswordBtn.addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value.trim();
+      const errorMsgEl = document.getElementById('loginErrorMessage');
+      if (!email) {
+        if (errorMsgEl) {
+          errorMsgEl.textContent = "Digite o seu e-mail de Gestor no campo acima e clique novamente em 'Esqueci minha senha'.";
+          errorMsgEl.style.display = 'block';
+        }
+        return;
+      }
+      try {
+        await realtimeEngine.sendPasswordReset(email);
+        alert(`Um e-mail de redefinição de senha foi enviado para "${email}". Verifique sua caixa de entrada e pasta de spam.`);
+      } catch (err) {
+        if (errorMsgEl) {
+          errorMsgEl.textContent = err.message;
           errorMsgEl.style.display = 'block';
         }
       }
