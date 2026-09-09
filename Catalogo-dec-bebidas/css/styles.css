@@ -94,10 +94,16 @@ body.client-mode .admin-toolbar {
 }
 
 /* Base Styles */
+html {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -107,6 +113,7 @@ body {
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
   background-image: 
     radial-gradient(circle at 15% 20%, rgba(245, 158, 11, 0.05) 0%, transparent 40%),
     radial-gradient(circle at 85% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
@@ -569,9 +576,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  content-visibility: auto;
-  contain-intrinsic-size: 380px;
-  transform: translateZ(0);
+  touch-action: pan-y;
 }
 
 .product-card:hover {
@@ -1479,6 +1484,8 @@ body {
   .promo-badge-tag {
     font-size: 0.62rem;
     padding: 2px 5px;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   .sku-code-tag {
     font-size: 0.6rem;
