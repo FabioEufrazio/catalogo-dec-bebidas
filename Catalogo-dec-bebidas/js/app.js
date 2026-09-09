@@ -196,16 +196,33 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     }
 
-    // When viewing "Todos", products with active promos appear highlighted at the front
-    if (currentCategory === 'all') {
+    // Always preserve the natural order (POS) defined by the user in general views!
+    // Products on sale stay in their original position without messing up catalog sequence.
+    products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
+
+    // When inside the dedicated "Ofertas" tab, highlight best discounts first and display banner
+    const ofertasBanner = document.getElementById('ofertasBanner');
+    const ofertasBannerCount = document.getElementById('ofertasBannerCount');
+
+    if (currentCategory === 'ofertas') {
+      grid.classList.add('ofertas-active-view');
+      if (ofertasBanner) {
+        ofertasBanner.style.display = 'flex';
+        if (ofertasBannerCount) {
+          ofertasBannerCount.innerHTML = `<i class="fa-solid fa-fire"></i> ${products.length} ${products.length === 1 ? 'Oferta Ativa' : 'Ofertas Ativas'}`;
+        }
+      }
       products.sort((a, b) => {
-        const aPromo = productStore.isProductPromoActive(a) ? 1 : 0;
-        const bPromo = productStore.isProductPromoActive(b) ? 1 : 0;
-        if (bPromo !== aPromo) {
-          return bPromo - aPromo;
+        const discA = a.unitPrice > 0 ? (a.unitPrice - a.promoPrice) / a.unitPrice : 0;
+        const discB = b.unitPrice > 0 ? (b.unitPrice - b.promoPrice) / b.unitPrice : 0;
+        if (Math.abs(discB - discA) > 0.001) {
+          return discB - discA; // Biggest discount percentage first
         }
         return (a.manualPosition || 999999) - (b.manualPosition || 999999);
       });
+    } else {
+      grid.classList.remove('ofertas-active-view');
+      if (ofertasBanner) ofertasBanner.style.display = 'none';
     }
 
     // Update Header Total Badge
@@ -215,13 +232,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (products.length === 0) {
-      grid.innerHTML = `
-        <div class="empty-state">
-          <i class="fa-solid fa-wine-bottle"></i>
-          <h3>Nenhum produto encontrado</h3>
-          <p>Tente ajustar os filtros de categoria ou busca.</p>
-        </div>
-      `;
+      if (currentCategory === 'ofertas') {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-fire" style="color: #ef4444;"></i>
+            <h3>Nenhum produto em oferta no momento</h3>
+            <p>Quando produtos forem colocados em oferta com prazo, eles aparecerão com destaque exclusivo nesta aba.</p>
+          </div>
+        `;
+      } else {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-wine-bottle"></i>
+            <h3>Nenhum produto encontrado</h3>
+            <p>Tente ajustar os filtros de categoria ou busca.</p>
+          </div>
+        `;
+      }
       renderPagination(0);
       return;
     }
@@ -233,12 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedProducts = products.slice(startIndex, startIndex + itemsPerPage);
 
-    grid.innerHTML = '';
-
+    // Atomic DOM replacement: avoids white screen flash and preserves smooth interactions
+    const fragment = document.createDocumentFragment();
     paginatedProducts.forEach(product => {
       const card = createProductCard(product);
-      grid.appendChild(card);
+      fragment.appendChild(card);
     });
+    grid.replaceChildren(fragment);
 
     renderPagination(totalPages);
     updateBulkActionsBarUI();
@@ -512,6 +540,17 @@ document.addEventListener('DOMContentLoaded', () => {
           selectedProductIds.delete(p.id);
           showToast(`Produto excluído.`);
         }
+      });
+    }
+
+    // 8. Click on Price Box to quickly edit price (Admin Mode)
+    const priceBox = card.querySelector('.price-details-box');
+    if (priceBox && !isClientMode) {
+      priceBox.style.cursor = 'pointer';
+      priceBox.title = 'Clique para editar o preço deste produto';
+      priceBox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditProductModal(p);
       });
     }
 
@@ -1580,11 +1619,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 11. Subscribe Store Listener to Re-render UI
+  // 11. Subscribe Store Listener to Re-render UI (Batched via requestAnimationFrame)
+  let renderRafId = null;
+  function scheduleUIRender() {
+    if (renderRafId) cancelAnimationFrame(renderRafId);
+    renderRafId = requestAnimationFrame(() => {
+      syncPriceModeUI();
+      renderCategoryPills();
+      renderProducts();
+    });
+  }
+
   productStore.subscribe(() => {
-    syncPriceModeUI();
-    renderCategoryPills();
-    renderProducts();
+    scheduleUIRender();
   });
 
   // 12. Initial Kickoff

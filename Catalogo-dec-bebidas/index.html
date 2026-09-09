@@ -41,7 +41,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=2.8">
+  <link rel="stylesheet" href="css/styles.css?v=3.1">
 </head>
 <body>
 
@@ -132,6 +132,20 @@
 
   <!-- Main Grid Container -->
   <main class="main-container">
+    <!-- Ofertas Special Highlight Banner -->
+    <div id="ofertasBanner" class="ofertas-banner" style="display: none;">
+      <div class="ofertas-banner-icon">
+        <i class="fa-solid fa-fire-flame-curved"></i>
+      </div>
+      <div class="ofertas-banner-text">
+        <h3><i class="fa-solid fa-tags" style="color: #f59e0b;"></i> Aba de Ofertas Especiais & Preços Promocionais</h3>
+        <p>Produtos selecionados com descontos exclusivos por prazo limitado. Aproveite antes do término da oferta!</p>
+      </div>
+      <div class="ofertas-banner-badge" id="ofertasBannerCount">
+        0 Ofertas Ativas
+      </div>
+    </div>
+
     <div id="productsGrid" class="products-grid">
       <!-- Products rendered dynamically -->
     </div>
@@ -584,11 +598,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/sample-data.js?v=2.8"></script>
-  <script src="js/store.js?v=2.8"></script>
-  <script src="js/realtime.js?v=2.8"></script>
-  <script src="js/excel.js?v=2.8"></script>
-  <script src="js/image-utils.js?v=2.8"></script>
-  <script src="js/app.js?v=2.8"></script>
+  <script src="js/sample-data.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/realtime.js?v=3.1"></script>
+  <script src="js/excel.js?v=3.1"></script>
+  <script src="js/image-utils.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
 </body>
 </html>
