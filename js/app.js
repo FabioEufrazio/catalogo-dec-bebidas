@@ -371,41 +371,19 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = 'lamina-card';
       card.dataset.id = lamina.id;
 
-      const whatsAppMsg = encodeURIComponent(`Olá! Gostaria de fazer um pedido com base nas ofertas do encarte "${lamina.title}".`);
-      const whatsAppLink = `https://wa.me/5581999999999?text=${whatsAppMsg}`;
-
       card.innerHTML = `
-        <div class="lamina-img-container" title="Clique para abrir em tela cheia com zoom">
+        <div class="lamina-img-container">
           <img src="${lamina.imageUrl}" alt="${lamina.title}" class="lamina-img" loading="lazy">
-          <div class="lamina-zoom-badge">
-            <i class="fa-solid fa-magnifying-glass-plus"></i> Toque para Zoom
-          </div>
         </div>
-        <div class="lamina-card-body">
-          <div class="lamina-card-header">
-            <h3 class="lamina-card-title">${lamina.title}</h3>
-            ${lamina.validity ? `<span class="lamina-validity-badge"><i class="fa-regular fa-clock"></i> ${lamina.validity}</span>` : ''}
-          </div>
-          ${lamina.description ? `<p class="lamina-card-desc">${lamina.description}</p>` : ''}
-          <div class="lamina-card-actions">
-            <button type="button" class="btn btn-primary btn-sm lamina-btn-zoom">
-              <i class="fa-solid fa-expand"></i> Ver Encarte Completo
+        ${isGestor ? `
+          <div class="lamina-card-body" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <h4 class="lamina-card-title" style="font-size: 0.95rem; margin: 0;">${lamina.title}</h4>
+            <button type="button" class="btn btn-danger btn-sm lamina-btn-delete" title="Excluir Encarte">
+              <i class="fa-solid fa-trash-can"></i> Excluir
             </button>
-            <a href="${whatsAppLink}" target="_blank" rel="noopener noreferrer" class="lamina-btn-whatsapp" title="Fazer Pedido no WhatsApp">
-              <i class="fa-brands fa-whatsapp"></i> Fazer Pedido
-            </a>
-            ${isGestor ? `
-              <button type="button" class="btn btn-danger btn-sm lamina-btn-delete" title="Excluir Encarte">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
-            ` : ''}
           </div>
-        </div>
+        ` : ''}
       `;
-
-      const openViewer = () => openLaminaViewer(lamina);
-      card.querySelector('.lamina-img-container').addEventListener('click', openViewer);
-      card.querySelector('.lamina-btn-zoom').addEventListener('click', openViewer);
 
       const deleteBtn = card.querySelector('.lamina-btn-delete');
       if (deleteBtn) {

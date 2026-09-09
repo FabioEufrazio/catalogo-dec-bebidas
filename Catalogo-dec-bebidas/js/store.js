@@ -16,7 +16,7 @@ const DEFAULT_LAMINAS = [
     title: "Ofertas Exclusivas Diageo",
     imageUrl: "assets/laminas/diageo-ofertas.jpg",
     validity: "01/09/2026 a 12/09/2026",
-    description: "Smirnoff Ice, Ypióca, Cîroc, Gordon's e Smirnoff Vodka",
+    description: "",
     active: true,
     createdAt: "2026-09-01T00:00:00.000Z"
   },
@@ -25,7 +25,7 @@ const DEFAULT_LAMINAS = [
     title: "Encarte Promocional Baly",
     imageUrl: "assets/laminas/baly-ofertas.jpg",
     validity: "01/09/2026 a 12/09/2026",
-    description: "Baly Energy Drink 2L, 1L, Lata 473ml e 250ml",
+    description: "",
     active: true,
     createdAt: "2026-09-01T00:00:00.000Z"
   }
@@ -506,6 +506,9 @@ class ProductStore {
       const raw = localStorage.getItem(STORAGE_KEYS.LAMINAS);
       if (raw) {
         this.laminas = JSON.parse(raw);
+        if (Array.isArray(this.laminas)) {
+          this.laminas.forEach(l => l.description = '');
+        }
       } else {
         this.laminas = JSON.parse(JSON.stringify(DEFAULT_LAMINAS));
         this.saveLaminas();

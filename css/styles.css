@@ -1747,7 +1747,7 @@ body {
   position: relative;
   width: 100%;
   background: #0d0f15;
-  cursor: pointer;
+  cursor: default;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1761,14 +1761,10 @@ body {
   max-height: 540px;
   object-fit: contain;
   display: block;
-  transition: transform 0.3s ease;
-}
-
-.lamina-card:hover .lamina-img {
-  transform: scale(1.02);
 }
 
 .lamina-zoom-badge {
+  display: none !important;
   position: absolute;
   bottom: 14px;
   left: 50%;
