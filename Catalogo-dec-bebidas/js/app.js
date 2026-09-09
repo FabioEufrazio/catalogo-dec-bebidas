@@ -339,8 +339,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <!-- Image Area -->
       <div class="product-image-container ${p.imageBase64 ? 'has-image' : ''}">
-        <span class="category-tag">${catLabel}</span>
-        ${isPromo ? `<span class="promo-badge-tag"><i class="fa-solid fa-fire"></i> ${discountPercent > 0 ? `-${discountPercent}%` : 'OFERTA'}</span>` : ''}
+        <div class="product-corner-badges">
+          ${isPromo ? `<span class="promo-badge-tag"><i class="fa-solid fa-fire"></i> ${discountPercent > 0 ? `-${discountPercent}%` : 'OFERTA'}</span>` : ''}
+          <span class="category-tag">${catLabel}</span>
+        </div>
         ${!p.active ? `<span class="inactive-status-tag admin-only-ui"><i class="fa-solid fa-eye-slash"></i> Oculto no Cliente</span>` : ''}
         ${p.code ? `<span class="sku-code-tag">COD: ${p.code}</span>` : ''}
         ${p.imageBase64 ? 
@@ -1191,6 +1193,238 @@ document.addEventListener('DOMContentLoaded', () => {
   const bulkCancelBtn = document.getElementById('bulkCancelBtn');
   if (bulkCancelBtn) {
     bulkCancelBtn.addEventListener('click', () => {
+      selectedProductIds.clear();
+      renderProducts();
+    });
+  }
+
+  // Bulk Select All / Deselect All
+  const bulkSelectAllBtn = document.getElementById('bulkSelectAllBtn');
+  if (bulkSelectAllBtn) {
+    bulkSelectAllBtn.addEventListener('click', () => {
+      const allProds = productStore.getProducts().filter(p => !isClientMode || p.active);
+      if (selectedProductIds.size === allProds.length) {
+        selectedProductIds.clear();
+        showToast('Seleção desmarcada.');
+      } else {
+        allProds.forEach(p => selectedProductIds.add(p.id));
+        showToast(`${allProds.length} produtos selecionados.`);
+      }
+      renderProducts();
+    });
+  }
+
+  // Bulk Promo Modal & Actions Handlers
+  const bulkPromoBtn = document.getElementById('bulkPromoBtn');
+  const bulkPromoDiscountType = document.getElementById('bulkPromoDiscountType');
+  const bulkPromoValueInput = document.getElementById('bulkPromoValueInput');
+  const bulkPromoValueLabel = document.getElementById('bulkPromoValueLabel');
+  const bulkPromoExpiryInput = document.getElementById('bulkPromoExpiryInput');
+  const bulkPromoPreviewTableBody = document.getElementById('bulkPromoPreviewTableBody');
+  const bulkPromoModeTabApply = document.getElementById('bulkPromoModeTabApply');
+  const bulkPromoModeTabRemove = document.getElementById('bulkPromoModeTabRemove');
+  const bulkPromoApplySection = document.getElementById('bulkPromoApplySection');
+  const bulkPromoRemoveSection = document.getElementById('bulkPromoRemoveSection');
+  const confirmBulkPromoBtn = document.getElementById('confirmBulkPromoBtn');
+  const bulkPromoCountLabel = document.getElementById('bulkPromoCountLabel');
+
+  let bulkPromoMode = 'apply'; // 'apply' | 'remove'
+
+  function updateBulkPromoPreview() {
+    if (!bulkPromoPreviewTableBody) return;
+    bulkPromoPreviewTableBody.innerHTML = '';
+
+    const ids = Array.from(selectedProductIds);
+    const selectedProds = productStore.getProducts().filter(p => ids.includes(p.id));
+    const type = bulkPromoDiscountType ? bulkPromoDiscountType.value : 'percent';
+    const val = parseFloat(bulkPromoValueInput ? bulkPromoValueInput.value : 0) || 0;
+
+    selectedProds.slice(0, 15).forEach(p => {
+      let promoPrice = p.unitPrice;
+      if (val > 0) {
+        if (type === 'percent') {
+          promoPrice = Math.max(0.01, p.unitPrice * (1 - val / 100));
+        } else if (type === 'discount_fixed') {
+          promoPrice = Math.max(0.01, p.unitPrice - val);
+        } else if (type === 'fixed_price') {
+          promoPrice = Math.max(0.01, val);
+        }
+      }
+
+      const discountPercent = p.unitPrice > 0 && promoPrice < p.unitPrice
+        ? Math.round(((p.unitPrice - promoPrice) / p.unitPrice) * 100)
+        : 0;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${p.description}</strong></td>
+        <td>${formatCurrency(p.unitPrice)}</td>
+        <td><strong style="color:#ef4444;">${val > 0 ? formatCurrency(promoPrice) : '-'}</strong></td>
+        <td>${discountPercent > 0 ? `<span class="badge badge-active" style="background:rgba(239,68,68,0.2); color:#ef4444;">-${discountPercent}%</span>` : '-'}</td>
+      `;
+      bulkPromoPreviewTableBody.appendChild(tr);
+    });
+
+    if (selectedProds.length > 15) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="4" style="text-align:center; color:var(--text-muted); font-size:0.8rem;">... e mais ${selectedProds.length - 15} produtos selecionados</td>`;
+      bulkPromoPreviewTableBody.appendChild(tr);
+    }
+  }
+
+  function setDateOffsetDays(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    if (bulkPromoExpiryInput) bulkPromoExpiryInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  if (bulkPromoBtn) {
+    bulkPromoBtn.addEventListener('click', () => {
+      const count = selectedProductIds.size;
+      if (count === 0) {
+        showToast('Selecione pelo menos um produto para aplicar oferta em lote.', 'error');
+        return;
+      }
+
+      if (bulkPromoCountLabel) {
+        bulkPromoCountLabel.textContent = `${count} ${count === 1 ? 'produto' : 'produtos'}`;
+      }
+
+      // Min date is today
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      if (bulkPromoExpiryInput) {
+        bulkPromoExpiryInput.min = todayStr;
+        if (!bulkPromoExpiryInput.value) setDateOffsetDays(7); // Default 7 days
+      }
+
+      // Reset to apply mode
+      bulkPromoMode = 'apply';
+      if (bulkPromoModeTabApply) {
+        bulkPromoModeTabApply.className = 'btn btn-primary';
+        bulkPromoModeTabRemove.className = 'btn btn-outline';
+      }
+      if (bulkPromoApplySection) bulkPromoApplySection.style.display = 'block';
+      if (bulkPromoRemoveSection) bulkPromoRemoveSection.style.display = 'none';
+      if (confirmBulkPromoBtn) {
+        confirmBulkPromoBtn.className = 'btn btn-primary';
+        confirmBulkPromoBtn.style.background = 'linear-gradient(135deg, #ef4444, #f97316)';
+        confirmBulkPromoBtn.innerHTML = '<i class="fa-solid fa-fire"></i> Confirmar Oferta em Lote';
+      }
+
+      updateBulkPromoPreview();
+      openModal('bulkPromoModal');
+    });
+  }
+
+  if (bulkPromoModeTabApply) {
+    bulkPromoModeTabApply.addEventListener('click', () => {
+      bulkPromoMode = 'apply';
+      bulkPromoModeTabApply.className = 'btn btn-primary';
+      bulkPromoModeTabRemove.className = 'btn btn-outline';
+      if (bulkPromoApplySection) bulkPromoApplySection.style.display = 'block';
+      if (bulkPromoRemoveSection) bulkPromoRemoveSection.style.display = 'none';
+      if (confirmBulkPromoBtn) {
+        confirmBulkPromoBtn.className = 'btn btn-primary';
+        confirmBulkPromoBtn.style.background = 'linear-gradient(135deg, #ef4444, #f97316)';
+        confirmBulkPromoBtn.innerHTML = '<i class="fa-solid fa-fire"></i> Confirmar Oferta em Lote';
+      }
+    });
+  }
+
+  if (bulkPromoModeTabRemove) {
+    bulkPromoModeTabRemove.addEventListener('click', () => {
+      bulkPromoMode = 'remove';
+      bulkPromoModeTabRemove.className = 'btn btn-danger';
+      bulkPromoModeTabApply.className = 'btn btn-outline';
+      if (bulkPromoApplySection) bulkPromoApplySection.style.display = 'none';
+      if (bulkPromoRemoveSection) bulkPromoRemoveSection.style.display = 'block';
+      if (confirmBulkPromoBtn) {
+        confirmBulkPromoBtn.className = 'btn btn-danger';
+        confirmBulkPromoBtn.style.background = '';
+        confirmBulkPromoBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Remover Ofertas dos Selecionados';
+      }
+    });
+  }
+
+  if (bulkPromoDiscountType) {
+    bulkPromoDiscountType.addEventListener('change', () => {
+      const t = bulkPromoDiscountType.value;
+      if (t === 'percent') {
+        bulkPromoValueLabel.textContent = 'Percentual de Desconto (%)';
+        bulkPromoValueInput.placeholder = 'Ex: 15';
+      } else if (t === 'discount_fixed') {
+        bulkPromoValueLabel.textContent = 'Abatimento Fixo por Unidade (R$)';
+        bulkPromoValueInput.placeholder = 'Ex: 5.00';
+      } else if (t === 'fixed_price') {
+        bulkPromoValueLabel.textContent = 'Preço Promocional Único (R$)';
+        bulkPromoValueInput.placeholder = 'Ex: 29.90';
+      }
+      updateBulkPromoPreview();
+    });
+  }
+
+  if (bulkPromoValueInput) {
+    bulkPromoValueInput.addEventListener('input', updateBulkPromoPreview);
+  }
+
+  document.querySelectorAll('.promo-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const days = parseInt(btn.getAttribute('data-days') || 7);
+      setDateOffsetDays(days);
+    });
+  });
+
+  if (confirmBulkPromoBtn) {
+    confirmBulkPromoBtn.addEventListener('click', () => {
+      const ids = Array.from(selectedProductIds);
+      if (ids.length === 0) return;
+
+      if (bulkPromoMode === 'remove') {
+        productStore.bulkRemovePromo(ids);
+        showToast(`Ofertas encerradas para ${ids.length} produtos.`);
+        closeModal('bulkPromoModal');
+        selectedProductIds.clear();
+        renderProducts();
+        return;
+      }
+
+      // Apply mode
+      const type = bulkPromoDiscountType ? bulkPromoDiscountType.value : 'percent';
+      const val = parseFloat(bulkPromoValueInput ? bulkPromoValueInput.value : 0);
+      const expiry = bulkPromoExpiryInput ? bulkPromoExpiryInput.value : '';
+
+      if (isNaN(val) || val <= 0) {
+        showToast('Informe um valor de desconto válido maior que zero.', 'error');
+        return;
+      }
+
+      if (type === 'percent' && val >= 100) {
+        showToast('O desconto percentual deve ser menor que 100%.', 'error');
+        return;
+      }
+
+      if (!expiry) {
+        showToast('Informe o prazo / data de validade da oferta.', 'error');
+        return;
+      }
+
+      const changed = productStore.bulkSetPromo(ids, {
+        type,
+        value: val,
+        expiry
+      });
+
+      if (changed) {
+        showToast(`Oferta em lote aplicada com sucesso para ${ids.length} produtos até ${formatDateBR(expiry)}!`);
+      } else {
+        showToast('Nenhum produto pôde receber a oferta (verifique se os preços eram válidos).', 'warning');
+      }
+
+      closeModal('bulkPromoModal');
       selectedProductIds.clear();
       renderProducts();
     });
