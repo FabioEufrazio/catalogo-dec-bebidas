@@ -13,6 +13,7 @@ class RealtimeEngine {
 
     const urlParams = new URLSearchParams(window.location.search);
     this.isClientView = urlParams.get('view') === 'public' || urlParams.get('client') === '1';
+    this.isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
     this.initLocalSync();
     this.initFirebaseSync();
@@ -63,7 +64,9 @@ class RealtimeEngine {
             hidePrices
           });
         }
-        if (this.firebaseActive) {
+        // BLINDAGEM DE TESTES: NUNCA disparar auto-sync em segundo plano no ambiente local (localhost)!
+        // No local, modificações ficam 100% isoladas. Só sobem para produção se o gestor clicar conscientemente em "Publicar Online".
+        if (!this.isLocal && !this.isClientView && this.firebaseActive) {
           this.syncToCloud(products, hidePrices);
         }
       }
@@ -130,6 +133,13 @@ class RealtimeEngine {
 
   setupCloudListeners() {
     if (!this.db) return;
+
+    // BLINDAGEM DE TESTES: Em ambiente local (localhost), desativa a escuta remota da nuvem.
+    // Isso evita que dados da produção sobrescrevam os testes locais e elimina os bugs/conflitos ao editar ou reordenar itens.
+    if (this.isLocal) {
+      console.log("🔒 Ambiente Local (Testes): Escuta remota desativada. Testes 100% isolados de produção.");
+      return;
+    }
 
     // Optimized Single-Document Cloud Listener (Uses only 1 Read instead of 1,000 Reads)
     this.db.collection('catalogs').doc('active').onSnapshot({ includeMetadataChanges: true }, (doc) => {
@@ -383,12 +393,16 @@ class RealtimeEngine {
   updateCloudBadgeUI(active) {
     const badge = document.getElementById('cloudStatusBadge');
     if (badge) {
-      if (active) {
+      if (this.isLocal) {
+        badge.className = 'badge badge-warning';
+        badge.innerHTML = '<i class="fa-solid fa-flask"></i> Ambiente de Teste (Local)';
+        badge.title = 'Ambiente de testes 100% isolado. Nenhuma modificação sobe para produção automaticamente.';
+      } else if (active) {
         badge.className = 'badge badge-active';
-        badge.innerHTML = '<i class="fa-solid fa-cloud"></i> Nuvem: Conectado';
+        badge.innerHTML = '<i class="fa-solid fa-cloud"></i> Nuvem: Produção';
       } else {
         badge.className = 'badge badge-warning';
-        badge.innerHTML = '<i class="fa-solid fa-cloud-slash"></i> Nuvem: Offline (Local)';
+        badge.innerHTML = '<i class="fa-solid fa-cloud-slash"></i> Nuvem: Offline';
       }
     }
   }
