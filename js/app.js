@@ -377,8 +377,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Organização solicitada na aba de Ofertas:
+      // Organização solicitada na aba de Ofertas:
       // Critério 1: Categoria (todos os produtos da mesma categoria ficam rigorosamente agrupados)
-      // Critério 2: Descrição do item (ordenação descritiva/alfabética natural, ex: ICE SMIRNOFF 269ML-LT MACA VERDE ao lado de ICE SMIRNOFF 269ML-LT RASPBERRY)
+      // Critério 2: Linha / Marca / Família (itens da mesma marca/linha ficam colados lado a lado)
+      // Critério 3: Litragem / Volume (o produto com maior litragem vem na frente: ex. 1L > 750ml > 500ml)
       // Desempate: Código (SKU)
       const CATEGORY_SORT_ORDER = [
         'whiskies',
@@ -402,12 +404,52 @@ document.addEventListener('DOMContentLoaded', () => {
         return idx === -1 ? 999 : idx;
       }
 
-      function getNormalizedSortDescription(desc) {
-        let text = String(desc || '').trim().replace(/\s+/g, ' ');
-        // Normaliza pequenas variações de prefixo para garantir alinhamento perfeito (ex: ICE SMIRNOFF e SMIRNOFF ICE)
+      function extractVolumeMl(description) {
+        if (!description) return 0;
+        const text = String(description).toUpperCase();
+        // 1. Litros (ex: 1,750L, 1.750L, 1,75L, 1.75L, 2L, 1.5L, 1L, 1LT, 2LTS)
+        const literMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:L|LT|LTS|LITRO|LITROS)\b/);
+        if (literMatch) {
+          let numStr = literMatch[1].replace(',', '.');
+          const val = parseFloat(numStr);
+          if (!isNaN(val) && val > 0) {
+            return Math.round(val * 1000);
+          }
+        }
+        // 2. Mililitros (ex: 1,750ML, 1.750ML, 1750ML, 1000ML, 998ML, 750ML, 500ML, 473ML, 355ML, 269ML)
+        const mlMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:ML)\b/);
+        if (mlMatch) {
+          let numStr = mlMatch[1];
+          if (numStr.includes('.') || numStr.includes(',')) {
+            numStr = numStr.replace(/[,.]/g, '');
+          }
+          const val = parseInt(numStr, 10);
+          if (!isNaN(val) && val > 0) return val;
+        }
+        return 0;
+      }
+
+      function getBaseDescription(desc) {
+        let text = String(desc || '').toUpperCase().trim();
+        // Normaliza variações de prefixo
         text = text.replace(/^ICE\s+SMIRNOFF\b/i, 'SMIRNOFF ICE');
         text = text.replace(/^51\s+ICE\b/i, 'ICE 51');
-        return text;
+        text = text.replace(/^WHIK\b/i, 'WHISKY');
+        text = text.replace(/^WHISKEY\b/i, 'WHISKY');
+
+        // Remove menção a idade / anos (ex: 8A, 12A, 15A, 18A, 8 ANOS, 12 ANOS) para que Red Label 8A agrupe com Red Label 1L e 750ML
+        text = text.replace(/\b\d+\s*A(?:NOS)?\b/gi, ' ');
+
+        // Remove menções de tamanho e volume para isolar a linha do produto
+        text = text.replace(/\b\d+(?:[.,]\d+)?\s*(?:ML|L|LT|LTS|LITRO|LITROS)\b/gi, ' ');
+
+        // Remove menções de tipo de embalagem (GF, GARRAFA, LT, LATA, LATAO, PET, LN, LONG NECK)
+        text = text.replace(/\b(GF|GARRAFA|LT|LATA|LAT[ÃA]O|PET|LN|LONG NECK|PACK|FARDO|CX|CAIXA)\b/gi, ' ');
+
+        // Remove traços e pontuações soltas
+        text = text.replace(/[-_]/g, ' ');
+
+        return text.replace(/\s+/g, ' ').trim();
       }
 
       function compareProductsForOfertas(a, b) {
@@ -424,14 +466,25 @@ document.addEventListener('DOMContentLoaded', () => {
           if (catComp !== 0) return catComp;
         }
 
-        // 2. CRITÉRIO NÚMERO 2: Descrição do item
-        // Garante que variações da mesma linha/marca fiquem rigorosamente lado a lado
-        const descA = getNormalizedSortDescription(a.description);
-        const descB = getNormalizedSortDescription(b.description);
-        const descComp = descA.localeCompare(descB, 'pt-BR', { sensitivity: 'base', numeric: true });
+        // 2. CRITÉRIO NÚMERO 2: Base da Descrição (Linha / Marca / Família)
+        // Garante que variações da mesma marca (ex: Red Label, Smirnoff Ice, Baly) fiquem estritamente juntas
+        const baseA = getBaseDescription(a.description);
+        const baseB = getBaseDescription(b.description);
+        const baseComp = baseA.localeCompare(baseB, 'pt-BR', { sensitivity: 'base' });
+        if (baseComp !== 0) return baseComp;
+
+        // 3. CRITÉRIO NÚMERO 3: Litragem / Volume (Maior volume vem primeiro: 1L antes de 750ml, 750ml antes de 500ml)
+        const volA = extractVolumeMl(a.description);
+        const volB = extractVolumeMl(b.description);
+        if (volA !== volB) {
+          return volB - volA; // Ordem decrescente de volume
+        }
+
+        // 4. Desempate por descrição completa
+        const descComp = String(a.description || '').localeCompare(String(b.description || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
         if (descComp !== 0) return descComp;
 
-        // 3. Desempate final (apenas se tiver a mesma descrição exata): Código (SKU)
+        // 5. Desempate final (mesma descrição exata e mesmo volume): Código (SKU)
         const codeA = String(a.code || '').trim();
         const codeB = String(b.code || '').trim();
         const numA = parseInt(codeA, 10);
