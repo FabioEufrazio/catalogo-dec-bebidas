@@ -10,19 +10,28 @@ const STORAGE_KEYS = {
 };
 
 class HistoryStore {
-  constructor(maxSize = 30) {
+  constructor(maxSize = 40) {
     this.maxSize = maxSize;
     this.undoStack = [];
     this.redoStack = [];
   }
 
-  pushSnapshot(products, hidePrices) {
-    const state = JSON.parse(JSON.stringify({ products, hidePrices }));
-    this.undoStack.push(state);
+  // Push the PREVIOUS valid state BEFORE a mutation happens
+  pushState(products, hidePrices) {
+    if (!products) return;
+    const snapshot = {
+      products: JSON.parse(JSON.stringify(products)),
+      hidePrices: Boolean(hidePrices)
+    };
+    this.undoStack.push(snapshot);
     if (this.undoStack.length > this.maxSize) {
       this.undoStack.shift();
     }
-    this.redoStack = []; // Clear redo stack on new action
+    this.redoStack = []; // Any new user action invalidates redo history
+  }
+
+  pushSnapshot(products, hidePrices) {
+    this.pushState(products, hidePrices);
   }
 
   canUndo() {
@@ -35,18 +44,35 @@ class HistoryStore {
 
   undo(currentState) {
     if (!this.canUndo()) return null;
-    this.redoStack.push(JSON.parse(JSON.stringify(currentState)));
-    return this.undoStack.pop();
+    const previousState = this.undoStack.pop();
+    if (currentState) {
+      this.redoStack.push({
+        products: JSON.parse(JSON.stringify(currentState.products || [])),
+        hidePrices: Boolean(currentState.hidePrices)
+      });
+    }
+    return previousState;
   }
 
   redo(currentState) {
     if (!this.canRedo()) return null;
-    this.undoStack.push(JSON.parse(JSON.stringify(currentState)));
-    return this.redoStack.pop();
+    const nextState = this.redoStack.pop();
+    if (currentState) {
+      this.undoStack.push({
+        products: JSON.parse(JSON.stringify(currentState.products || [])),
+        hidePrices: Boolean(currentState.hidePrices)
+      });
+    }
+    return nextState;
+  }
+
+  clear() {
+    this.undoStack = [];
+    this.redoStack = [];
   }
 }
 
-const historyStore = new HistoryStore(30);
+const historyStore = new HistoryStore(40);
 
 class ProductStore {
   constructor() {
@@ -95,9 +121,21 @@ class ProductStore {
     this.listeners.forEach(fn => fn(this.products, this.hidePrices, source));
   }
 
-  saveToStorage(recordHistory = true) {
+  recordState() {
+    historyStore.pushState(this.products, this.hidePrices);
+  }
+
+  canUndo() {
+    return historyStore.canUndo();
+  }
+
+  canRedo() {
+    return historyStore.canRedo();
+  }
+
+  saveToStorage(recordHistory = false) {
     if (recordHistory) {
-      historyStore.pushSnapshot(this.products, this.hidePrices);
+      this.recordState();
     }
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(this.products));
     localStorage.setItem(STORAGE_KEYS.HIDE_PRICES, String(this.hidePrices));
@@ -112,8 +150,6 @@ class ProductStore {
       return code !== 'CFG' && desc !== 'SYSTEM CONFIG' && p.id !== 'System Config';
     });
 
-    // Removed auto-categorize on load as requested.
-
     // Synchronize manualPosition property with array index sequence 1..N
     this.products.forEach((p, idx) => {
       p.manualPosition = idx + 1;
@@ -126,6 +162,17 @@ class ProductStore {
   autoCategorizeAll(excelEngineRef) {
     const engine = excelEngineRef || (typeof excelEngine !== 'undefined' ? excelEngine : null);
     if (!engine || typeof engine.detectCategory !== 'function') return 0;
+    
+    let willChange = false;
+    this.products.forEach(p => {
+      const newCat = engine.detectCategory(p.description);
+      if (newCat && newCat !== p.category) willChange = true;
+    });
+
+    if (willChange) {
+      this.recordState();
+    }
+
     let count = 0;
     this.products.forEach(p => {
       const newCat = engine.detectCategory(p.description);
@@ -135,7 +182,7 @@ class ProductStore {
       }
     });
     if (count > 0) {
-      this.saveToStorage(true);
+      this.saveToStorage(false);
     }
     return count;
   }
@@ -150,11 +197,14 @@ class ProductStore {
 
   setHidePrices(hide) {
     if (this.hidePrices === hide) return;
+    this.recordState();
     this.hidePrices = hide;
-    this.saveToStorage(true);
+    this.saveToStorage(false);
   }
 
   addProduct(productData) {
+    this.recordState();
+
     const newProduct = {
       id: `PROD_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
       code: String(productData.code || '').trim(),
@@ -173,7 +223,7 @@ class ProductStore {
 
     this.products.push(newProduct);
     this.ensurePositions();
-    this.saveToStorage(true);
+    this.saveToStorage(false);
     return newProduct;
   }
 
@@ -218,6 +268,8 @@ class ProductStore {
     const index = this.products.findIndex(p => p.id === id);
     if (index === -1) return false;
 
+    this.recordState();
+
     const existing = this.products[index];
     this.products[index] = {
       ...existing,
@@ -234,24 +286,26 @@ class ProductStore {
     };
 
     this.ensurePositions();
-    this.saveToStorage(true);
+    this.saveToStorage(false);
     return true;
   }
 
   deleteProduct(id) {
-    const initialLen = this.products.length;
+    const exists = this.products.some(p => p.id === id);
+    if (!exists) return false;
+
+    this.recordState();
     this.products = this.products.filter(p => p.id !== id);
-    if (this.products.length !== initialLen) {
-      this.ensurePositions();
-      this.saveToStorage(true);
-      return true;
-    }
-    return false;
+    this.ensurePositions();
+    this.saveToStorage(false);
+    return true;
   }
 
   duplicateProduct(id) {
     const existing = this.products.find(p => p.id === id);
     if (!existing) return null;
+
+    this.recordState();
 
     const copy = {
       ...JSON.parse(JSON.stringify(existing)),
@@ -263,7 +317,7 @@ class ProductStore {
     const targetIdx = this.products.findIndex(p => p.id === id);
     this.products.splice(targetIdx + 1, 0, copy);
     this.ensurePositions();
-    this.saveToStorage(true);
+    this.saveToStorage(false);
     return copy;
   }
 
@@ -277,14 +331,20 @@ class ProductStore {
     targetIdx = Math.max(0, Math.min(targetIdx, this.products.length - 1));
     if (currentIdx === targetIdx) return;
 
+    this.recordState();
+
     const [movedItem] = this.products.splice(currentIdx, 1);
     this.products.splice(targetIdx, 0, movedItem);
 
     this.ensurePositions();
-    this.saveToStorage(true);
+    this.saveToStorage(false);
   }
 
   bulkUpdatePrice(ids, unitPrice, qtyPerBox) {
+    const hasMatch = this.products.some(p => ids.includes(p.id));
+    if (!hasMatch) return;
+
+    this.recordState();
     let changed = false;
     this.products.forEach(p => {
       if (ids.includes(p.id)) {
@@ -298,30 +358,39 @@ class ProductStore {
       }
     });
     if (changed) {
-      this.saveToStorage(true);
+      this.saveToStorage(false);
     }
   }
 
   bulkUpdateCategory(ids, category) {
-    let changed = false;
+    const hasMatch = this.products.some(p => ids.includes(p.id));
+    if (!hasMatch) return;
+
+    this.recordState();
     this.products.forEach(p => {
       if (ids.includes(p.id)) {
         p.category = String(category).toLowerCase();
-        changed = true;
       }
     });
-    if (changed) {
-      this.saveToStorage(true);
-    }
+    this.saveToStorage(false);
   }
 
   bulkDelete(ids) {
+    if (!ids || ids.length === 0) return;
+    const hasMatch = this.products.some(p => ids.includes(p.id));
+    if (!hasMatch) return;
+
+    this.recordState();
     this.products = this.products.filter(p => !ids.includes(p.id));
     this.ensurePositions();
-    this.saveToStorage(true);
+    this.saveToStorage(false);
   }
 
   bulkSetPromo(ids, { type, value, expiry }) {
+    const hasMatch = this.products.some(p => ids.includes(p.id));
+    if (!hasMatch) return false;
+
+    this.recordState();
     let changed = false;
     this.products.forEach(p => {
       if (ids.includes(p.id)) {
@@ -345,39 +414,44 @@ class ProductStore {
     });
 
     if (changed) {
-      this.saveToStorage(true);
+      this.saveToStorage(false);
     }
     return changed;
   }
 
   bulkRemovePromo(ids) {
-    let changed = false;
+    const hasMatch = this.products.some(p => ids.includes(p.id) && p.promoActive);
+    if (!hasMatch) return false;
+
+    this.recordState();
     this.products.forEach(p => {
       if (ids.includes(p.id) && p.promoActive) {
         p.promoActive = false;
-        changed = true;
       }
     });
 
-    if (changed) {
-      this.saveToStorage(true);
-    }
-    return changed;
+    this.saveToStorage(false);
+    return true;
   }
 
   setAllProducts(newProducts, recordHistory = true) {
+    if (recordHistory) {
+      this.recordState();
+    }
     this.products = JSON.parse(JSON.stringify(newProducts));
     this.products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
     this.ensurePositions();
-    this.saveToStorage(recordHistory);
+    this.saveToStorage(false);
   }
 
   clearAll() {
+    this.recordState();
     this.products = [];
-    this.saveToStorage(true);
+    this.saveToStorage(false);
   }
 
   undo() {
+    if (!this.canUndo()) return false;
     const previousState = historyStore.undo({
       products: this.products,
       hidePrices: this.hidePrices
@@ -395,6 +469,7 @@ class ProductStore {
   }
 
   redo() {
+    if (!this.canRedo()) return false;
     const nextState = historyStore.redo({
       products: this.products,
       hidePrices: this.hidePrices

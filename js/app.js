@@ -189,6 +189,147 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Helper: Extract brand/family cluster key from product description
+  function getProductClusterKey(product) {
+    if (!product) return 'OUTROS';
+    const desc = String(product.description || '').toUpperCase();
+    const category = String(product.category || '').toLowerCase();
+
+    // 1. Specific High-Priority Brand / Product Lines (exact multi-word and prominent brands)
+    const KNOWN_CLUSTERS = [
+      // Ready to Drink / Ice
+      { key: 'SMIRNOFF ICE', test: /(SMIRNOFF.*ICE|ICE.*SMIRNOFF)/i },
+      { key: 'ICE 51', test: /(51.*ICE|ICE.*51)/i },
+      { key: 'SKOL BEATS', test: /BEATS/i },
+
+      // Energy Drinks
+      { key: 'BALY', test: /\bBALY\b/i },
+      { key: 'RED BULL', test: /\bRED\s*BULL\b/i },
+      { key: 'MONSTER', test: /\bMONSTER\b/i },
+      { key: 'TNT', test: /\bTNT\b/i },
+      { key: 'FUSION', test: /\bFUSION\b/i },
+      { key: 'EXTRA POWER', test: /\bEXTRA\s*POWER\b/i },
+      { key: 'RED DUB', test: /\bRED\s*DUB\b/i },
+
+      // Beers
+      { key: 'HEINEKEN', test: /\bHEINEKEN\b/i },
+      { key: 'AMSTEL', test: /\bAMSTEL\b/i },
+      { key: 'CORONA', test: /\bCORONA\b/i },
+      { key: 'BUDWEISER', test: /\bBUDWEISER\b/i },
+      { key: 'STELLA ARTOIS', test: /\bSTELLA(\s*ARTOIS)?\b/i },
+      { key: 'SPATEN', test: /\bSPATEN\b/i },
+      { key: 'BRAHMA', test: /\bBRAHMA\b/i },
+      { key: 'SKOL', test: /\bSKOL\b/i },
+      { key: 'EISENBAHN', test: /\bEISENBAHN\b/i },
+      { key: 'ORIGINAL', test: /\bORIGINAL\b/i },
+      { key: 'BECKS', test: /\bBECK'?S\b/i },
+      { key: 'IMPÉRIO', test: /\bIMPERIO\b/i },
+      { key: 'PETRA', test: /\bPETRA\b/i },
+      { key: 'DEVASSA', test: /\bDEVASSA\b/i },
+      { key: 'ITAIPAVA', test: /\bITAIPAVA\b/i },
+
+      // Whiskies
+      { key: 'JACK DANIELS', test: /\bJACK\s*DANIEL'?S?\b/i },
+      { key: 'JOHNNIE WALKER', test: /(JOHNNIE\s*WALKER|RED\s*LABEL|BLACK\s*LABEL|GOLD\s*LABEL|BLUE\s*LABEL|GREEN\s*LABEL)/i },
+      { key: 'CHIVAS REGAL', test: /\bCHIVAS(\s*REGAL)?\b/i },
+      { key: 'BALLANTINES', test: /\bBALLANTINE'?S?\b/i },
+      { key: 'OLD PARR', test: /\bOLD\s*PARR\b/i },
+      { key: 'WHITE HORSE', test: /\bWHITE\s*HORSE\b/i },
+      { key: 'BLACK & WHITE', test: /(BLACK\s*(&|E)?\s*WHITE)/i },
+      { key: 'PASSPORT', test: /\bPASSPORT\b/i },
+      { key: 'BUCHANANS', test: /\bBUCHANAN'?S?\b/i },
+      { key: 'JAMESON', test: /\bJAMESON\b/i },
+      { key: 'GRANT', test: /\bGRANT'?S?\b/i },
+      { key: 'TEACHERS', test: /\bTEACHER'?S?\b/i },
+      { key: 'BELLS', test: /\bBELL'?S?\b/i },
+      { key: 'NATU NOBILIS', test: /\bNATU\s*NOBILIS\b/i },
+
+      // Vodkas
+      { key: 'SMIRNOFF', test: /\bSMIRNOFF\b/i },
+      { key: 'ABSOLUT', test: /\bABSOLUT\b/i },
+      { key: 'CIROC', test: /\bCIROC\b/i },
+      { key: 'GREY GOOSE', test: /\bGREY\s*GOOSE\b/i },
+      { key: 'BELVEDERE', test: /\bBELVEDERE\b/i },
+      { key: 'ORLOFF', test: /\bORLOFF\b/i },
+      { key: 'ASKOV', test: /\bASKOV\b/i },
+      { key: 'KOBLEVO', test: /\bKOBLEVO\b/i },
+
+      // Gins
+      { key: 'TANQUERAY', test: /\bTANQUERAY\b/i },
+      { key: 'BEEFEATER', test: /\bBEEFEATER\b/i },
+      { key: 'BOMBAY', test: /\bBOMBAY(\s*SAPPHIRE)?\b/i },
+      { key: 'GORDONS', test: /\bGORDON'?S?\b/i },
+      { key: 'SEAGERS', test: /\bSEAGERS?\b/i },
+      { key: 'BULLDOG', test: /\bBULLDOG\b/i },
+      { key: 'HENDRICKS', test: /\bHENDRICK'?S?\b/i },
+      { key: 'ROCKS', test: /\bROCKS?\b/i },
+
+      // Liqueurs / Aperitifs
+      { key: 'CAMPARI', test: /\bCAMPARI\b/i },
+      { key: 'APEROL', test: /\bAPEROL\b/i },
+      { key: 'JAGERMEISTER', test: /\bJ(A|Ä)GERMEISTER\b/i },
+      { key: 'LICOR 43', test: /(LICOR\s*43|CUARENTA\s*Y\s*TRES)/i },
+      { key: 'BAILEYS', test: /\bBAILEY'?S?\b/i },
+      { key: 'AMARETTO', test: /\bAMARETTO\b/i },
+      { key: 'COINTREAU', test: /\bCOINTREAU\b/i },
+
+      // Rums / Cachaças
+      { key: 'BACARDI', test: /\bBACARDI\b/i },
+      { key: 'MONTILLA', test: /\bMONTILLA\b/i },
+      { key: 'MALIBU', test: /\bMALIBU\b/i },
+      { key: 'HAVANA CLUB', test: /\bHAVANA(\s*CLUB)?\b/i },
+      { key: '51', test: /\b51\b/i },
+      { key: 'PITU', test: /\bPITU\b/i },
+      { key: 'YPIOCA', test: /\bYPIOCA\b/i },
+      { key: 'SAGATIBA', test: /\bSAGATIBA\b/i },
+      { key: 'VELHO BARREIRO', test: /\bVELHO\s*BARREIRO\b/i },
+
+      // Tequilas
+      { key: 'JOSE CUERVO', test: /\b(JOSE\s*)?CUERVO\b/i },
+
+      // Syrups
+      { key: 'MONIN', test: /\bMONIN\b/i },
+      { key: '1883', test: /\b1883\b/i },
+      { key: 'KALY', test: /\bKALY\b/i },
+
+      // Sodas / Non-Alcoholic
+      { key: 'COCA-COLA', test: /(COCA\s*-?\s*COLA)/i },
+      { key: 'PEPSI', test: /\bPEPSI\b/i },
+      { key: 'GUARANA ANTARCTICA', test: /(GUARAN[AA]\s*ANTARCTICA|ANTARCTICA\s*GUARAN[AA])/i },
+      { key: 'SCHWEPPES', test: /\bSCHWEPPES\b/i },
+      { key: 'SPRITE', test: /\bSPRITE\b/i },
+      { key: 'FANTA', test: /\bFANTA\b/i },
+      { key: 'H2OH', test: /\bH2OH!?\b/i },
+      { key: 'SUCO PRATS', test: /\bPRATS\b/i },
+      { key: 'DEL VALLE', test: /\bDEL\s*VALLE\b/i }
+    ];
+
+    for (const cluster of KNOWN_CLUSTERS) {
+      if (cluster.test.test(desc)) {
+        return cluster.key;
+      }
+    }
+
+    // 2. Generic Heuristic for unlisted brands/products:
+    // Strip categories, package types, sizes, and stop words to group by brand tokens
+    let clean = desc
+      .replace(/\b(WHISKY|WHISKEY|VODKA|GIN|CERVEJA|CHOPP|ENERGETICO|ENERGÉTICO|VINHO|ESPUMANTE|LICOR|REFRIGERANTE|SUCO|XAROPE|AGUA|ÁGUA|BEBIDA MISTA|BEBIDA|ICE)\b/gi, ' ')
+      .replace(/\b(LATA|LATÃO|LONG NECK|LN|GF|GARRAFA|PET|PACK|FARDO|CX|CAIXA|RETORN[AÁ]VEL|DESCART[AÁ]VEL)\b/gi, ' ')
+      .replace(/\b\d+(\.\d+)?\s*(ML|L|LT|LITRO|LITROS|G|KG)\b/gi, ' ')
+      .replace(/\b(DE|DO|DA|DOS|DAS|COM|EM|E|SEM|ALCOOL|ÁLCOOL|ZERO)\b/gi, ' ')
+      .replace(/[^A-Z0-9\s]/g, ' ')
+      .trim();
+
+    const words = clean.split(/\s+/).filter(w => w.length > 2);
+    if (words.length >= 2) {
+      return `${words[0]} ${words[1]}`;
+    } else if (words.length === 1) {
+      return words[0];
+    }
+
+    return (category || 'OUTROS').toUpperCase();
+  }
+
   // 5. Render Product Grid & Pagination
   function renderProducts() {
     const grid = document.getElementById('productsGrid');
@@ -221,7 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Products on sale stay in their original position without messing up catalog sequence.
     products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
 
-    // When inside the dedicated "Ofertas" tab, highlight best discounts first and display banner
+    // When inside the dedicated "Ofertas" tab:
+    // Group similar products by description/family side-by-side so identical brands stay together!
     const ofertasBanner = document.getElementById('ofertasBanner');
     const ofertasBannerCount = document.getElementById('ofertasBannerCount');
 
@@ -233,14 +375,74 @@ document.addEventListener('DOMContentLoaded', () => {
           ofertasBannerCount.innerHTML = `<i class="fa-solid fa-fire"></i> ${products.length} ${products.length === 1 ? 'Oferta Ativa' : 'Ofertas Ativas'}`;
         }
       }
-      products.sort((a, b) => {
-        const discA = a.unitPrice > 0 ? (a.unitPrice - a.promoPrice) / a.unitPrice : 0;
-        const discB = b.unitPrice > 0 ? (b.unitPrice - b.promoPrice) / b.unitPrice : 0;
-        if (Math.abs(discB - discA) > 0.001) {
-          return discB - discA; // Biggest discount percentage first
+
+      // Organização solicitada na aba de Ofertas:
+      // Critério 1: Categoria (todos os produtos da mesma categoria ficam rigorosamente agrupados)
+      // Critério 2: Descrição do item (ordenação descritiva/alfabética natural, ex: ICE SMIRNOFF 269ML-LT MACA VERDE ao lado de ICE SMIRNOFF 269ML-LT RASPBERRY)
+      // Desempate: Código (SKU)
+      const CATEGORY_SORT_ORDER = [
+        'whiskies',
+        'vodkas',
+        'cervejas',
+        'gins',
+        'vinhos',
+        'espumantes',
+        'energeticos',
+        'refrigerantes',
+        'aguadecoco',
+        'sucos',
+        'licores',
+        'xaropes',
+        'outros'
+      ];
+
+      function getCategorySortIndex(cat) {
+        const norm = String(cat || '').toLowerCase().trim();
+        const idx = CATEGORY_SORT_ORDER.indexOf(norm);
+        return idx === -1 ? 999 : idx;
+      }
+
+      function getNormalizedSortDescription(desc) {
+        let text = String(desc || '').trim().replace(/\s+/g, ' ');
+        // Normaliza pequenas variações de prefixo para garantir alinhamento perfeito (ex: ICE SMIRNOFF e SMIRNOFF ICE)
+        text = text.replace(/^ICE\s+SMIRNOFF\b/i, 'SMIRNOFF ICE');
+        text = text.replace(/^51\s+ICE\b/i, 'ICE 51');
+        return text;
+      }
+
+      function compareProductsForOfertas(a, b) {
+        // 1. CRITÉRIO NÚMERO 1: Categoria
+        const catA = String(a.category || '').toLowerCase().trim();
+        const catB = String(b.category || '').toLowerCase().trim();
+        if (catA !== catB) {
+          const idxA = getCategorySortIndex(catA);
+          const idxB = getCategorySortIndex(catB);
+          if (idxA !== idxB) {
+            return idxA - idxB;
+          }
+          const catComp = catA.localeCompare(catB, 'pt-BR');
+          if (catComp !== 0) return catComp;
         }
-        return (a.manualPosition || 999999) - (b.manualPosition || 999999);
-      });
+
+        // 2. CRITÉRIO NÚMERO 2: Descrição do item
+        // Garante que variações da mesma linha/marca fiquem rigorosamente lado a lado
+        const descA = getNormalizedSortDescription(a.description);
+        const descB = getNormalizedSortDescription(b.description);
+        const descComp = descA.localeCompare(descB, 'pt-BR', { sensitivity: 'base', numeric: true });
+        if (descComp !== 0) return descComp;
+
+        // 3. Desempate final (apenas se tiver a mesma descrição exata): Código (SKU)
+        const codeA = String(a.code || '').trim();
+        const codeB = String(b.code || '').trim();
+        const numA = parseInt(codeA, 10);
+        const numB = parseInt(codeB, 10);
+        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+          return numA - numB;
+        }
+        return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+      }
+
+      products.sort(compareProductsForOfertas);
     } else {
       grid.classList.remove('ofertas-active-view');
       if (ofertasBanner) ofertasBanner.style.display = 'none';
@@ -1467,6 +1669,438 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ==========================================================================
+  // 7.5. QUICK OFFER TABLE CONTROLLER (Criar Ofertas Rápidas em Tabela)
+  // ==========================================================================
+  const quickOfferTableBtn = document.getElementById('quickOfferTableBtn');
+  const quickOfferSearchInput = document.getElementById('quickOfferSearchInput');
+  const quickOfferSearchClearBtn = document.getElementById('quickOfferSearchClearBtn');
+  const quickOfferSearchResults = document.getElementById('quickOfferSearchResults');
+  const quickOfferTableBody = document.getElementById('quickOfferTableBody');
+  const quickOfferTableEmpty = document.getElementById('quickOfferTableEmpty');
+  const quickOfferCountBadge = document.getElementById('quickOfferCountBadge');
+  const quickOfferClearTableBtn = document.getElementById('quickOfferClearTableBtn');
+  const quickOfferBatchDateInput = document.getElementById('quickOfferBatchDateInput');
+  const quickOfferApplyDateToAllBtn = document.getElementById('quickOfferApplyDateToAllBtn');
+  const quickOfferLoadActiveBtn = document.getElementById('quickOfferLoadActiveBtn');
+  const publishQuickOffersBtn = document.getElementById('publishQuickOffersBtn');
+
+  // Map of productId -> { product, promoPrice, promoExpiry }
+  const quickOfferItems = new Map();
+
+  function updateQuickOfferTableUI() {
+    if (!quickOfferTableBody) return;
+    quickOfferTableBody.innerHTML = '';
+
+    const count = quickOfferItems.size;
+    if (quickOfferCountBadge) {
+      quickOfferCountBadge.textContent = `${count} ${count === 1 ? 'produto' : 'produtos'}`;
+    }
+
+    if (count === 0) {
+      if (quickOfferTableEmpty) quickOfferTableEmpty.style.display = 'block';
+      if (quickOfferClearTableBtn) quickOfferClearTableBtn.style.display = 'none';
+      return;
+    }
+
+    if (quickOfferTableEmpty) quickOfferTableEmpty.style.display = 'none';
+    if (quickOfferClearTableBtn) quickOfferClearTableBtn.style.display = 'inline-flex';
+
+    quickOfferItems.forEach((item, id) => {
+      const p = item.product;
+      const tr = document.createElement('tr');
+      tr.dataset.id = id;
+
+      const regularPrice = parseFloat(p.unitPrice) || 0;
+      const currentPromo = parseFloat(item.promoPrice) || (regularPrice > 0 ? Number((regularPrice * 0.85).toFixed(2)) : 0);
+      item.promoPrice = currentPromo;
+
+      const discountPct = regularPrice > 0 && currentPromo < regularPrice 
+        ? Math.round(((regularPrice - currentPromo) / regularPrice) * 100)
+        : 0;
+
+      tr.innerHTML = `
+        <td>
+          <div class="quick-offer-row-product">
+            <div>
+              <div style="font-weight:600; color:var(--text-primary); line-height:1.25; font-size:0.88rem;">${p.description}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px; display:flex; align-items:center; gap:6px;">
+                ${p.code ? `<span class="badge" style="font-size:0.68rem; padding:2px 6px;">SKU: ${p.code}</span>` : ''}
+                <span>${(CATEGORIES.find(c => c.id === p.category) || {}).label || 'Outros'}</span>
+              </div>
+            </div>
+          </div>
+        </td>
+        <td style="font-weight:600; color:var(--text-muted);">
+          ${formatCurrency(regularPrice)}
+        </td>
+        <td>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span style="color:var(--text-muted); font-size:0.8rem;">R$</span>
+            <input type="number" step="0.01" min="0.01" class="quick-offer-price-input" value="${currentPromo.toFixed(2)}">
+          </div>
+        </td>
+        <td>
+          <span class="quick-offer-discount-badge" style="${discountPct > 0 ? '' : 'display:none;'}">
+            -${discountPct}%
+          </span>
+        </td>
+        <td>
+          <input type="date" class="quick-offer-date-input" value="${item.promoExpiry || ''}">
+        </td>
+        <td style="text-align:center;">
+          <button type="button" class="btn btn-sm btn-icon btn-danger remove-quick-offer-btn" title="Remover produto desta lista">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </td>
+      `;
+
+      // Event: Edit promo price
+      const priceInput = tr.querySelector('.quick-offer-price-input');
+      const badgeEl = tr.querySelector('.quick-offer-discount-badge');
+      if (priceInput) {
+        priceInput.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value) || 0;
+          item.promoPrice = val;
+          if (regularPrice > 0 && val > 0 && val < regularPrice) {
+            const pct = Math.round(((regularPrice - val) / regularPrice) * 100);
+            badgeEl.textContent = `-${pct}%`;
+            badgeEl.style.display = 'inline-flex';
+          } else {
+            badgeEl.style.display = 'none';
+          }
+        });
+      }
+
+      // Event: Edit date
+      const dateInput = tr.querySelector('.quick-offer-date-input');
+      if (dateInput) {
+        dateInput.addEventListener('change', (e) => {
+          item.promoExpiry = e.target.value;
+        });
+      }
+
+      // Event: Remove row
+      const removeBtn = tr.querySelector('.remove-quick-offer-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          quickOfferItems.delete(id);
+          updateQuickOfferTableUI();
+          // If the search dropdown is open, restore the 'Adicionar' button on this item
+          if (quickOfferSearchResults) {
+            const searchItem = quickOfferSearchResults.querySelector(`.quick-offer-search-item[data-id="${id}"]`);
+            if (searchItem) {
+              searchItem.classList.remove('item-already-added');
+              const actionArea = searchItem.querySelector('.quick-offer-item-action');
+              if (actionArea) {
+                actionArea.innerHTML = `<button type="button" class="btn btn-sm btn-primary" style="font-size:0.75rem; padding:3px 10px;"><i class="fa-solid fa-plus"></i> Adicionar</button>`;
+              }
+            }
+          }
+        });
+      }
+
+      quickOfferTableBody.appendChild(tr);
+    });
+  }
+
+  function addProductToQuickOfferTable(product) {
+    if (!product) return;
+    const existing = quickOfferItems.get(product.id);
+    if (existing) {
+      // Highlight existing row
+      const existingRow = quickOfferTableBody ? quickOfferTableBody.querySelector(`tr[data-id="${product.id}"]`) : null;
+      if (existingRow) {
+        existingRow.classList.add('quick-offer-row-highlight');
+        existingRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setTimeout(() => existingRow.classList.remove('quick-offer-row-highlight'), 1500);
+      }
+      return;
+    }
+
+    const defaultExpiry = quickOfferBatchDateInput ? quickOfferBatchDateInput.value : '';
+    const currentIsPromo = productStore.isProductPromoActive(product);
+    const regularPrice = parseFloat(product.unitPrice) || 0;
+
+    let initialPromoPrice = 0;
+    if (currentIsPromo && product.promoPrice > 0) {
+      initialPromoPrice = parseFloat(product.promoPrice);
+    } else if (regularPrice > 0) {
+      initialPromoPrice = Number((regularPrice * 0.85).toFixed(2));
+    }
+
+    const expiry = (currentIsPromo && product.promoExpiry) ? product.promoExpiry : defaultExpiry;
+
+    quickOfferItems.set(product.id, {
+      product: product,
+      promoPrice: initialPromoPrice,
+      promoExpiry: expiry
+    });
+
+    updateQuickOfferTableUI();
+
+    // Highlight the newly added row
+    setTimeout(() => {
+      const newRow = quickOfferTableBody ? quickOfferTableBody.querySelector(`tr[data-id="${product.id}"]`) : null;
+      if (newRow) {
+        newRow.classList.add('quick-offer-row-highlight');
+        newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setTimeout(() => newRow.classList.remove('quick-offer-row-highlight'), 1500);
+      }
+    }, 50);
+  }
+
+  // Autocomplete Search Handler
+  if (quickOfferSearchInput && quickOfferSearchResults) {
+    let searchTimer = null;
+
+    function closeQuickOfferSearch() {
+      quickOfferSearchResults.style.display = 'none';
+      if (quickOfferSearchClearBtn) quickOfferSearchClearBtn.style.display = 'none';
+      quickOfferSearchInput.value = '';
+    }
+
+    if (quickOfferSearchClearBtn) {
+      quickOfferSearchClearBtn.addEventListener('click', () => {
+        closeQuickOfferSearch();
+        quickOfferSearchInput.focus();
+      });
+    }
+
+    quickOfferSearchInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (searchTimer) clearTimeout(searchTimer);
+
+      if (!q || q.length < 1) {
+        quickOfferSearchResults.style.display = 'none';
+        quickOfferSearchResults.innerHTML = '';
+        if (quickOfferSearchClearBtn) quickOfferSearchClearBtn.style.display = 'none';
+        return;
+      }
+
+      if (quickOfferSearchClearBtn) quickOfferSearchClearBtn.style.display = 'inline-flex';
+
+      searchTimer = setTimeout(() => {
+        const all = productStore.getProducts();
+        const matches = all.filter(p => {
+          const desc = String(p.description || '').toLowerCase();
+          const code = String(p.code || '').toLowerCase();
+          return desc.includes(q) || code.includes(q);
+        }).slice(0, 20);
+
+        if (matches.length === 0) {
+          quickOfferSearchResults.innerHTML = `
+            <div style="padding:14px; color:var(--text-muted); text-align:center; font-size:0.85rem;">
+              <i class="fa-solid fa-circle-exclamation" style="margin-right:6px;"></i> Nenhum produto encontrado com "<strong>${q}</strong>".
+            </div>
+          `;
+          quickOfferSearchResults.style.display = 'block';
+          return;
+        }
+
+        quickOfferSearchResults.innerHTML = '';
+        matches.forEach(p => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'quick-offer-search-item';
+          itemDiv.dataset.id = p.id;
+          const isAdded = quickOfferItems.has(p.id);
+          if (isAdded) itemDiv.classList.add('item-already-added');
+
+          itemDiv.innerHTML = `
+            <div class="quick-offer-item-info">
+              <div>
+                <span class="quick-offer-item-desc">${p.description}</span>
+                <span class="quick-offer-item-sku">SKU: ${p.code || 'S/N'} • Preço Normal: ${formatCurrency(p.unitPrice)}</span>
+              </div>
+            </div>
+            <div class="quick-offer-item-action">
+              ${isAdded ? 
+                `<span class="badge" style="font-size:0.72rem; background:rgba(16,185,129,0.18); color:#10b981; border:1px solid rgba(16,185,129,0.35); font-weight:600;"><i class="fa-solid fa-check"></i> Na Tabela</span>` : 
+                `<button type="button" class="btn btn-sm btn-primary" style="font-size:0.75rem; padding:3px 10px;"><i class="fa-solid fa-plus"></i> Adicionar</button>`
+              }
+            </div>
+          `;
+
+          // Clicking adds the item to the table WITHOUT closing the search dropdown!
+          itemDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!quickOfferItems.has(p.id)) {
+              addProductToQuickOfferTable(p);
+              itemDiv.classList.add('item-already-added');
+              const actionArea = itemDiv.querySelector('.quick-offer-item-action');
+              if (actionArea) {
+                actionArea.innerHTML = `
+                  <span class="badge" style="font-size:0.72rem; background:rgba(16,185,129,0.18); color:#10b981; border:1px solid rgba(16,185,129,0.35); font-weight:600;">
+                    <i class="fa-solid fa-check"></i> Na Tabela
+                  </span>
+                `;
+              }
+            } else {
+              // Highlight row in table if already in
+              addProductToQuickOfferTable(p);
+            }
+            // Keep input focused so user can continue interacting or press Esc
+            quickOfferSearchInput.focus();
+          });
+
+          quickOfferSearchResults.appendChild(itemDiv);
+        });
+
+        quickOfferSearchResults.style.display = 'block';
+      }, 100);
+    });
+
+    // Reopen dropdown on input focus if there is query
+    quickOfferSearchInput.addEventListener('focus', () => {
+      if (quickOfferSearchInput.value.trim().length > 0 && quickOfferSearchResults.children.length > 0) {
+        quickOfferSearchResults.style.display = 'block';
+      }
+    });
+
+    // Close search dropdown on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.quick-offer-search-container')) {
+        quickOfferSearchResults.style.display = 'none';
+      }
+    });
+
+    // Keydown handler: Escape exits search, Enter adds first unadded match
+    quickOfferSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        e.preventDefault();
+        closeQuickOfferSearch();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const unaddedItem = quickOfferSearchResults.querySelector('.quick-offer-search-item:not(.item-already-added)');
+        if (unaddedItem) {
+          unaddedItem.click();
+        } else {
+          const firstItem = quickOfferSearchResults.querySelector('.quick-offer-search-item');
+          if (firstItem) firstItem.click();
+        }
+      }
+    });
+
+    // Global Esc listener when search dropdown is open
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        if (quickOfferSearchResults && quickOfferSearchResults.style.display !== 'none') {
+          closeQuickOfferSearch();
+        }
+      }
+    });
+  }
+
+  // Preset Date Buttons
+  document.querySelectorAll('.quick-offer-preset-date').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const days = parseInt(btn.getAttribute('data-days') || 7);
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      if (quickOfferBatchDateInput) quickOfferBatchDateInput.value = dateStr;
+    });
+  });
+
+  // Apply Date to All Rows
+  if (quickOfferApplyDateToAllBtn) {
+    quickOfferApplyDateToAllBtn.addEventListener('click', () => {
+      const dateVal = quickOfferBatchDateInput ? quickOfferBatchDateInput.value : '';
+      if (!dateVal) {
+        showToast('Selecione uma data no campo de prazo antes de aplicar.', 'error');
+        return;
+      }
+      quickOfferItems.forEach(item => {
+        item.promoExpiry = dateVal;
+      });
+      updateQuickOfferTableUI();
+      showToast(`Data ${formatDateBR(dateVal)} aplicada em todas as ${quickOfferItems.size} linhas!`);
+    });
+  }
+
+  // Load Currently Active Promo Products
+  if (quickOfferLoadActiveBtn) {
+    quickOfferLoadActiveBtn.addEventListener('click', () => {
+      const promos = productStore.getProducts().filter(p => productStore.isProductPromoActive(p));
+      if (promos.length === 0) {
+        showToast('Não há nenhum produto em oferta ativa no catálogo no momento.');
+        return;
+      }
+      promos.forEach(p => addProductToQuickOfferTable(p));
+      showToast(`${promos.length} ${promos.length === 1 ? 'oferta ativa carregada' : 'ofertas ativas carregadas'} na tabela!`);
+    });
+  }
+
+  // Clear Table
+  if (quickOfferClearTableBtn) {
+    quickOfferClearTableBtn.addEventListener('click', () => {
+      if (confirm('Deseja limpar todos os produtos desta tabela de criação de ofertas?')) {
+        quickOfferItems.clear();
+        updateQuickOfferTableUI();
+      }
+    });
+  }
+
+  // Open Quick Offer Modal Button
+  if (quickOfferTableBtn) {
+    quickOfferTableBtn.addEventListener('click', () => {
+      // Set default batch date to +7 days if empty
+      if (quickOfferBatchDateInput && !quickOfferBatchDateInput.value) {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        quickOfferBatchDateInput.value = `${yyyy}-${mm}-${dd}`;
+      }
+      updateQuickOfferTableUI();
+      openModal('quickOfferModal');
+      setTimeout(() => {
+        if (quickOfferSearchInput) quickOfferSearchInput.focus();
+      }, 150);
+    });
+  }
+
+  // Publish Quick Offers Button
+  if (publishQuickOffersBtn) {
+    publishQuickOffersBtn.addEventListener('click', () => {
+      if (quickOfferItems.size === 0) {
+        showToast('Adicione pelo menos um produto na tabela antes de publicar.', 'error');
+        return;
+      }
+
+      productStore.recordState(); // Save single undo snapshot for the whole batch
+      let validCount = 0;
+      quickOfferItems.forEach((item, id) => {
+        const price = parseFloat(item.promoPrice) || 0;
+        const expiry = item.promoExpiry || '';
+        if (price > 0) {
+          const p = productStore.products.find(prod => prod.id === id);
+          if (p) {
+            p.promoActive = true;
+            p.promoPrice = price;
+            p.promoExpiry = expiry;
+            validCount++;
+          }
+        }
+      });
+      productStore.ensurePositions();
+      productStore.saveToStorage(false);
+
+      closeModal('quickOfferModal');
+      currentCategory = 'ofertas';
+      currentPage = 1;
+      syncPriceModeUI();
+      renderCategoryPills();
+      renderProducts();
+      updateUndoRedoUI();
+      showToast(`Sucesso! ${validCount} ${validCount === 1 ? 'produto publicado em oferta' : 'produtos publicados em oferta'} com destaque!`);
+    });
+  }
+
   // 8. Toolbar Buttons
   const togglePricesBtn = document.getElementById('togglePricesBtn');
   if (togglePricesBtn) {
@@ -1559,18 +2193,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Undo / Redo Buttons
+  // Undo / Redo Buttons & Dynamic UI state
+  function updateUndoRedoUI() {
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    if (undoBtn) {
+      const can = productStore.canUndo();
+      undoBtn.disabled = !can;
+      undoBtn.style.opacity = can ? '1' : '0.35';
+      undoBtn.style.cursor = can ? 'pointer' : 'not-allowed';
+      undoBtn.title = can ? 'Desfazer última ação (Ctrl+Z)' : 'Nada para desfazer';
+    }
+    if (redoBtn) {
+      const can = productStore.canRedo();
+      redoBtn.disabled = !can;
+      redoBtn.style.opacity = can ? '1' : '0.35';
+      redoBtn.style.cursor = can ? 'pointer' : 'not-allowed';
+      redoBtn.title = can ? 'Refazer ação (Ctrl+Y)' : 'Nada para refazer';
+    }
+  }
+
   const undoBtn = document.getElementById('undoBtn');
   if (undoBtn) {
     undoBtn.addEventListener('click', () => {
-      if (productStore.undo()) showToast('Ação desfeita (Undo).');
+      if (productStore.undo()) {
+        showToast('Ação desfeita (Undo).');
+      } else {
+        showToast('Nada para desfazer no momento.', 'info');
+      }
+      updateUndoRedoUI();
     });
   }
 
   const redoBtn = document.getElementById('redoBtn');
   if (redoBtn) {
     redoBtn.addEventListener('click', () => {
-      if (productStore.redo()) showToast('Ação refeita (Redo).');
+      if (productStore.redo()) {
+        showToast('Ação refeita (Redo).');
+      } else {
+        showToast('Nada para refazer no momento.', 'info');
+      }
+      updateUndoRedoUI();
     });
   }
 
@@ -1880,14 +2543,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ctrl+Z (Undo)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !isTyping) {
       e.preventDefault();
-      if (productStore.undo()) showToast('Desfeito (Ctrl+Z).');
+      if (productStore.undo()) {
+        showToast('Desfeito (Ctrl+Z).');
+      } else {
+        showToast('Nada para desfazer no momento.', 'info');
+      }
+      updateUndoRedoUI();
     }
 
     // Ctrl+Y or Cmd+Shift+Z (Redo)
     if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) {
       if (!isTyping) {
         e.preventDefault();
-        if (productStore.redo()) showToast('Refeito (Ctrl+Y).');
+        if (productStore.redo()) {
+          showToast('Refeito (Ctrl+Y).');
+        } else {
+          showToast('Nada para refazer no momento.', 'info');
+        }
+        updateUndoRedoUI();
       }
     }
   });
@@ -1943,6 +2616,7 @@ document.addEventListener('DOMContentLoaded', () => {
       syncPriceModeUI();
       renderCategoryPills();
       renderProducts();
+      updateUndoRedoUI();
     });
   }
 
@@ -1955,4 +2629,5 @@ document.addEventListener('DOMContentLoaded', () => {
   syncPriceModeUI();
   renderCategoryPills();
   renderProducts();
+  updateUndoRedoUI();
 });

@@ -70,7 +70,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=3.3">
+  <link rel="stylesheet" href="css/styles.css?v=3.6">
 </head>
 <body>
 
@@ -109,6 +109,9 @@
       </button>
       <button id="newProductBtn" class="btn btn-primary">
         <i class="fa-solid fa-plus"></i> Novo Produto
+      </button>
+      <button id="quickOfferTableBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #ef4444, #f97316); border:none; font-weight: 600;" title="Abrir tabela rápida para cadastrar e publicar ofertas de vários produtos">
+        <i class="fa-solid fa-fire"></i> Criar Ofertas
       </button>
       <button id="importExcelBtn" class="btn">
         <i class="fa-solid fa-file-excel"></i> Importar Planilha
@@ -681,6 +684,107 @@
     </div>
   </footer>
 
+  <!-- MODAL: Quick Offer Creation Table -->
+  <div id="quickOfferModal" class="modal-overlay">
+    <div class="modal-card modal-card-xl" style="max-width: 960px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" style="display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-fire" style="color: #f97316;"></i> Criar Ofertas Rápidas em Tabela
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.8rem; margin: 4px 0 0 0;">
+            Adicione múltiplos produtos digitando o código ou nome, ajuste os preços e prazos e publique todas as ofertas de uma vez só.
+          </p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="quickOfferModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 20px;">
+        <!-- Search and Add Bar -->
+        <div class="quick-offer-search-container" style="position: relative; margin-bottom: 16px;">
+          <label class="form-label" for="quickOfferSearchInput" style="display:flex; justify-content:space-between; align-items:center;">
+            <span><i class="fa-solid fa-magnifying-glass"></i> Digite o Código (SKU) ou Nome do Produto para Adicionar:</span>
+            <button type="button" id="quickOfferLoadActiveBtn" class="btn btn-sm btn-outline" style="font-size: 0.75rem; padding: 3px 8px;">
+              <i class="fa-solid fa-tags"></i> Carregar Ofertas Atuais
+            </button>
+          </label>
+          <div style="position: relative;">
+            <input type="text" id="quickOfferSearchInput" class="form-control" placeholder="Buscar por nome ou SKU (ex: Tanqueray, Heineken, 89848)..." autocomplete="off" style="padding-right: 175px;">
+            <div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 0.72rem; color: var(--text-muted); background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 2px 7px; border-radius: 4px; pointer-events: none;">
+                <kbd style="font-family: inherit; font-weight: 600;">Esc</kbd> sai da busca
+              </span>
+              <button type="button" id="quickOfferSearchClearBtn" class="btn btn-sm btn-icon" style="display: none; width: 24px; height: 24px; padding: 0; font-size: 0.75rem;" title="Limpar e fechar busca">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Autocomplete results dropdown -->
+          <div id="quickOfferSearchResults" class="quick-offer-search-results" style="display: none;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Global Batch Date Preset Toolbar -->
+        <div class="quick-offer-batch-toolbar" style="background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: 0.82rem; font-weight: 600; color: var(--accent-gold);"><i class="fa-regular fa-clock"></i> Prazo Padrão em Massa:</span>
+            <input type="date" id="quickOfferBatchDateInput" class="form-control form-control-sm" style="width: 140px; padding: 4px 8px; font-size: 0.8rem;">
+            <button type="button" id="quickOfferApplyDateToAllBtn" class="btn btn-sm btn-primary" style="font-size: 0.78rem; padding: 5px 10px;" title="Aplica esta data em todas as linhas da tabela">
+              <i class="fa-solid fa-check-double"></i> Aplicar em Todos
+            </button>
+          </div>
+          <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-sm btn-outline quick-offer-preset-date" data-days="2">+2 Dias</button>
+            <button type="button" class="btn btn-sm btn-outline quick-offer-preset-date" data-days="7">+7 Dias</button>
+            <button type="button" class="btn btn-sm btn-outline quick-offer-preset-date" data-days="15">+15 Dias</button>
+            <button type="button" class="btn btn-sm btn-outline quick-offer-preset-date" data-days="30">+30 Dias</button>
+          </div>
+        </div>
+
+        <!-- Dynamic Offers Table Container -->
+        <div class="diff-table-wrapper" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <table class="quick-offer-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+            <thead>
+              <tr style="background: var(--bg-card); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 2;">
+                <th style="padding: 10px 12px;">Produto</th>
+                <th style="padding: 10px 12px; width: 110px;">Preço Normal</th>
+                <th style="padding: 10px 12px; width: 140px;">Preço Oferta (R$)</th>
+                <th style="padding: 10px 12px; width: 100px;">Desconto</th>
+                <th style="padding: 10px 12px; width: 150px;">Prazo Limite</th>
+                <th style="padding: 10px 12px; width: 60px; text-align: center;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="quickOfferTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+          <!-- Empty State within Table -->
+          <div id="quickOfferTableEmpty" style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
+            <i class="fa-solid fa-basket-shopping" style="font-size: 2.2rem; color: var(--border-color); margin-bottom: 10px; display: block;"></i>
+            <p style="margin: 0; font-size: 0.9rem;">Nenhum produto adicionado na tabela de ofertas ainda.</p>
+            <span style="font-size: 0.78rem;">Digite acima o código SKU ou o nome de qualquer bebida para adicioná-la aqui.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="quickOfferCountBadge" class="badge badge-gold" style="font-size: 0.8rem; padding: 5px 10px;">0 produtos</span>
+          <button type="button" id="quickOfferClearTableBtn" class="btn btn-sm btn-outline" style="display: none;">
+            <i class="fa-solid fa-trash-can"></i> Limpar Tabela
+          </button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn" data-close-modal="quickOfferModal">Cancelar</button>
+          <button type="button" id="publishQuickOffersBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #ef4444, #f97316); border:none; font-weight:700; padding: 8px 18px;">
+            <i class="fa-solid fa-rocket"></i> Publicar Todas as Ofertas
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Admin / Gestor Login -->
   <div id="adminLoginModal" class="modal-overlay">
     <div class="modal-card" style="max-width: 420px;">
@@ -721,11 +825,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/sample-data.js?v=3.3"></script>
-  <script src="js/store.js?v=3.3"></script>
-  <script src="js/realtime.js?v=3.3"></script>
-  <script src="js/excel.js?v=3.3"></script>
-  <script src="js/image-utils.js?v=3.3"></script>
-  <script src="js/app.js?v=3.3"></script>
+  <script src="js/sample-data.js?v=3.6"></script>
+  <script src="js/store.js?v=3.6"></script>
+  <script src="js/realtime.js?v=3.6"></script>
+  <script src="js/excel.js?v=3.6"></script>
+  <script src="js/image-utils.js?v=3.6"></script>
+  <script src="js/app.js?v=3.6"></script>
 </body>
 </html>
