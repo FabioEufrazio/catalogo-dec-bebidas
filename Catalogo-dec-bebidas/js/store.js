@@ -70,9 +70,8 @@ class ProductStore {
         console.error("Error parsing saved products:", e);
         this.products = [];
       }
-    }
-
-    if (!this.products || this.products.length === 0) {
+    } else {
+      // Only load sample products if localStorage is completely missing (first run)
       if (typeof INITIAL_SAMPLE_PRODUCTS !== 'undefined') {
         this.products = JSON.parse(JSON.stringify(INITIAL_SAMPLE_PRODUCTS));
       }
@@ -110,17 +109,7 @@ class ProductStore {
       return code !== 'CFG' && desc !== 'SYSTEM CONFIG' && p.id !== 'System Config';
     });
 
-    // Auto-categorize beverages automatically whenever products are loaded or modified
-    if (typeof excelEngine !== 'undefined' && typeof excelEngine.detectCategory === 'function') {
-      this.products.forEach(p => {
-        if (!p.category || p.category === 'outros') {
-          const detected = excelEngine.detectCategory(p.description);
-          if (detected && detected !== 'outros') {
-            p.category = detected;
-          }
-        }
-      });
-    }
+    // Removed auto-categorize on load as requested.
 
     // Synchronize manualPosition property with array index sequence 1..N
     this.products.forEach((p, idx) => {
@@ -146,7 +135,7 @@ class ProductStore {
   }
 
   getProducts() {
-    return [...this.products];
+    return [...this.products].sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
   }
 
   getHidePrices() {
@@ -284,6 +273,7 @@ class ProductStore {
 
   setAllProducts(newProducts, recordHistory = true) {
     this.products = JSON.parse(JSON.stringify(newProducts));
+    this.products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
     this.ensurePositions();
     this.saveToStorage(recordHistory);
   }

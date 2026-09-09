@@ -122,8 +122,13 @@ class RealtimeEngine {
         this.store.setHidePrices(data.hidePrices);
       }
 
-      if (Array.isArray(data.products) && data.products.length > 0) {
-        this.store.setAllProducts(data.products, false);
+      if (Array.isArray(data.products)) {
+        // Fix flickering: Only update if the remote data is actually different from local state
+        const localHash = JSON.stringify(this.store.products);
+        const remoteHash = JSON.stringify(data.products);
+        if (localHash !== remoteHash) {
+          this.store.setAllProducts(data.products, false);
+        }
       }
 
       this.isSyncingFromRemote = false;

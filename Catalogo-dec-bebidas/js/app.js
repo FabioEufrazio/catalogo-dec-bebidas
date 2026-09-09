@@ -68,10 +68,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isClientMode) {
       document.body.classList.add('client-mode');
+      document.documentElement.classList.add('client-mode');
       const titleEl = document.getElementById('appHeaderTitle');
       if (titleEl) titleEl.textContent = 'Catálogo de Produtos';
     } else {
       document.body.classList.remove('client-mode');
+      document.documentElement.classList.remove('client-mode');
     }
   }
 
@@ -81,7 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const html = document.documentElement;
     const body = document.body;
 
-    if (hidePrices) {
+    // Os preços SÓ são ocultados na interface do cliente. O gestor sempre vê os preços.
+    if (hidePrices && isClientMode) {
       html.classList.add('prices-hidden');
       body.classList.add('prices-hidden');
     } else {
@@ -93,9 +96,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (toggleBtn) {
       if (hidePrices) {
-        toggleBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Exibir Preços';
+        toggleBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Exibir Preços (Clientes)';
+        toggleBtn.style.borderColor = 'var(--accent-gold)';
+        toggleBtn.style.color = 'var(--accent-gold)';
+        toggleBtn.title = 'Preços estão OCULTOS para os clientes (mas visíveis para você no gestor). Clique para exibir aos clientes.';
       } else {
-        toggleBtn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Ocultar Preços';
+        toggleBtn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Ocultar Preços (Clientes)';
+        toggleBtn.style.borderColor = '';
+        toggleBtn.style.color = '';
+        toggleBtn.title = 'Preços estão VISÍVEIS para os clientes. Clique para ocultar dos clientes.';
       }
     }
   }
@@ -148,11 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderProducts() {
     const grid = document.getElementById('productsGrid');
     if (!grid) return;
-
-    // Do not destroy grid elements if user is currently typing in a position input
-    if (document.activeElement && document.activeElement.classList.contains('pos-badge-input')) {
-      return;
-    }
 
     let products = productStore.getProducts();
 
@@ -252,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
         <div class="product-actions-bar">
-          <button class="icon-action-btn toggle-active-btn" title="${p.active ? 'Desativar Produto' : 'Ativar Produto'}">
+          <button class="icon-action-btn toggle-active-btn" title="${p.active ? 'Produto Ativo (Visível para clientes). Clique para ocultar do cliente.' : 'Produto Oculto/Desativado! Clique para ativar e exibir aos clientes.'}">
             <i class="fa-solid ${p.active ? 'fa-toggle-on' : 'fa-toggle-off'}" style="color:${p.active ? 'var(--status-active)' : 'var(--text-dim)'}; font-size:1.1rem;"></i>
           </button>
           <button class="icon-action-btn edit-btn" title="Editar Produto">
@@ -270,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- Image Area -->
       <div class="product-image-container ${p.imageBase64 ? 'has-image' : ''}">
         <span class="category-tag">${catLabel}</span>
+        ${!p.active ? `<span class="inactive-status-tag admin-only-ui"><i class="fa-solid fa-eye-slash"></i> Oculto no Cliente</span>` : ''}
         ${p.code ? `<span class="sku-code-tag">COD: ${p.code}</span>` : ''}
         ${p.imageBase64 ? 
           `<img src="${p.imageBase64}" alt="${p.description}" class="product-img" loading="lazy" decoding="async">` :
@@ -366,13 +371,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           posInput.value = p.manualPosition; // reset if invalid or unchanged
         }
+        posInput.blur();
       };
 
       posInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           commitChange();
-          posInput.blur();
         } else if (e.key === 'Escape') {
           isEditing = false;
           posInput.value = p.manualPosition;
@@ -970,7 +975,12 @@ document.addEventListener('DOMContentLoaded', () => {
     togglePricesBtn.addEventListener('click', () => {
       const current = productStore.getHidePrices();
       productStore.setHidePrices(!current);
-      showToast(current ? 'Preços estão VISÍVEIS para o cliente.' : 'Preços estão OCULTOS para o cliente.', current ? 'success' : 'error');
+      showToast(
+        !current
+          ? 'Preços OCULTOS para os clientes (Gestor continua vendo tudo).'
+          : 'Preços VISÍVEIS para os clientes.',
+        !current ? 'warning' : 'success'
+      );
     });
   }
 
@@ -982,17 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const shareLinkBtn = document.getElementById('shareLinkBtn');
   const headerClientLinkBtn = document.getElementById('headerClientLinkBtn');
 
-  const autoCategorizeBtn = document.getElementById('autoCategorizeBtn');
-  if (autoCategorizeBtn) {
-    autoCategorizeBtn.addEventListener('click', () => {
-      const updatedCount = productStore.autoCategorizeAll(excelEngine);
-      if (updatedCount > 0) {
-        showToast(`🪄 ${updatedCount} bebidas organizadas em suas categorias com sucesso!`);
-      } else {
-        showToast('Todas as bebidas já estão em suas categorias corretas.');
-      }
-    });
-  }
+  // Removed autoCategorizeBtn logic as requested
 
   function openShareLinkModal() {
     const input = document.getElementById('clientLinkInput');
@@ -1370,7 +1370,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 12. Initial Kickoff
   checkMode();
-  productStore.autoCategorizeAll(excelEngine);
   syncPriceModeUI();
   renderCategoryPills();
   renderProducts();

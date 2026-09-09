@@ -13,8 +13,11 @@
         var p = new URLSearchParams(window.location.search);
         var isClient = p.get('view') === 'public' || p.get('client') === '1';
         var h = localStorage.getItem('catalog_hide_prices');
-        if (isClient && h === 'true') {
-          document.documentElement.classList.add('prices-hidden');
+        if (isClient) {
+          document.documentElement.classList.add('client-mode');
+          if (h === 'true') {
+            document.documentElement.classList.add('prices-hidden');
+          }
         }
       } catch(e) {}
     })();
@@ -69,8 +72,8 @@
   <!-- Admin Toolbar -->
   <div class="admin-toolbar admin-only-ui">
     <div class="toolbar-group">
-      <button id="togglePricesBtn" class="btn">
-        <i class="fa-solid fa-eye-slash"></i> Ocultar Preços
+      <button id="togglePricesBtn" class="btn" title="Definir visibilidade dos preços para os clientes">
+        <i class="fa-solid fa-eye-slash"></i> Ocultar Preços (Clientes)
       </button>
       <button id="newProductBtn" class="btn btn-primary">
         <i class="fa-solid fa-plus"></i> Novo Produto
@@ -80,9 +83,6 @@
       </button>
       <button id="shareLinkBtn" class="btn btn-purple">
         <i class="fa-solid fa-link"></i> Link do Cliente
-      </button>
-      <button id="autoCategorizeBtn" class="btn" title="Organizar bebidas automaticamente por nome em Whiskies, Cervejas, Gins, Vodkas, etc.">
-        <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Categorizar
       </button>
     </div>
 
