@@ -101,64 +101,45 @@ class RealtimeEngine {
   setupCloudListeners() {
     if (!this.db) return;
 
-    // Listen to Settings
-    this.db.collection('settings').doc('__SETTINGS__').onSnapshot((doc) => {
-      if (doc.exists && !this.isSyncingFromRemote) {
-        const data = doc.data();
-        if (data.hidePrices !== undefined && data.hidePrices !== this.store.hidePrices) {
-          this.isSyncingFromRemote = true;
-          this.store.setHidePrices(data.hidePrices);
-          this.isSyncingFromRemote = false;
-        }
+    // Optimized Single-Document Cloud Listener (Uses only 1 Read instead of 1,000 Reads)
+    this.db.collection('catalogs').doc('active').onSnapshot((doc) => {
+      if (this.isSyncingFromRemote || !doc.exists) return;
+      const data = doc.data();
+      if (!data) return;
+
+      this.isSyncingFromRemote = true;
+
+      if (data.hidePrices !== undefined && data.hidePrices !== this.store.hidePrices) {
+        this.store.setHidePrices(data.hidePrices);
       }
-    }, err => console.warn("Firestore settings listen error:", err));
 
-    // Listen to Products
-    this.db.collection('products').onSnapshot((snapshot) => {
-      if (this.isSyncingFromRemote || snapshot.metadata.hasPendingWrites) return;
-
-      const remoteProducts = [];
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const code = String(data.code || '').trim().toUpperCase();
-        const desc = String(data.description || '').trim().toUpperCase();
-        if (doc.id !== '__SETTINGS__' && doc.id !== 'System Config' && code !== 'CFG' && desc !== 'SYSTEM CONFIG') {
-          remoteProducts.push(data);
-        }
-      });
-
-      if (remoteProducts.length > 0) {
-        this.isSyncingFromRemote = true;
-        this.store.setAllProducts(remoteProducts, false);
-        this.isSyncingFromRemote = false;
+      if (Array.isArray(data.products) && data.products.length > 0) {
+        this.store.setAllProducts(data.products, false);
       }
-    }, err => console.warn("Firestore products listen error:", err));
+
+      this.isSyncingFromRemote = false;
+    }, err => console.warn("Firestore catalog listen error:", err));
   }
 
   async syncToCloud(products, hidePrices) {
     if (!this.db || !this.firebaseActive) return;
 
-    try {
-      // Update Settings
-      await this.db.collection('settings').doc('__SETTINGS__').set({
-        hidePrices,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+    // Debounce cloud sync by 500ms to avoid unnecessary network requests
+    if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
 
-      // Update Products in batches of 80
-      const batchSize = 80;
-      for (let i = 0; i < products.length; i += batchSize) {
-        const batch = this.db.batch();
-        const chunk = products.slice(i, i + batchSize);
-        chunk.forEach(p => {
-          const ref = this.db.collection('products').doc(p.id);
-          batch.set(ref, p);
-        });
-        await batch.commit();
+    this.cloudSyncTimeout = setTimeout(async () => {
+      try {
+        const payload = {
+          hidePrices: !!hidePrices,
+          products: products || [],
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await this.db.collection('catalogs').doc('active').set(payload);
+      } catch (e) {
+        console.error("Cloud sync error:", e);
       }
-    } catch (e) {
-      console.error("Cloud sync error:", e);
-    }
+    }, 500);
   }
 
   async login(email, password) {
