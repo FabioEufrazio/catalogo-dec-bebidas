@@ -141,8 +141,8 @@ class RealtimeEngine {
   setupCloudListeners() {
     if (!this.db) return;
 
-    // Escuta remota em tempo real com controle de metadados
-    this.db.collection('catalogs').doc('active').onSnapshot({ includeMetadataChanges: true }, (doc) => {
+    // Escuta remota em tempo real com controle de metadados e suporte a múltiplos chunks
+    this.db.collection('catalogs').doc('active').onSnapshot({ includeMetadataChanges: true }, async (doc) => {
       if (this.isSyncingFromRemote || !doc.exists) return;
 
       // 1. Ignora escritas locais que ainda estão sendo gravadas no Firestore
@@ -163,27 +163,54 @@ class RealtimeEngine {
         this.store.setHidePrices(data.hidePrices);
       }
 
-      if (Array.isArray(data.products)) {
-        // 3. BLINDAGEM TOTAL DE FOTOS: Se o produto local tem foto e a nuvem não tem, PRESERVA A FOTO LOCAL!
-        const mergedProducts = data.products.map(remoteP => {
-          const localP = this.store.products.find(lp => lp.id === remoteP.id);
-          if (localP && localP.imageBase64 && !remoteP.imageBase64) {
-            return { ...remoteP, imageBase64: localP.imageBase64 };
-          }
-          return remoteP;
-        });
+      const chunkCount = parseInt(data.chunkCount) || 1;
+      let remoteProducts = [];
 
-        const localSig = this.getCatalogSignature(this.store.products);
-        const remoteSig = this.getCatalogSignature(mergedProducts);
-        // Só atualiza se o conteúdo REAL dos produtos tiver mudado (evita loop infinito e tela piscando)
-        if (localSig !== remoteSig) {
-          console.log(`Recebendo atualização real da nuvem para clientes: ${mergedProducts.length} produtos.`);
-          this.isSyncingFromRemote = true;
-          this.store.setAllProducts(mergedProducts, false);
-          this.isSyncingFromRemote = false;
+      if (chunkCount > 1) {
+        try {
+          const chunkDocs = await Promise.all(
+            Array.from({ length: chunkCount }, (_, i) => 
+              this.db.collection('catalogs').doc(`chunk_${i}`).get()
+            )
+          );
+          chunkDocs.forEach(cDoc => {
+            if (cDoc.exists && Array.isArray(cDoc.data()?.products)) {
+              remoteProducts.push(...cDoc.data().products);
+            }
+          });
+        } catch (e) {
+          console.warn("Erro ao buscar chunks via SDK, buscando via REST...", e);
+          remoteProducts = await this.readChunksViaRest(chunkCount);
         }
+      } else if (Array.isArray(data.products)) {
+        remoteProducts = data.products;
+      }
+
+      if (remoteProducts.length > 0) {
+        this.applyRemoteProducts(remoteProducts);
       }
     }, err => console.warn("Firestore catalog listen error:", err));
+  }
+
+  applyRemoteProducts(remoteProducts) {
+    // BLINDAGEM TOTAL DE FOTOS: Se o produto local tem foto e a nuvem não tem, PRESERVA A FOTO LOCAL!
+    const mergedProducts = remoteProducts.map(remoteP => {
+      const localP = this.store.products.find(lp => lp.id === remoteP.id);
+      if (localP && localP.imageBase64 && !remoteP.imageBase64) {
+        return { ...remoteP, imageBase64: localP.imageBase64 };
+      }
+      return remoteP;
+    });
+
+    const localSig = this.getCatalogSignature(this.store.products);
+    const remoteSig = this.getCatalogSignature(mergedProducts);
+    // Só atualiza se o conteúdo REAL dos produtos tiver mudado (evita loop infinito e tela piscando)
+    if (localSig !== remoteSig) {
+      console.log(`Recebendo atualização real da nuvem para clientes: ${mergedProducts.length} produtos.`);
+      this.isSyncingFromRemote = true;
+      this.store.setAllProducts(mergedProducts, false);
+      this.isSyncingFromRemote = false;
+    }
   }
 
   sanitizeProductForCloud(p) {
@@ -204,7 +231,86 @@ class RealtimeEngine {
     };
   }
 
-  async writeViaRest(cleanProducts, hidePrices) {
+  // Divide a lista de produtos em blocos que respeitam o limite de 1 MiB do Firestore
+  splitProductsIntoChunks(cleanProducts, maxBytesPerChunk = 550000) {
+    if (!Array.isArray(cleanProducts) || cleanProducts.length === 0) {
+      return [[]];
+    }
+
+    const chunks = [];
+    let currentChunk = [];
+    let currentSize = 0;
+
+    for (const p of cleanProducts) {
+      const imgLen = (p.imageBase64 || '').length;
+      const descLen = (p.description || '').length;
+      const itemSize = imgLen + descLen + 350; // Estimativa com wrapper REST/JSON
+
+      if (currentChunk.length > 0 && (currentSize + itemSize > maxBytesPerChunk)) {
+        chunks.push(currentChunk);
+        currentChunk = [p];
+        currentSize = itemSize;
+      } else {
+        currentChunk.push(p);
+        currentSize += itemSize;
+      }
+    }
+
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk);
+    }
+
+    return chunks;
+  }
+
+  formatRestProductValue(p) {
+    return {
+      mapValue: {
+        fields: {
+          id: { stringValue: String(p.id || '') },
+          code: { stringValue: String(p.code || '') },
+          description: { stringValue: String(p.description || '') },
+          unitPrice: { doubleValue: Number(p.unitPrice) || 0 },
+          qtyPerBox: { integerValue: String(p.qtyPerBox || 1) },
+          showBoxTotal: { booleanValue: p.showBoxTotal !== false },
+          category: { stringValue: String(p.category || 'outros') },
+          active: { booleanValue: p.active !== false },
+          manualPosition: { integerValue: String(p.manualPosition || 1) },
+          imageBase64: { stringValue: String(p.imageBase64 || '') },
+          promoActive: { booleanValue: !!p.promoActive },
+          promoPrice: { doubleValue: Number(p.promoPrice) || 0 },
+          promoExpiry: { stringValue: String(p.promoExpiry || '') }
+        }
+      }
+    };
+  }
+
+  parseRestProducts(docJson) {
+    if (!docJson || !docJson.fields || !docJson.fields.products || !docJson.fields.products.arrayValue) {
+      return [];
+    }
+    const values = docJson.fields.products.arrayValue.values || [];
+    return values.map(v => {
+      const f = v.mapValue?.fields || {};
+      return {
+        id: f.id?.stringValue || '',
+        code: f.code?.stringValue || '',
+        description: f.description?.stringValue || '',
+        unitPrice: parseFloat(f.unitPrice?.doubleValue ?? f.unitPrice?.integerValue ?? 0) || 0,
+        qtyPerBox: parseInt(f.qtyPerBox?.integerValue || 1),
+        showBoxTotal: f.showBoxTotal?.booleanValue !== false,
+        category: f.category?.stringValue || 'outros',
+        active: f.active?.booleanValue !== false,
+        manualPosition: parseInt(f.manualPosition?.integerValue || 1),
+        imageBase64: f.imageBase64?.stringValue || '',
+        promoActive: !!f.promoActive?.booleanValue,
+        promoPrice: parseFloat(f.promoPrice?.doubleValue ?? f.promoPrice?.integerValue ?? 0) || 0,
+        promoExpiry: f.promoExpiry?.stringValue || ''
+      };
+    });
+  }
+
+  async readChunksViaRest(chunkCount) {
     let projectId = 'catalogo-online-dec';
     try {
       const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
@@ -216,36 +322,37 @@ class RealtimeEngine {
       }
     } catch (e) {}
 
+    const allProducts = [];
+    for (let i = 0; i < chunkCount; i++) {
+      try {
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/chunk_${i}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          const items = this.parseRestProducts(json);
+          allProducts.push(...items);
+        }
+      } catch (err) {
+        console.warn(`Erro ao carregar chunk_${i} via REST:`, err);
+      }
+    }
+    return allProducts;
+  }
+
+  async writeSingleDocViaRest(projectId, docId, products, hidePrices, chunkCount) {
     const restPayload = {
       fields: {
+        chunkCount: { integerValue: String(chunkCount || 1) },
         hidePrices: { booleanValue: !!hidePrices },
         products: {
           arrayValue: {
-            values: cleanProducts.map(p => ({
-              mapValue: {
-                fields: {
-                  id: { stringValue: String(p.id || '') },
-                  code: { stringValue: String(p.code || '') },
-                  description: { stringValue: String(p.description || '') },
-                  unitPrice: { doubleValue: Number(p.unitPrice) || 0 },
-                  qtyPerBox: { integerValue: String(p.qtyPerBox || 1) },
-                  showBoxTotal: { booleanValue: p.showBoxTotal !== false },
-                  category: { stringValue: String(p.category || 'outros') },
-                  active: { booleanValue: p.active !== false },
-                  manualPosition: { integerValue: String(p.manualPosition || 1) },
-                  imageBase64: { stringValue: String(p.imageBase64 || '') },
-                  promoActive: { booleanValue: !!p.promoActive },
-                  promoPrice: { doubleValue: Number(p.promoPrice) || 0 },
-                  promoExpiry: { stringValue: String(p.promoExpiry || '') }
-                }
-              }
-            }))
+            values: products.map(p => this.formatRestProductValue(p))
           }
         }
       }
     };
 
-    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/active`;
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/${docId}`;
     const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -256,65 +363,151 @@ class RealtimeEngine {
       const errText = await res.text();
       throw new Error(`Falha HTTP ${res.status}: ${errText}`);
     }
-    return cleanProducts.length;
+    return true;
+  }
+
+  async writeChunkDocViaRest(projectId, docId, products, chunkIndex) {
+    const restPayload = {
+      fields: {
+        chunkIndex: { integerValue: String(chunkIndex || 0) },
+        products: {
+          arrayValue: {
+            values: products.map(p => this.formatRestProductValue(p))
+          }
+        }
+      }
+    };
+
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/${docId}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(restPayload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Falha HTTP ${res.status}: ${errText}`);
+    }
+    return true;
+  }
+
+  async writeChunksViaRest(chunks, hidePrices) {
+    let projectId = 'catalogo-online-dec';
+    try {
+      const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+      if (rawConfig) {
+        const parsed = JSON.parse(rawConfig);
+        if (parsed.projectId && parsed.projectId !== 'catalogo-dec-bebidas' && parsed.projectId !== 'catalogo-de-bebidas-1') {
+          projectId = parsed.projectId;
+        }
+      }
+    } catch (e) {}
+
+    if (chunks.length === 1) {
+      await this.writeSingleDocViaRest(projectId, 'active', chunks[0], !!hidePrices, 1);
+    } else {
+      // Grava cada chunk individualmente
+      for (let i = 0; i < chunks.length; i++) {
+        await this.writeChunkDocViaRest(projectId, `chunk_${i}`, chunks[i], i);
+      }
+      // Grava active com metadados do total de chunks
+      await this.writeSingleDocViaRest(projectId, 'active', chunks[0], !!hidePrices, chunks.length);
+    }
+
+    return chunks.reduce((acc, c) => acc + c.length, 0);
+  }
+
+  async writeChunksViaSDK(chunks, hidePrices) {
+    const batch = this.db.batch();
+    const activeRef = this.db.collection('catalogs').doc('active');
+
+    if (chunks.length === 1) {
+      batch.set(activeRef, {
+        chunkCount: 1,
+        hidePrices: !!hidePrices,
+        products: chunks[0],
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      chunks.forEach((chunk, i) => {
+        const chunkRef = this.db.collection('catalogs').doc(`chunk_${i}`);
+        batch.set(chunkRef, {
+          chunkIndex: i,
+          products: chunk,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      batch.set(activeRef, {
+        chunkCount: chunks.length,
+        hidePrices: !!hidePrices,
+        products: chunks[0],
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    await batch.commit();
+    return chunks.reduce((acc, c) => acc + c.length, 0);
   }
 
   async forcePublishToCloud() {
     if (this.isClientView) {
       throw new Error("Modo cliente é apenas leitura.");
     }
+
+    // 1. OTIMIZAÇÃO PRÉ-PUBLICAÇÃO: Recompacta qualquer imagem pesada no catálogo para ~10KB-15KB
+    if (typeof ImageUtils !== 'undefined' && ImageUtils.optimizeAllProductImages) {
+      await ImageUtils.optimizeAllProductImages(this.store.products);
+      this.store.saveToStorage(false);
+    }
+
     const cleanProducts = (this.store.products || []).map(p => this.sanitizeProductForCloud(p));
     const hidePrices = !!this.store.hidePrices;
 
-    // Try SDK write with 3.5s timeout. If SDK hangs or fails, fall back to REST immediately!
+    // 2. CHUNKING INTELIGENTE: Divide em blocos caso o tamanho se aproxime do limite de 1 MiB do Firestore
+    const chunks = this.splitProductsIntoChunks(cleanProducts, 550000);
+    console.log(`Publicando na nuvem: ${cleanProducts.length} produtos em ${chunks.length} bloco(s) Firestore.`);
+
+    // 3. Tenta gravação via SDK
     const sdkPromise = (async () => {
       if (!this.db || !this.firebaseActive) {
         throw new Error("SDK não ativo");
       }
-      const payload = {
-        hidePrices: hidePrices,
-        products: cleanProducts,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await this.db.collection('catalogs').doc('active').set(payload);
-      return cleanProducts.length;
+      return await this.writeChunksViaSDK(chunks, hidePrices);
     })();
 
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("TIMEOUT_SDK")), 3500)
+      setTimeout(() => reject(new Error("TIMEOUT_SDK")), 4000)
     );
 
     try {
       return await Promise.race([sdkPromise, timeoutPromise]);
     } catch (err) {
-      console.warn("SDK write falhou ou demorou. Usando fallback REST API imediato...", err);
-      return await this.writeViaRest(cleanProducts, hidePrices);
+      console.warn("SDK write falhou ou demorou. Usando fallback REST API imediato em chunks...", err);
+      return await this.writeChunksViaRest(chunks, hidePrices);
     }
   }
 
   async syncToCloud(products, hidePrices) {
     if (this.isClientView) return; // Clientes em view=public são estritamente somente-leitura!
 
-    // Debounce cloud sync by 400ms to avoid unnecessary network requests
+    // Debounce cloud sync by 600ms to avoid unnecessary network requests
     if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
 
     this.cloudSyncTimeout = setTimeout(async () => {
       try {
         const cleanProducts = (products || []).map(p => this.sanitizeProductForCloud(p));
         const hide = !!hidePrices;
+        const chunks = this.splitProductsIntoChunks(cleanProducts, 550000);
 
         const sdkPromise = (async () => {
           if (!this.db || !this.firebaseActive) throw new Error("SDK inativo");
-          const payload = {
-            hidePrices: hide,
-            products: cleanProducts,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
-          await this.db.collection('catalogs').doc('active').set(payload);
+          return await this.writeChunksViaSDK(chunks, hide);
         })();
 
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("TIMEOUT")), 3500)
+          setTimeout(() => reject(new Error("TIMEOUT")), 4000)
         );
 
         try {
@@ -323,7 +516,7 @@ class RealtimeEngine {
         } catch (e) {
           console.warn("Firestore sync SDK timeout/erro, tentando via REST...", e);
           try {
-            await this.writeViaRest(cleanProducts, hide);
+            await this.writeChunksViaRest(chunks, hide);
             console.log("Firestore cloud sync (REST) succeeded:", cleanProducts.length, "products synced.");
           } catch (restErr) {
             console.warn("Firestore REST também não completou (dados preservados no armazenamento local):", restErr);

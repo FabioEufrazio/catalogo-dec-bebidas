@@ -4,8 +4,8 @@
    ========================================================================== */
 
 class ImageUtils {
-  // Compress image file or data URL to max 400x400 JPEG 70% quality
-  static compressImage(src, maxWidth = 400, maxHeight = 400, quality = 0.70) {
+  // Compress image file or data URL to lightweight 360x360 JPEG 65% quality
+  static compressImage(src, maxWidth = 360, maxHeight = 360, quality = 0.65) {
     return new Promise((resolve, reject) => {
       if (!src) return resolve('');
       const img = new Image();
@@ -55,6 +55,32 @@ class ImageUtils {
 
       img.src = src;
     });
+  }
+
+  // Optimize and compress any oversized product images in memory before publishing
+  static async optimizeAllProductImages(products) {
+    if (!Array.isArray(products)) return products;
+    let count = 0;
+    for (const p of products) {
+      if (p.imageBase64 && typeof p.imageBase64 === 'string' && p.imageBase64.startsWith('data:image')) {
+        // Se a imagem tiver mais de 20.000 caracteres base64 (~15KB), recompacta para formato ultraleve 360x360
+        if (p.imageBase64.length > 20000) {
+          try {
+            const compressed = await ImageUtils.compressImage(p.imageBase64, 360, 360, 0.65);
+            if (compressed && compressed.length < p.imageBase64.length) {
+              p.imageBase64 = compressed;
+              count++;
+            }
+          } catch (e) {
+            console.warn("Could not recompress product image:", p.id, e);
+          }
+        }
+      }
+    }
+    if (count > 0) {
+      console.log(`Otimização pré-publicação: ${count} fotos recompactadas com sucesso para economizar espaço.`);
+    }
+    return products;
   }
 
   // Handle image upload from file input
