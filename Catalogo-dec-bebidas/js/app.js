@@ -208,9 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Helper: Set Active Paste Target Card
   function setActivePasteTarget(productId) {
+    if (focusedCardProductId === productId && productId !== null) return;
     focusedCardProductId = productId;
     document.querySelectorAll('.product-card').forEach(card => {
-      if (card.dataset.id === productId) {
+      if (productId && card.dataset.id === productId) {
         card.classList.add('active-paste-target');
       } else {
         card.classList.remove('active-paste-target');
@@ -224,10 +225,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const card = document.createElement('div');
     card.className = `product-card ${!p.active ? 'inactive-product' : ''} ${selectedProductIds.has(p.id) ? 'selected-card' : ''} ${isTarget ? 'active-paste-target' : ''}`;
     card.dataset.id = p.id;
-    card.tabIndex = 0; // Accessible for key bindings like Ctrl+V
 
-    card.addEventListener('click', () => setActivePasteTarget(p.id));
-    card.addEventListener('focus', () => setActivePasteTarget(p.id));
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.admin-only-ui') || ['INPUT', 'BUTTON', 'I', 'LABEL', 'SELECT'].includes(e.target.tagName)) {
+        return;
+      }
+      setActivePasteTarget(p.id);
+    });
 
     const boxTotal = p.unitPrice * p.qtyPerBox;
     const catLabel = (CATEGORIES.find(c => c.id === p.category) || {}).label || 'Outros';
@@ -315,14 +319,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const posInput = card.querySelector('.pos-badge-input');
 
     if (posWrapper && posInput) {
+      const stopEvents = ['mousedown', 'mouseup', 'click', 'pointerdown', 'focusin'];
+      stopEvents.forEach(evt => {
+        posWrapper.addEventListener(evt, (e) => e.stopPropagation());
+        posInput.addEventListener(evt, (e) => e.stopPropagation());
+      });
+
       posWrapper.addEventListener('click', (e) => {
         e.stopPropagation();
         posInput.focus();
         posInput.select();
-      });
-
-      posInput.addEventListener('click', (e) => {
-        e.stopPropagation();
       });
 
       posInput.addEventListener('focus', (e) => {
