@@ -25,7 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // State Variables
   let isClientMode = false;
-  let currentCategory = 'all';
+  let currentCategory = (window.location.hash === '#ofertas')
+    ? 'ofertas'
+    : (sessionStorage.getItem('catalog_current_category') || 'all');
   let searchQuery = '';
   let currentPage = 1;
   const itemsPerPage = 24;
@@ -180,6 +182,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       btn.addEventListener('click', () => {
         currentCategory = cat.id;
+        sessionStorage.setItem('catalog_current_category', currentCategory);
+        if (currentCategory === 'ofertas') {
+          window.location.hash = 'ofertas';
+        } else if (window.location.hash === '#ofertas') {
+          history.replaceState(null, null, window.location.pathname + window.location.search);
+        }
         currentPage = 1;
         renderCategoryPills();
         renderProducts();
