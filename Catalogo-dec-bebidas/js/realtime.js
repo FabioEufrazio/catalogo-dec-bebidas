@@ -11,6 +11,9 @@ class RealtimeEngine {
     this.firebaseActive = false;
     this.isSyncingFromRemote = false;
 
+    const urlParams = new URLSearchParams(window.location.search);
+    this.isClientView = urlParams.get('view') === 'public' || urlParams.get('client') === '1';
+
     this.initLocalSync();
     this.initFirebaseSync();
   }
@@ -123,12 +126,17 @@ class RealtimeEngine {
       }
 
       if (Array.isArray(data.products)) {
-        // Fix flickering: Only update if the remote data is actually different from local state
+        // Remote data exists: update local state if remote is different
         const localHash = JSON.stringify(this.store.products);
         const remoteHash = JSON.stringify(data.products);
         if (localHash !== remoteHash) {
+          console.log(`Recebendo atualização da nuvem: ${data.products.length} produtos.`);
           this.store.setAllProducts(data.products, false);
         }
+      } else if (!this.isClientView && (!data.products || data.products.length === 0) && this.store.products.length > 0) {
+        // Only GESTOR auto-publishes local products to Firestore if cloud is empty
+        console.log("Firestore cloud is empty. Auto-publishing local catalog to cloud...");
+        this.syncToCloud(this.store.products, this.store.hidePrices);
       }
 
       this.isSyncingFromRemote = false;
@@ -153,7 +161,25 @@ class RealtimeEngine {
     };
   }
 
+  async forcePublishToCloud() {
+    if (this.isClientView) {
+      throw new Error("Modo cliente é apenas leitura.");
+    }
+    if (!this.db || !this.firebaseActive) {
+      throw new Error("Firebase não está ativo ou conectado.");
+    }
+    const cleanProducts = (this.store.products || []).map(p => this.sanitizeProductForCloud(p));
+    const payload = {
+      hidePrices: !!this.store.hidePrices,
+      products: cleanProducts,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await this.db.collection('catalogs').doc('active').set(payload);
+    return cleanProducts.length;
+  }
+
   async syncToCloud(products, hidePrices) {
+    if (this.isClientView) return; // Clientes em view=public são estritamente somente-leitura!
     if (!this.db || !this.firebaseActive) return;
 
     // Debounce cloud sync by 400ms to avoid unnecessary network requests

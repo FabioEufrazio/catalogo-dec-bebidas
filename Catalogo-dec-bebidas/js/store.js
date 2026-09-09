@@ -62,6 +62,9 @@ class ProductStore {
     this.hidePrices = savedHide === 'true';
 
     // Load Products
+    const urlParams = new URLSearchParams(window.location.search);
+    const isClient = urlParams.get('view') === 'public' || urlParams.get('client') === '1';
+
     const savedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
     if (savedProducts) {
       try {
@@ -71,8 +74,8 @@ class ProductStore {
         this.products = [];
       }
     } else {
-      // Only load sample products if localStorage is completely missing (first run)
-      if (typeof INITIAL_SAMPLE_PRODUCTS !== 'undefined') {
+      // Only load sample products in gestor mode if empty
+      if (!isClient && typeof INITIAL_SAMPLE_PRODUCTS !== 'undefined') {
         this.products = JSON.parse(JSON.stringify(INITIAL_SAMPLE_PRODUCTS));
       }
     }

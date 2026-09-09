@@ -1184,13 +1184,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openShareLinkModal() {
     const input = document.getElementById('clientLinkInput');
-    const publicUrl = `${window.location.origin}${window.location.pathname}?view=public`;
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const publicUrl = isLocal 
+      ? 'https://fabioeufrazio.github.io/catalogo-dec-bebidas/?view=public' 
+      : `${window.location.origin}${window.location.pathname}?view=public`;
     if (input) input.value = publicUrl;
     openModal('clientLinkModal');
   }
 
   if (shareLinkBtn) shareLinkBtn.addEventListener('click', openShareLinkModal);
   if (headerClientLinkBtn) headerClientLinkBtn.addEventListener('click', openShareLinkModal);
+
+  const publishCloudBtn = document.getElementById('publishCloudBtn');
+  if (publishCloudBtn) {
+    publishCloudBtn.addEventListener('click', async () => {
+      try {
+        publishCloudBtn.disabled = true;
+        publishCloudBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publicando...';
+        const count = await realtimeEngine.forcePublishToCloud();
+        showToast(`Catálogo publicado com sucesso! ${count} produtos sincronizados na nuvem.`);
+      } catch (err) {
+        showToast('Erro ao publicar na nuvem: ' + err.message, 'error');
+      } finally {
+        publishCloudBtn.disabled = false;
+        publishCloudBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Publicar Online';
+      }
+    });
+  }
 
   const copyClientLinkBtn = document.getElementById('copyClientLinkBtn');
   if (copyClientLinkBtn) {
