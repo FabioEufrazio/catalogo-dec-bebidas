@@ -161,26 +161,94 @@ class RealtimeEngine {
     };
   }
 
+  async writeViaRest(cleanProducts, hidePrices) {
+    let projectId = 'catalogo-online-dec';
+    try {
+      const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+      if (rawConfig) {
+        const parsed = JSON.parse(rawConfig);
+        if (parsed.projectId) projectId = parsed.projectId;
+      }
+    } catch (e) {}
+
+    const restPayload = {
+      fields: {
+        hidePrices: { booleanValue: !!hidePrices },
+        products: {
+          arrayValue: {
+            values: cleanProducts.map(p => ({
+              mapValue: {
+                fields: {
+                  id: { stringValue: String(p.id || '') },
+                  code: { stringValue: String(p.code || '') },
+                  description: { stringValue: String(p.description || '') },
+                  unitPrice: { doubleValue: Number(p.unitPrice) || 0 },
+                  qtyPerBox: { integerValue: String(p.qtyPerBox || 1) },
+                  showBoxTotal: { booleanValue: p.showBoxTotal !== false },
+                  category: { stringValue: String(p.category || 'outros') },
+                  active: { booleanValue: p.active !== false },
+                  manualPosition: { integerValue: String(p.manualPosition || 1) },
+                  imageBase64: { stringValue: String(p.imageBase64 || '') },
+                  promoActive: { booleanValue: !!p.promoActive },
+                  promoPrice: { doubleValue: Number(p.promoPrice) || 0 },
+                  promoExpiry: { stringValue: String(p.promoExpiry || '') }
+                }
+              }
+            }))
+          }
+        }
+      }
+    };
+
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/active`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(restPayload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Falha HTTP ${res.status}: ${errText}`);
+    }
+    return cleanProducts.length;
+  }
+
   async forcePublishToCloud() {
     if (this.isClientView) {
       throw new Error("Modo cliente é apenas leitura.");
     }
-    if (!this.db || !this.firebaseActive) {
-      throw new Error("Firebase não está ativo ou conectado.");
-    }
     const cleanProducts = (this.store.products || []).map(p => this.sanitizeProductForCloud(p));
-    const payload = {
-      hidePrices: !!this.store.hidePrices,
-      products: cleanProducts,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await this.db.collection('catalogs').doc('active').set(payload);
-    return cleanProducts.length;
+    const hidePrices = !!this.store.hidePrices;
+
+    // Try SDK write with 3.5s timeout. If SDK hangs or fails, fall back to REST immediately!
+    const sdkPromise = (async () => {
+      if (!this.db || !this.firebaseActive) {
+        throw new Error("SDK não ativo");
+      }
+      const payload = {
+        hidePrices: hidePrices,
+        products: cleanProducts,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await this.db.collection('catalogs').doc('active').set(payload);
+      return cleanProducts.length;
+    })();
+
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("TIMEOUT_SDK")), 3500)
+    );
+
+    try {
+      return await Promise.race([sdkPromise, timeoutPromise]);
+    } catch (err) {
+      console.warn("SDK write falhou ou demorou. Usando fallback REST API imediato...", err);
+      return await this.writeViaRest(cleanProducts, hidePrices);
+    }
   }
 
   async syncToCloud(products, hidePrices) {
     if (this.isClientView) return; // Clientes em view=public são estritamente somente-leitura!
-    if (!this.db || !this.firebaseActive) return;
 
     // Debounce cloud sync by 400ms to avoid unnecessary network requests
     if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
@@ -188,14 +256,30 @@ class RealtimeEngine {
     this.cloudSyncTimeout = setTimeout(async () => {
       try {
         const cleanProducts = (products || []).map(p => this.sanitizeProductForCloud(p));
-        const payload = {
-          hidePrices: !!hidePrices,
-          products: cleanProducts,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
+        const hide = !!hidePrices;
 
-        await this.db.collection('catalogs').doc('active').set(payload);
-        console.log("Firestore cloud sync succeeded:", cleanProducts.length, "products synced.");
+        const sdkPromise = (async () => {
+          if (!this.db || !this.firebaseActive) throw new Error("SDK inativo");
+          const payload = {
+            hidePrices: hide,
+            products: cleanProducts,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          await this.db.collection('catalogs').doc('active').set(payload);
+        })();
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("TIMEOUT")), 3500)
+        );
+
+        try {
+          await Promise.race([sdkPromise, timeoutPromise]);
+          console.log("Firestore cloud sync (SDK) succeeded:", cleanProducts.length, "products synced.");
+        } catch (e) {
+          console.warn("Firestore sync SDK timeout/erro, enviando via REST...", e);
+          await this.writeViaRest(cleanProducts, hide);
+          console.log("Firestore cloud sync (REST) succeeded:", cleanProducts.length, "products synced.");
+        }
       } catch (e) {
         console.error("Cloud sync error:", e);
       }
