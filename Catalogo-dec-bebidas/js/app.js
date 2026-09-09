@@ -339,8 +339,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <!-- Image Area -->
       <div class="product-image-container ${p.imageBase64 ? 'has-image' : ''}">
-        <span class="category-tag">${catLabel}</span>
-        ${isPromo ? `<span class="promo-badge-tag"><i class="fa-solid fa-fire"></i> ${discountPercent > 0 ? `-${discountPercent}%` : 'OFERTA'}</span>` : ''}
+        <div class="product-corner-badges">
+          ${isPromo ? `<span class="promo-badge-tag"><i class="fa-solid fa-fire"></i> ${discountPercent > 0 ? `-${discountPercent}%` : 'OFERTA'}</span>` : ''}
+          <span class="category-tag">${catLabel}</span>
+        </div>
         ${!p.active ? `<span class="inactive-status-tag admin-only-ui"><i class="fa-solid fa-eye-slash"></i> Oculto no Cliente</span>` : ''}
         ${p.code ? `<span class="sku-code-tag">COD: ${p.code}</span>` : ''}
         ${p.imageBase64 ? 
