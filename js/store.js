@@ -227,6 +227,7 @@ class ProductStore {
       unitPrice: updatedData.unitPrice !== undefined ? parseFloat(updatedData.unitPrice) : existing.unitPrice,
       qtyPerBox: updatedData.qtyPerBox !== undefined ? parseInt(updatedData.qtyPerBox) : existing.qtyPerBox,
       category: updatedData.category !== undefined ? String(updatedData.category).toLowerCase() : existing.category,
+      imageBase64: updatedData.imageBase64 !== undefined ? String(updatedData.imageBase64) : (existing.imageBase64 || ''),
       promoActive: updatedData.promoActive !== undefined ? !!updatedData.promoActive : existing.promoActive,
       promoPrice: updatedData.promoPrice !== undefined ? parseFloat(updatedData.promoPrice) : existing.promoPrice,
       promoExpiry: updatedData.promoExpiry !== undefined ? updatedData.promoExpiry : existing.promoExpiry

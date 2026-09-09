@@ -7,8 +7,11 @@ class ImageUtils {
   // Compress image file or data URL to max 400x400 JPEG 70% quality
   static compressImage(src, maxWidth = 400, maxHeight = 400, quality = 0.70) {
     return new Promise((resolve, reject) => {
+      if (!src) return resolve('');
       const img = new Image();
-      img.crossOrigin = 'Anonymous';
+      if (typeof src === 'string' && (src.startsWith('http://') || src.startsWith('https://'))) {
+        img.crossOrigin = 'Anonymous';
+      }
 
       img.onload = () => {
         try {

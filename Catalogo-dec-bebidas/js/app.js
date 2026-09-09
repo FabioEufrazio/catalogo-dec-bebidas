@@ -325,6 +325,12 @@ document.addEventListener('DOMContentLoaded', () => {
       setActivePasteTarget(p.id);
     });
 
+    card.addEventListener('mouseenter', () => {
+      if (!isClientMode) {
+        focusedCardProductId = p.id;
+      }
+    });
+
     const boxTotal = p.unitPrice * p.qtyPerBox;
     const catLabel = (CATEGORIES.find(c => c.id === p.category) || {}).label || 'Outros';
 

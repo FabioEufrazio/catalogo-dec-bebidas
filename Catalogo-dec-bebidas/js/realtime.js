@@ -141,16 +141,21 @@ class RealtimeEngine {
   setupCloudListeners() {
     if (!this.db) return;
 
-    // BLINDAGEM DE TESTES: Em ambiente local (localhost), desativa a escuta remota da nuvem.
-    // Isso evita que dados da produção sobrescrevam os testes locais e elimina os bugs/conflitos ao editar ou reordenar itens.
-    if (this.isLocal) {
-      console.log("🔒 Ambiente Local (Testes): Escuta remota desativada. Testes 100% isolados de produção.");
-      return;
-    }
-
-    // Escuta remota em tempo real sem metadata repetitiva (Zero Flickering)
-    this.db.collection('catalogs').doc('active').onSnapshot((doc) => {
+    // Escuta remota em tempo real com controle de metadados
+    this.db.collection('catalogs').doc('active').onSnapshot({ includeMetadataChanges: true }, (doc) => {
       if (this.isSyncingFromRemote || !doc.exists) return;
+
+      // 1. Ignora escritas locais que ainda estão sendo gravadas no Firestore
+      if (doc.metadata && doc.metadata.hasPendingWrites) return;
+
+      // 2. BLINDAGEM DO GESTOR: Se o usuário estiver no MODO GESTOR (autenticado),
+      // a tela dele é a autoridade máxima de edição. NUNCA deixar um snapshot antigo da nuvem
+      // sobrescrever o que o gestor acabou de colar (Ctrl+V) ou editar!
+      const isGestor = localStorage.getItem('catalog_gestor_logged') === 'true';
+      if (isGestor) {
+        return;
+      }
+
       const data = doc.data();
       if (!data) return;
 
@@ -159,13 +164,22 @@ class RealtimeEngine {
       }
 
       if (Array.isArray(data.products)) {
+        // 3. BLINDAGEM TOTAL DE FOTOS: Se o produto local tem foto e a nuvem não tem, PRESERVA A FOTO LOCAL!
+        const mergedProducts = data.products.map(remoteP => {
+          const localP = this.store.products.find(lp => lp.id === remoteP.id);
+          if (localP && localP.imageBase64 && !remoteP.imageBase64) {
+            return { ...remoteP, imageBase64: localP.imageBase64 };
+          }
+          return remoteP;
+        });
+
         const localSig = this.getCatalogSignature(this.store.products);
-        const remoteSig = this.getCatalogSignature(data.products);
+        const remoteSig = this.getCatalogSignature(mergedProducts);
         // Só atualiza se o conteúdo REAL dos produtos tiver mudado (evita loop infinito e tela piscando)
         if (localSig !== remoteSig) {
-          console.log(`Recebendo atualização real da nuvem: ${data.products.length} produtos.`);
+          console.log(`Recebendo atualização real da nuvem para clientes: ${mergedProducts.length} produtos.`);
           this.isSyncingFromRemote = true;
-          this.store.setAllProducts(data.products, false);
+          this.store.setAllProducts(mergedProducts, false);
           this.isSyncingFromRemote = false;
         }
       }
@@ -307,14 +321,18 @@ class RealtimeEngine {
           await Promise.race([sdkPromise, timeoutPromise]);
           console.log("Firestore cloud sync (SDK) succeeded:", cleanProducts.length, "products synced.");
         } catch (e) {
-          console.warn("Firestore sync SDK timeout/erro, enviando via REST...", e);
-          await this.writeViaRest(cleanProducts, hide);
-          console.log("Firestore cloud sync (REST) succeeded:", cleanProducts.length, "products synced.");
+          console.warn("Firestore sync SDK timeout/erro, tentando via REST...", e);
+          try {
+            await this.writeViaRest(cleanProducts, hide);
+            console.log("Firestore cloud sync (REST) succeeded:", cleanProducts.length, "products synced.");
+          } catch (restErr) {
+            console.warn("Firestore REST também não completou (dados preservados no armazenamento local):", restErr);
+          }
         }
       } catch (e) {
-        console.error("Cloud sync error:", e);
+        console.error("Cloud sync error (dados protegidos no localStorage):", e);
       }
-    }, 400);
+    }, 600);
   }
 
   async login(email, password) {
