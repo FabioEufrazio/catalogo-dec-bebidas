@@ -233,12 +233,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedProducts = products.slice(startIndex, startIndex + itemsPerPage);
 
-    grid.innerHTML = '';
-
+    // Atomic DOM replacement: avoids white screen flash and preserves smooth interactions
+    const fragment = document.createDocumentFragment();
     paginatedProducts.forEach(product => {
       const card = createProductCard(product);
-      grid.appendChild(card);
+      fragment.appendChild(card);
     });
+    grid.replaceChildren(fragment);
 
     renderPagination(totalPages);
     updateBulkActionsBarUI();
@@ -512,6 +513,17 @@ document.addEventListener('DOMContentLoaded', () => {
           selectedProductIds.delete(p.id);
           showToast(`Produto excluído.`);
         }
+      });
+    }
+
+    // 8. Click on Price Box to quickly edit price (Admin Mode)
+    const priceBox = card.querySelector('.price-details-box');
+    if (priceBox && !isClientMode) {
+      priceBox.style.cursor = 'pointer';
+      priceBox.title = 'Clique para editar o preço deste produto';
+      priceBox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditProductModal(p);
       });
     }
 
@@ -1580,11 +1592,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 11. Subscribe Store Listener to Re-render UI
+  // 11. Subscribe Store Listener to Re-render UI (Batched via requestAnimationFrame)
+  let renderRafId = null;
+  function scheduleUIRender() {
+    if (renderRafId) cancelAnimationFrame(renderRafId);
+    renderRafId = requestAnimationFrame(() => {
+      syncPriceModeUI();
+      renderCategoryPills();
+      renderProducts();
+    });
+  }
+
   productStore.subscribe(() => {
-    syncPriceModeUI();
-    renderCategoryPills();
-    renderProducts();
+    scheduleUIRender();
   });
 
   // 12. Initial Kickoff

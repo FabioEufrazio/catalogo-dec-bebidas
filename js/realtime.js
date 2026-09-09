@@ -131,6 +131,13 @@ class RealtimeEngine {
     }
   }
 
+  getCatalogSignature(products) {
+    if (!Array.isArray(products)) return '';
+    return products.map(p => 
+      `${p.id}:${p.code}:${p.description}:${p.unitPrice}:${p.qtyPerBox}:${p.showBoxTotal !== false}:${p.category}:${p.active !== false}:${p.manualPosition || 0}:${!!p.promoActive}:${p.promoPrice || 0}:${p.promoExpiry || ''}:${(p.imageBase64 || '').length}`
+    ).join(';');
+  }
+
   setupCloudListeners() {
     if (!this.db) return;
 
@@ -141,33 +148,27 @@ class RealtimeEngine {
       return;
     }
 
-    // Optimized Single-Document Cloud Listener (Uses only 1 Read instead of 1,000 Reads)
-    this.db.collection('catalogs').doc('active').onSnapshot({ includeMetadataChanges: true }, (doc) => {
-      if (this.isSyncingFromRemote || !doc.exists || doc.metadata.hasPendingWrites) return;
+    // Escuta remota em tempo real sem metadata repetitiva (Zero Flickering)
+    this.db.collection('catalogs').doc('active').onSnapshot((doc) => {
+      if (this.isSyncingFromRemote || !doc.exists) return;
       const data = doc.data();
       if (!data) return;
-
-      this.isSyncingFromRemote = true;
 
       if (data.hidePrices !== undefined && data.hidePrices !== this.store.hidePrices) {
         this.store.setHidePrices(data.hidePrices);
       }
 
       if (Array.isArray(data.products)) {
-        // Remote data exists: update local state if remote is different
-        const localHash = JSON.stringify(this.store.products);
-        const remoteHash = JSON.stringify(data.products);
-        if (localHash !== remoteHash) {
-          console.log(`Recebendo atualização da nuvem: ${data.products.length} produtos.`);
+        const localSig = this.getCatalogSignature(this.store.products);
+        const remoteSig = this.getCatalogSignature(data.products);
+        // Só atualiza se o conteúdo REAL dos produtos tiver mudado (evita loop infinito e tela piscando)
+        if (localSig !== remoteSig) {
+          console.log(`Recebendo atualização real da nuvem: ${data.products.length} produtos.`);
+          this.isSyncingFromRemote = true;
           this.store.setAllProducts(data.products, false);
+          this.isSyncingFromRemote = false;
         }
-      } else if (!this.isClientView && (!data.products || data.products.length === 0) && this.store.products.length > 0) {
-        // Only GESTOR auto-publishes local products to Firestore if cloud is empty
-        console.log("Firestore cloud is empty. Auto-publishing local catalog to cloud...");
-        this.syncToCloud(this.store.products, this.store.hidePrices);
       }
-
-      this.isSyncingFromRemote = false;
     }, err => console.warn("Firestore catalog listen error:", err));
   }
 
