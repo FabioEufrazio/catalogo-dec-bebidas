@@ -41,7 +41,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=3.1">
+  <link rel="stylesheet" href="css/styles.css?v=3.3">
 </head>
 <body>
 
@@ -161,16 +161,22 @@
     <span id="bulkSelectedCount" class="bulk-selected-count">
       <i class="fa-solid fa-square-check"></i> 0 selecionados
     </span>
+    <button id="bulkPromoBtn" class="btn btn-sm btn-promo-action" style="background: linear-gradient(135deg, #ef4444, #f97316); color: #fff; border:none; font-weight:700;">
+      <i class="fa-solid fa-fire"></i> Ofertas em Lote
+    </button>
     <button id="bulkPriceBtn" class="btn btn-sm btn-primary">
       <i class="fa-solid fa-tags"></i> Preço em Lote
     </button>
     <button id="bulkCategoryBtn" class="btn btn-sm">
       <i class="fa-solid fa-folder-tree"></i> Categoria em Lote
     </button>
-    <button id="bulkDeleteBtn" class="btn btn-sm btn-danger">
-      <i class="fa-solid fa-trash-can"></i> Excluir Selecionados
+    <button id="bulkSelectAllBtn" class="btn btn-sm btn-outline" title="Selecionar ou desmarcar todos os produtos visíveis">
+      <i class="fa-solid fa-check-double"></i> Selecionar Todos
     </button>
-    <button id="bulkCancelBtn" class="btn btn-sm btn-icon">
+    <button id="bulkDeleteBtn" class="btn btn-sm btn-danger">
+      <i class="fa-solid fa-trash-can"></i> Excluir
+    </button>
+    <button id="bulkCancelBtn" class="btn btn-sm btn-icon" title="Limpar Seleção">
       <i class="fa-solid fa-xmark"></i>
     </button>
   </div>
@@ -405,6 +411,91 @@
     </div>
   </div>
 
+  <!-- MODAL: Bulk Promo Offers -->
+  <div id="bulkPromoModal" class="modal-overlay">
+    <div class="modal-card modal-lg">
+      <div class="modal-header" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(245, 158, 11, 0.15)); border-bottom: 1px solid rgba(239, 68, 68, 0.3);">
+        <h3 class="modal-title" style="color: #fff;"><i class="fa-solid fa-fire" style="color: #ef4444;"></i> Ofertas em Lote</h3>
+        <button class="modal-close-btn" data-close-modal="bulkPromoModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 16px; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md); font-size: 0.85rem; color: #ffedd5;">
+          <i class="fa-solid fa-circle-info" style="color:#f59e0b;"></i> Aplicando oferta simultânea em <strong id="bulkPromoCountLabel">0 produtos</strong> selecionados.
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+          <button type="button" id="bulkPromoModeTabApply" class="btn btn-primary" style="flex:1;"><i class="fa-solid fa-tag"></i> Ativar / Atualizar Oferta</button>
+          <button type="button" id="bulkPromoModeTabRemove" class="btn btn-outline" style="flex:1;"><i class="fa-solid fa-ban"></i> Encerrar / Remover Ofertas</button>
+        </div>
+
+        <!-- Section: Apply Promo -->
+        <div id="bulkPromoApplySection">
+          <div class="form-grid" style="margin-bottom: 16px;">
+            <div>
+              <label class="form-label" for="bulkPromoDiscountType">Tipo de Desconto</label>
+              <select id="bulkPromoDiscountType" class="form-control">
+                <option value="percent">Desconto Percentual (%) - Ex: 10% OFF</option>
+                <option value="discount_fixed">Abatimento Fixo (R$) - Ex: -R$ 5,00</option>
+                <option value="fixed_price">Preço Promocional Fixo (R$) - Ex: Todos por R$ 29,90</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="bulkPromoValueInput" id="bulkPromoValueLabel">Percentual de Desconto (%)</label>
+              <input type="number" step="0.01" min="0.01" id="bulkPromoValueInput" class="form-control" placeholder="Ex: 15" required>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label class="form-label" for="bulkPromoExpiryInput">Data de Validade da Oferta (Prazo Limite)</label>
+            <input type="date" id="bulkPromoExpiryInput" class="form-control" required style="margin-bottom: 8px;">
+            <!-- Quick Date Presets -->
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-outline promo-preset-btn" data-days="2">Fim de Semana</button>
+              <button type="button" class="btn btn-sm btn-outline promo-preset-btn" data-days="7">+7 dias</button>
+              <button type="button" class="btn btn-sm btn-outline promo-preset-btn" data-days="15">+15 dias</button>
+              <button type="button" class="btn btn-sm btn-outline promo-preset-btn" data-days="30">+30 dias</button>
+            </div>
+          </div>
+
+          <!-- Live Preview Table of Selected Products -->
+          <div style="margin-top: 16px;">
+            <label class="form-label">Pré-visualização do Lote:</label>
+            <div class="diff-table-wrapper" style="max-height: 180px; overflow-y: auto;">
+              <table class="diff-table">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Preço Normal</th>
+                    <th>Preço em Oferta</th>
+                    <th>Desconto</th>
+                  </tr>
+                </thead>
+                <tbody id="bulkPromoPreviewTableBody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Remove Promo -->
+        <div id="bulkPromoRemoveSection" style="display: none; padding: 24px 12px; text-align: center;">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size: 2.5rem; color: #f59e0b; margin-bottom: 12px;"></i>
+          <h4>Encerrar Ofertas em Lote</h4>
+          <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 440px; margin: 0 auto 16px;">
+            Todos os produtos selecionados sairão da promoção e voltarão ao seu preço normal de tabela imediatamente.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" data-close-modal="bulkPromoModal">Cancelar</button>
+        <button type="button" id="confirmBulkPromoBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #ef4444, #f97316); border:none;">
+          <i class="fa-solid fa-fire"></i> Confirmar Oferta em Lote
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Bulk Category Update -->
   <div id="bulkCategoryModal" class="modal-overlay">
     <div class="modal-card">
@@ -598,11 +689,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/sample-data.js?v=3.1"></script>
-  <script src="js/store.js?v=3.1"></script>
-  <script src="js/realtime.js?v=3.1"></script>
-  <script src="js/excel.js?v=3.1"></script>
-  <script src="js/image-utils.js?v=3.1"></script>
-  <script src="js/app.js?v=3.1"></script>
+  <script src="js/sample-data.js?v=3.3"></script>
+  <script src="js/store.js?v=3.3"></script>
+  <script src="js/realtime.js?v=3.3"></script>
+  <script src="js/excel.js?v=3.3"></script>
+  <script src="js/image-utils.js?v=3.3"></script>
+  <script src="js/app.js?v=3.3"></script>
 </body>
 </html>

@@ -320,6 +320,50 @@ class ProductStore {
     this.saveToStorage(true);
   }
 
+  bulkSetPromo(ids, { type, value, expiry }) {
+    let changed = false;
+    this.products.forEach(p => {
+      if (ids.includes(p.id)) {
+        let promoPrice = p.unitPrice;
+        if (type === 'percent') {
+          const discount = (p.unitPrice * value) / 100;
+          promoPrice = Math.max(0.01, p.unitPrice - discount);
+        } else if (type === 'discount_fixed') {
+          promoPrice = Math.max(0.01, p.unitPrice - value);
+        } else if (type === 'fixed_price') {
+          promoPrice = Math.max(0.01, value);
+        }
+
+        if (promoPrice < p.unitPrice) {
+          p.promoActive = true;
+          p.promoPrice = parseFloat(promoPrice.toFixed(2));
+          p.promoExpiry = String(expiry || '');
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      this.saveToStorage(true);
+    }
+    return changed;
+  }
+
+  bulkRemovePromo(ids) {
+    let changed = false;
+    this.products.forEach(p => {
+      if (ids.includes(p.id) && p.promoActive) {
+        p.promoActive = false;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      this.saveToStorage(true);
+    }
+    return changed;
+  }
+
   setAllProducts(newProducts, recordHistory = true) {
     this.products = JSON.parse(JSON.stringify(newProducts));
     this.products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
