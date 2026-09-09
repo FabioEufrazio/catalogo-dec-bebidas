@@ -9,18 +9,47 @@
   <title>Catálogo Profissional de Produtos & Gestor de Bebidas v2.0</title>
   <meta name="description" content="Sistema completo de gestão, precificação, reordenação e catálogo digital público para distribuidoras de bebidas.">
 
-  <!-- Anti-Flicker Script (Zero FOUC for Price Hiding) -->
+  <!-- Anti-Flicker & Security Shield (Zero FOUC) -->
+  <style id="antiFlickerStyle">
+    /* Trava de segurança: oculta elementos administrativos antes do primeiro pixel */
+    html:not(.gestor-mode) .admin-only-ui,
+    html:not(.gestor-mode) .admin-toolbar,
+    html:not(.gestor-mode) #bulkActionsBar,
+    html:not(.gestor-mode) .product-card-admin-bar,
+    html.client-mode .admin-only-ui,
+    html.client-mode .admin-toolbar,
+    html.client-mode #bulkActionsBar,
+    html.client-mode .product-card-admin-bar,
+    body.client-mode .admin-only-ui,
+    body.client-mode .admin-toolbar,
+    body.client-mode #bulkActionsBar,
+    body.client-mode .product-card-admin-bar {
+      display: none !important;
+    }
+    html.prices-hidden .price-details-box,
+    body.prices-hidden .price-details-box,
+    html.prices-hidden .lightbox-price-details,
+    body.prices-hidden .lightbox-price-details {
+      display: none !important;
+    }
+  </style>
   <script>
     (function() {
       try {
+        var isGestor = localStorage.getItem('catalog_gestor_logged') === 'true';
         var p = new URLSearchParams(window.location.search);
-        var isClient = p.get('view') === 'public' || p.get('client') === '1';
+        var forceClient = p.get('view') === 'public' || p.get('client') === '1';
         var h = localStorage.getItem('catalog_hide_prices');
-        if (isClient) {
+
+        if (isGestor && !forceClient) {
+          document.documentElement.classList.add('gestor-mode');
+          document.documentElement.classList.remove('client-mode');
+        } else {
           document.documentElement.classList.add('client-mode');
-          if (h === 'true') {
-            document.documentElement.classList.add('prices-hidden');
-          }
+          document.documentElement.classList.remove('gestor-mode');
+        }
+        if (h === 'true') {
+          document.documentElement.classList.add('prices-hidden');
         }
       } catch(e) {}
     })();
@@ -93,11 +122,8 @@
     </div>
 
     <div class="toolbar-group">
-      <button id="loginModalBtn" class="btn btn-purple" title="Fazer Login como Gestor">
-        <i class="fa-solid fa-right-to-bracket"></i> Login Gestor
-      </button>
-      <button id="logoutBtn" class="btn btn-danger" style="display:none;" title="Sair da Conta">
-        <i class="fa-solid fa-right-from-bracket"></i> Sair
+      <button id="logoutBtn" class="btn btn-danger" style="display:none;" title="Sair do Modo Gestor e Bloquear Edição">
+        <i class="fa-solid fa-lock"></i> Sair do Gestor
       </button>
       <button id="firebaseConfigBtn" class="btn btn-icon" title="Configurar Firebase Firestore">
         <i class="fa-solid fa-fire"></i>
@@ -646,40 +672,46 @@
     </div>
   </div>
 
+  <!-- Footer with Hidden Gestor Access -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <span class="footer-copy">&copy; 2026 Distribuidora de Bebidas &bull; Catálogo Digital</span>
+      <!-- Botão oculto discreto para acesso do gestor -->
+      <button type="button" id="hiddenGestorBtn" class="hidden-gestor-btn" aria-label="Acesso Gestor" title="">&bull;</button>
+    </div>
+  </footer>
+
   <!-- MODAL: Admin / Gestor Login -->
   <div id="adminLoginModal" class="modal-overlay">
     <div class="modal-card" style="max-width: 420px;">
       <div class="modal-header">
-        <h3 class="modal-title"><i class="fa-solid fa-lock"></i> Login do Gestor</h3>
+        <h3 class="modal-title"><i class="fa-solid fa-shield-halved" style="color: var(--accent-gold);"></i> Acesso Restrito do Gestor</h3>
         <button class="modal-close-btn" data-close-modal="adminLoginModal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="adminLoginForm">
         <div class="modal-body">
           <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
-            Entre com seu e-mail e senha cadastrados no Firebase para acessar as ferramentas de gestão:
+            Área restrita exclusivamente ao gestor. Entre com suas credenciais autorizadas para desbloquear as ferramentas de edição:
           </p>
 
           <div id="loginErrorMessage" style="display:none; color: var(--status-inactive); background: var(--status-inactive-bg); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; margin-bottom: 14px;"></div>
 
           <div style="margin-bottom: 14px;">
-            <label class="form-label" for="loginEmail">E-mail do Gestor</label>
-            <input type="email" id="loginEmail" class="form-control" placeholder="gestor@suaempresa.com" required>
+            <label class="form-label" for="loginEmail">E-mail ou Usuário do Gestor</label>
+            <input type="text" id="loginEmail" class="form-control" placeholder="admin ou seu e-mail" required autocomplete="username">
           </div>
 
           <div style="margin-bottom: 16px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-              <label class="form-label" for="loginPassword" style="margin:0;">Senha</label>
+              <label class="form-label" for="loginPassword" style="margin:0;">Senha do Gestor</label>
               <button type="button" id="forgotPasswordBtn" style="background:none; border:none; color: var(--accent-gold); font-size: 0.75rem; cursor:pointer; text-decoration:underline;">Esqueci minha senha</button>
             </div>
-            <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+            <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required autocomplete="current-password">
           </div>
         </div>
-        <div class="modal-footer" style="display: flex; flex-direction: column; gap: 10px;">
-          <div style="display: flex; gap: 8px; width: 100%;">
-            <button type="submit" id="submitLoginBtn" class="btn btn-primary" style="flex: 1;">Entrar <i class="fa-solid fa-right-to-bracket"></i></button>
-            <button type="button" id="signupBtn" class="btn btn-purple" style="flex: 1;"><i class="fa-solid fa-user-plus"></i> Criar Nova Conta</button>
-          </div>
-          <button type="button" id="bypassLoginBtn" class="btn btn-sm btn-outline" style="width: 100%; font-size: 0.78rem; text-align: center;" title="Entrar sem login no modo local">⚡ Modo Local (Entrar sem Firebase)</button>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn" data-close-modal="adminLoginModal">Cancelar</button>
+          <button type="submit" id="submitLoginBtn" class="btn btn-primary">Entrar como Gestor <i class="fa-solid fa-arrow-right-to-bracket"></i></button>
         </div>
       </form>
     </div>

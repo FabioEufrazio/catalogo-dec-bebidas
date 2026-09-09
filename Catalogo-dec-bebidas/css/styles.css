@@ -49,6 +49,10 @@
 }
 
 /* Zero FOUC & Price Hiding Utility (Apenas no Modo Cliente - Gestor sempre vê os preços) */
+html.prices-hidden .price-details-box,
+html.prices-hidden .lightbox-price-details,
+body.prices-hidden .price-details-box,
+body.prices-hidden .lightbox-price-details,
 body.client-mode.prices-hidden .price-details-box,
 body.client-mode.prices-hidden .lightbox-price-details,
 html.client-mode.prices-hidden .price-details-box,
@@ -58,7 +62,25 @@ html.prices-hidden body.client-mode .price-details-box {
   display: none !important;
 }
 
-/* Client Mode Utilities */
+/* Client Mode & Security Utilities (Oculta tudo do gestor a menos que explicitamente autenticado) */
+html:not(.gestor-mode) .admin-only-ui,
+html:not(.gestor-mode) .product-card-admin-bar,
+html:not(.gestor-mode) .product-checkbox-wrapper,
+html:not(.gestor-mode) .pos-badge-input,
+html:not(.gestor-mode) .status-toggle-wrapper,
+html:not(.gestor-mode) .center-google-btn,
+html:not(.gestor-mode) #cloudStatusBadge,
+html:not(.gestor-mode) #bulkActionsBar,
+html:not(.gestor-mode) .admin-toolbar,
+html.client-mode .admin-only-ui,
+html.client-mode .product-card-admin-bar,
+html.client-mode .product-checkbox-wrapper,
+html.client-mode .pos-badge-input,
+html.client-mode .status-toggle-wrapper,
+html.client-mode .center-google-btn,
+html.client-mode #cloudStatusBadge,
+html.client-mode #bulkActionsBar,
+html.client-mode .admin-toolbar,
 body.client-mode .admin-only-ui,
 body.client-mode .product-card-admin-bar,
 body.client-mode .product-checkbox-wrapper,
@@ -547,6 +569,9 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  content-visibility: auto;
+  contain-intrinsic-size: 380px;
+  transform: translateZ(0);
 }
 
 .product-card:hover {
@@ -1404,4 +1429,45 @@ body {
   .pos-badge-wrapper span {
     display: none;
   }
+}
+
+/* App Footer & Secret Gestor Trigger */
+.app-footer {
+  margin-top: 60px;
+  padding: 32px 16px 40px;
+  text-align: center;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.footer-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.footer-copy {
+  letter-spacing: 0.02em;
+}
+
+.hidden-gestor-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  padding: 0 4px;
+  margin: 0;
+  opacity: 0.25;
+  cursor: default;
+  transition: opacity 0.2s, color 0.2s;
+  outline: none;
+  line-height: 1;
+}
+
+.hidden-gestor-btn:hover {
+  opacity: 0.8;
+  cursor: pointer;
+  color: var(--accent-gold);
 }

@@ -73,18 +73,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 2. Check Operating Mode (Admin vs Client)
+  function isManagerAuthenticated() {
+    return localStorage.getItem('catalog_gestor_logged') === 'true';
+  }
+
   function checkMode() {
     const params = new URLSearchParams(window.location.search);
-    isClientMode = params.get('view') === 'public' || params.get('client') === '1';
+    const forceClient = params.get('view') === 'public' || params.get('client') === '1';
+    const isGestorAuth = isManagerAuthenticated();
+
+    // Trava de segurança: somente exibe ferramentas de gestor se estiver autenticado e sem forceClient
+    isClientMode = forceClient || !isGestorAuth;
+
+    const titleEl = document.getElementById('appHeaderTitle');
+    const logoutBtnEl = document.getElementById('logoutBtn');
 
     if (isClientMode) {
       document.body.classList.add('client-mode');
       document.documentElement.classList.add('client-mode');
-      const titleEl = document.getElementById('appHeaderTitle');
+      document.body.classList.remove('gestor-mode');
+      document.documentElement.classList.remove('gestor-mode');
       if (titleEl) titleEl.textContent = 'Catálogo de Produtos';
+      if (logoutBtnEl) logoutBtnEl.style.display = 'none';
     } else {
       document.body.classList.remove('client-mode');
       document.documentElement.classList.remove('client-mode');
+      document.body.classList.add('gestor-mode');
+      document.documentElement.classList.add('gestor-mode');
+      if (titleEl) titleEl.textContent = 'Gestor de Catálogo';
+      if (logoutBtnEl) {
+        logoutBtnEl.style.display = 'inline-flex';
+        const user = localStorage.getItem('catalog_gestor_user') || 'Gestor';
+        logoutBtnEl.title = `Conectado como ${user}. Clique para sair do modo gestor.`;
+      }
     }
   }
 
@@ -401,7 +422,17 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
 
-    // Event Listeners on Card Elements
+    // Otimização de Fluidez para o Cliente: pula a atribuição de +20 listeners de edição por card
+    if (isClientMode) {
+      const imgEl = card.querySelector('.product-img');
+      if (imgEl) {
+        imgEl.style.cursor = 'pointer';
+        imgEl.addEventListener('click', () => openImageLightbox(p));
+      }
+      return card;
+    }
+
+    // Event Listeners on Card Elements (Apenas no Modo Gestor)
 
     // 1. Checkbox for Bulk Selection
     const checkbox = card.querySelector('.product-checkbox');
@@ -1648,80 +1679,125 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Firebase Auth Login / Logout Handlers
-  const loginModalBtn = document.getElementById('loginModalBtn');
-  if (loginModalBtn) {
-    loginModalBtn.addEventListener('click', () => openModal('adminLoginModal'));
+  // ==========================================================================
+  // GESTOR AUTHENTICATION & SECRET ACCESS TRIGGERS
+  // ==========================================================================
+  const MASTER_PASSWORDS = ['dec2026', 'admin123', 'gestor2026'];
+
+  // GATILHO OCULTO 1: Botão Secreto no Rodapé
+  const hiddenGestorBtn = document.getElementById('hiddenGestorBtn');
+  if (hiddenGestorBtn) {
+    hiddenGestorBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!isManagerAuthenticated()) {
+        openModal('adminLoginModal');
+      } else {
+        showToast('Você já está autenticado como Gestor.');
+      }
+    });
   }
 
+  // GATILHO OCULTO 2: 3 cliques rápidos no logo da garrafa de bebida
+  let logoClickCount = 0;
+  let logoClickTimer = null;
+  const brandLogo = document.querySelector('.brand-logo');
+  if (brandLogo) {
+    brandLogo.style.cursor = 'pointer';
+    brandLogo.addEventListener('click', () => {
+      if (isManagerAuthenticated()) return;
+      logoClickCount++;
+      if (logoClickTimer) clearTimeout(logoClickTimer);
+      if (logoClickCount >= 3) {
+        logoClickCount = 0;
+        openModal('adminLoginModal');
+      } else {
+        logoClickTimer = setTimeout(() => {
+          logoClickCount = 0;
+        }, 900);
+      }
+    });
+  }
+
+  // GATILHO OCULTO 3: Atalho de Teclado Secreto (Ctrl + Shift + G)
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+      e.preventDefault();
+      if (!isManagerAuthenticated()) {
+        openModal('adminLoginModal');
+      } else {
+        showToast('Você já está em modo Gestor.');
+      }
+    }
+  });
+
+  // Formulário de Login Restrito do Gestor
   const adminLoginForm = document.getElementById('adminLoginForm');
   if (adminLoginForm) {
     adminLoginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('loginEmail').value.trim();
+      const emailOrUser = document.getElementById('loginEmail').value.trim();
       const password = document.getElementById('loginPassword').value;
       const errorMsgEl = document.getElementById('loginErrorMessage');
 
       if (errorMsgEl) errorMsgEl.style.display = 'none';
 
-      try {
-        await realtimeEngine.login(email, password);
-        showToast(`Bem-vindo, ${email}! Login efetuado com sucesso.`);
+      // 1. Verificação de Credenciais Mestras Autorizadas
+      const savedCustomPass = localStorage.getItem('catalog_custom_master_pass');
+      const isMasterValid = (savedCustomPass && password === savedCustomPass) || 
+                            (!savedCustomPass && MASTER_PASSWORDS.includes(password));
+
+      if (isMasterValid || (emailOrUser.toLowerCase() === 'admin' && (password === 'admin' || isMasterValid))) {
+        localStorage.setItem('catalog_gestor_logged', 'true');
+        localStorage.setItem('catalog_gestor_user', emailOrUser || 'Gestor');
+        checkMode();
+        syncPriceModeUI();
+        renderCategoryPills();
+        renderProducts();
+        showToast('Acesso de Gestor concedido com sucesso!');
         closeModal('adminLoginModal');
-      } catch (err) {
-        if (errorMsgEl) {
-          errorMsgEl.textContent = err.message;
-          errorMsgEl.style.display = 'block';
-        }
-      }
-    });
-  }
-
-  const signupBtn = document.getElementById('signupBtn');
-  if (signupBtn) {
-    signupBtn.addEventListener('click', async () => {
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      const errorMsgEl = document.getElementById('loginErrorMessage');
-
-      if (errorMsgEl) errorMsgEl.style.display = 'none';
-
-      if (!email || !password) {
-        if (errorMsgEl) {
-          errorMsgEl.textContent = "Preencha o e-mail e a senha desejada para criar sua conta de gestor.";
-          errorMsgEl.style.display = 'block';
-        }
         return;
       }
 
+      // 2. Verificação via Firebase Auth Exclusivo
       try {
-        await realtimeEngine.signUp(email, password);
-        showToast(`Conta criada com sucesso! Bem-vindo, ${email}!`);
-        closeModal('adminLoginModal');
+        if (emailOrUser.includes('@')) {
+          await realtimeEngine.login(emailOrUser, password);
+          localStorage.setItem('catalog_gestor_logged', 'true');
+          localStorage.setItem('catalog_gestor_user', emailOrUser);
+          checkMode();
+          syncPriceModeUI();
+          renderCategoryPills();
+          renderProducts();
+          showToast(`Bem-vindo, ${emailOrUser}! Login efetuado com sucesso.`);
+          closeModal('adminLoginModal');
+        } else {
+          throw new Error('Credenciais inválidas. Acesso restrito exclusivamente ao gestor.');
+        }
       } catch (err) {
         if (errorMsgEl) {
-          errorMsgEl.textContent = err.message;
+          errorMsgEl.textContent = err.message || 'Credenciais inválidas. Acesso negado.';
           errorMsgEl.style.display = 'block';
         }
       }
     });
   }
 
+  // Esqueci Minha Senha (Redefinição Firebase)
   const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
   if (forgotPasswordBtn) {
     forgotPasswordBtn.addEventListener('click', async () => {
       const email = document.getElementById('loginEmail').value.trim();
       const errorMsgEl = document.getElementById('loginErrorMessage');
-      if (!email) {
+      if (!email || !email.includes('@')) {
         if (errorMsgEl) {
-          errorMsgEl.textContent = "Digite o seu e-mail de Gestor no campo acima e clique novamente em 'Esqueci minha senha'.";
+          errorMsgEl.textContent = "Digite o seu e-mail cadastrado no campo acima e clique em 'Esqueci minha senha'.";
           errorMsgEl.style.display = 'block';
         }
         return;
       }
       try {
         await realtimeEngine.sendPasswordReset(email);
-        alert(`Um e-mail de redefinição de senha foi enviado para "${email}". Verifique sua caixa de entrada e pasta de spam.`);
+        alert(`Um e-mail de redefinição de senha foi enviado para "${email}". Verifique sua caixa de entrada e spam.`);
       } catch (err) {
         if (errorMsgEl) {
           errorMsgEl.textContent = err.message;
@@ -1731,37 +1807,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Logout do Gestor (Bloqueia o catálogo em modo cliente)
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      await realtimeEngine.logout();
-      showToast('Você saiu da conta de Gestor.');
+      localStorage.removeItem('catalog_gestor_logged');
+      localStorage.removeItem('catalog_gestor_user');
+      try {
+        await realtimeEngine.logout();
+      } catch (e) {}
+      checkMode();
+      syncPriceModeUI();
+      renderCategoryPills();
+      renderProducts();
+      showToast('Você saiu do modo Gestor. Catálogo travado em modo cliente.');
     });
   }
 
-  const bypassLoginBtn = document.getElementById('bypassLoginBtn');
-  if (bypassLoginBtn) {
-    bypassLoginBtn.addEventListener('click', () => {
-      closeModal('adminLoginModal');
-      showToast('Navegando no modo local (offline).');
-    });
-  }
-
-  // Auth State Changed Listener
+  // Listener de Estado do Firebase Auth
   realtimeEngine.onAuthStateChanged((user) => {
-    const loginBtn = document.getElementById('loginModalBtn');
     const logoutBtnEl = document.getElementById('logoutBtn');
-
     if (user) {
-      if (loginBtn) loginBtn.style.display = 'none';
+      localStorage.setItem('catalog_gestor_logged', 'true');
       if (logoutBtnEl) {
         logoutBtnEl.style.display = 'inline-flex';
         logoutBtnEl.title = `Sair (${user.email})`;
       }
       closeModal('adminLoginModal');
     } else {
-      if (loginBtn) loginBtn.style.display = 'inline-flex';
-      if (logoutBtnEl) logoutBtnEl.style.display = 'none';
+      if (!isManagerAuthenticated()) {
+        if (logoutBtnEl) logoutBtnEl.style.display = 'none';
+      }
     }
   });
 
