@@ -121,6 +121,11 @@ class ProductStore {
     if (savedProducts) {
       try {
         this.products = JSON.parse(savedProducts);
+        this.products.forEach(p => {
+          p.promoActive = false;
+          p.promoPrice = 0;
+          p.promoExpiry = '';
+        });
       } catch (e) {
         console.error("Error parsing saved products:", e);
         this.products = [];
@@ -177,11 +182,12 @@ class ProductStore {
     });
 
     // Synchronize manualPosition property with array index sequence 1..N
+    // Clear legacy product-level offer flags since offers are now officially handled via Laminas / Encartes
     this.products.forEach((p, idx) => {
       p.manualPosition = idx + 1;
-      p.promoActive = !!p.promoActive;
-      p.promoPrice = parseFloat(p.promoPrice) || 0;
-      p.promoExpiry = String(p.promoExpiry || '');
+      p.promoActive = false;
+      p.promoPrice = 0;
+      p.promoExpiry = '';
     });
   }
 
@@ -240,9 +246,9 @@ class ProductStore {
       showBoxTotal: productData.showBoxTotal !== false,
       category: String(productData.category || 'outros').toLowerCase(),
       active: productData.active !== false,
-      promoActive: !!productData.promoActive,
-      promoPrice: parseFloat(productData.promoPrice) || 0,
-      promoExpiry: productData.promoExpiry || '',
+      promoActive: false,
+      promoPrice: 0,
+      promoExpiry: '',
       manualPosition: this.products.length + 1,
       imageBase64: productData.imageBase64 || ''
     };
@@ -254,24 +260,7 @@ class ProductStore {
   }
 
   isProductPromoActive(product) {
-    if (!product || !product.promoActive) return false;
-    const promoPrice = parseFloat(product.promoPrice);
-    const regularPrice = parseFloat(product.unitPrice);
-    if (isNaN(promoPrice) || promoPrice <= 0) return false;
-    // Promo price must be less than regular price to be valid discount
-    if (regularPrice > 0 && promoPrice >= regularPrice) return false;
-    if (!product.promoExpiry) return true;
-
-    try {
-      const parts = String(product.promoExpiry).split('-');
-      if (parts.length === 3) {
-        const expiryDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 23, 59, 59, 999);
-        return new Date() <= expiryDate;
-      }
-      return new Date() <= new Date(product.promoExpiry);
-    } catch (e) {
-      return false;
-    }
+    return false;
   }
 
   setProductPromo(id, promoData) {

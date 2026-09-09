@@ -157,9 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
     allProducts.forEach(p => {
       if (isClientMode && !p.active) return;
       counts['all']++;
-      if (productStore.isProductPromoActive(p)) {
-        counts['ofertas']++;
-      }
       const catKey = counts[p.category] !== undefined ? p.category : 'outros';
       counts[catKey]++;
     });
@@ -168,17 +165,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     CATEGORIES.forEach(cat => {
       const count = counts[cat.id] || 0;
-      // In client mode, if no active promos exist, hide 'ofertas' tab; also hide empty categories (except 'all')
-      if (cat.id !== 'all' && count === 0) return;
+      // In client mode, hide empty categories (except 'all' and 'ofertas')
+      if (cat.id !== 'all' && cat.id !== 'ofertas' && count === 0) return;
 
       const isPromoTab = cat.isPromo;
       const btn = document.createElement('button');
       btn.className = `pill-btn ${isPromoTab ? 'pill-promo' : ''} ${currentCategory === cat.id ? 'active' : ''}`;
-      btn.innerHTML = `
-        <i class="fa-solid ${cat.icon}"></i>
-        <span>${cat.label}</span>
-        <span class="pill-count">${count}</span>
-      `;
+      
+      // Ofertas tab displays only the flame icon and label, without counter badge
+      if (cat.id === 'ofertas') {
+        btn.innerHTML = `
+          <i class="fa-solid ${cat.icon}"></i>
+          <span>${cat.label}</span>
+        `;
+      } else {
+        btn.innerHTML = `
+          <i class="fa-solid ${cat.icon}"></i>
+          <span>${cat.label}</span>
+          <span class="pill-count">${count}</span>
+        `;
+      }
 
       btn.addEventListener('click', () => {
         currentCategory = cat.id;
@@ -582,38 +588,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let products = productStore.getProducts();
 
-    // Filter active items in client mode
-    if (isClientMode) {
-      products = products.filter(p => p.active);
-    }
-
-    // Filter by Category
-    if (currentCategory === 'ofertas') {
-      products = products.filter(p => productStore.isProductPromoActive(p));
-    } else if (currentCategory !== 'all') {
-      products = products.filter(p => p.category === currentCategory);
-    }
-
-    // Filter by Search Query
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase().trim();
-      products = products.filter(p => 
-        (p.description && p.description.toLowerCase().includes(q)) ||
-        (p.code && String(p.code).toLowerCase().includes(q))
-      );
-    }
-
-    // Always preserve the natural order (POS) defined by the user in general views!
-    // Products on sale stay in their original position without messing up catalog sequence.
-    products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
-
-    const ofertasBanner = document.getElementById('ofertasBanner');
-    const ofertasBannerCount = document.getElementById('ofertasBannerCount');
-    const laminasSection = document.getElementById('laminasSection');
-    const paginationContainer = document.getElementById('paginationContainer');
-
     // When inside the dedicated "Ofertas" tab:
     // Display the Laminas / Encartes de Ofertas gallery!
+    const laminasSection = document.getElementById('laminasSection');
+    const paginationContainer = document.getElementById('paginationContainer');
+    const ofertasBanner = document.getElementById('ofertasBanner');
+
     if (currentCategory === 'ofertas') {
       grid.style.display = 'none';
       if (paginationContainer) paginationContainer.style.display = 'none';
@@ -621,13 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         laminasSection.style.display = 'block';
         renderLaminas();
       }
-      if (ofertasBanner) {
-        ofertasBanner.style.display = 'flex';
-        const count = productStore.getLaminas().length;
-        if (ofertasBannerCount) {
-          ofertasBannerCount.innerHTML = `<i class="fa-solid fa-fire"></i> ${count} ${count === 1 ? 'Encarte Ativo' : 'Encartes Ativos'}`;
-        }
-      }
+      if (ofertasBanner) ofertasBanner.style.display = 'none';
 
       // Update Header Total Badge
       const headerBadge = document.getElementById('headerTotalBadge');
@@ -643,6 +617,28 @@ document.addEventListener('DOMContentLoaded', () => {
       grid.classList.remove('ofertas-active-view');
       if (ofertasBanner) ofertasBanner.style.display = 'none';
     }
+
+    // Filter active items in client mode
+    if (isClientMode) {
+      products = products.filter(p => p.active);
+    }
+
+    // Filter by Category
+    if (currentCategory !== 'all') {
+      products = products.filter(p => p.category === currentCategory);
+    }
+
+    // Filter by Search Query
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase().trim();
+      products = products.filter(p => 
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.code && String(p.code).toLowerCase().includes(q))
+      );
+    }
+
+    // Always preserve the natural order (POS) defined by the user in general views!
+    products.sort((a, b) => (a.manualPosition || 999999) - (b.manualPosition || 999999));
 
     // Update Header Total Badge
     const headerBadge = document.getElementById('headerTotalBadge');
@@ -707,13 +703,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Create Individual Product Card DOM Element
   function createProductCard(p) {
     const isTarget = focusedCardProductId === p.id;
-    const isPromo = productStore.isProductPromoActive(p);
-    const discountPercent = isPromo && p.unitPrice > 0 
-      ? Math.round(((p.unitPrice - p.promoPrice) / p.unitPrice) * 100) 
-      : 0;
 
     const card = document.createElement('div');
-    card.className = `product-card ${!p.active ? 'inactive-product' : ''} ${isPromo ? 'has-promo' : ''} ${selectedProductIds.has(p.id) ? 'selected-card' : ''} ${isTarget ? 'active-paste-target' : ''}`;
+    card.className = `product-card ${!p.active ? 'inactive-product' : ''} ${selectedProductIds.has(p.id) ? 'selected-card' : ''} ${isTarget ? 'active-paste-target' : ''}`;
     card.dataset.id = p.id;
 
     card.addEventListener('click', (e) => {
@@ -743,10 +735,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
         <div class="product-actions-bar">
-          <button class="btn-promo-action promo-btn ${isPromo ? 'is-active-promo' : ''}" title="${isPromo ? `Oferta Ativa: ${formatCurrency(p.promoPrice)} até ${formatDateBR(p.promoExpiry)}. Clique para editar ou remover.` : 'Colocar produto em oferta com prazo'}">
-            <i class="fa-solid ${isPromo ? 'fa-fire' : 'fa-tag'}"></i>
-            <span>Oferta</span>
-          </button>
           <button class="icon-action-btn toggle-active-btn" title="${p.active ? 'Produto Ativo (Visível para clientes). Clique para ocultar do cliente.' : 'Produto Oculto/Desativado! Clique para ativar e exibir aos clientes.'}">
             <i class="fa-solid ${p.active ? 'fa-toggle-on' : 'fa-toggle-off'}" style="color:${p.active ? 'var(--status-active)' : 'var(--text-dim)'}; font-size:1.1rem;"></i>
           </button>
@@ -765,7 +753,6 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- Image Area -->
       <div class="product-image-container ${p.imageBase64 ? 'has-image' : ''}">
         <div class="product-corner-badges">
-          ${isPromo ? `<span class="promo-badge-tag"><i class="fa-solid fa-fire"></i> ${discountPercent > 0 ? `-${discountPercent}%` : 'OFERTA'}</span>` : ''}
           <span class="category-tag">${catLabel}</span>
         </div>
         ${!p.active ? `<span class="inactive-status-tag admin-only-ui"><i class="fa-solid fa-eye-slash"></i> Oculto no Cliente</span>` : ''}
@@ -786,43 +773,18 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="product-card-body">
         <h4 class="product-title" title="${p.description}">${p.description}</h4>
 
-        ${isPromo ? `
-          <div class="price-details-box is-promo">
-            <div class="price-original-row">
-              <span class="price-label">De:</span>
-              <span class="price-original-val">${formatCurrency(p.unitPrice)}</span>
-            </div>
-            <div class="price-unit-row">
-              <span class="price-label">Por unidade:</span>
-              <span class="price-promo-val">${formatCurrency(p.promoPrice)}</span>
-            </div>
-            ${p.showBoxTotal && p.qtyPerBox > 1 ? `
-              <div class="price-box-row">
-                <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
-                <span class="price-box-val" style="color: #10b981;">${formatCurrency(p.promoPrice * p.qtyPerBox)}</span>
-              </div>
-            ` : ''}
-            ${p.promoExpiry ? `
-              <div class="promo-expiry-row">
-                <i class="fa-regular fa-clock"></i>
-                <span>Válido até ${formatDateBR(p.promoExpiry)}</span>
-              </div>
-            ` : ''}
+        <div class="price-details-box">
+          <div class="price-unit-row">
+            <span class="price-label">Unidade:</span>
+            <span class="price-unit-val">${formatCurrency(p.unitPrice)}</span>
           </div>
-        ` : `
-          <div class="price-details-box">
-            <div class="price-unit-row">
-              <span class="price-label">Unidade:</span>
-              <span class="price-unit-val">${formatCurrency(p.unitPrice)}</span>
+          ${p.showBoxTotal && p.qtyPerBox > 1 ? `
+            <div class="price-box-row">
+              <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
+              <span class="price-box-val">${formatCurrency(boxTotal)}</span>
             </div>
-            ${p.showBoxTotal && p.qtyPerBox > 1 ? `
-              <div class="price-box-row">
-                <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
-                <span class="price-box-val">${formatCurrency(boxTotal)}</span>
-              </div>
-            ` : ''}
-          </div>
-        `}
+          ` : ''}
+        </div>
       </div>
     `;
 
@@ -926,15 +888,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         setActivePasteTarget(p.id);
         ImageUtils.openGoogleImageSearch(p.description);
-      });
-    }
-
-    // 3.1 Promo Offer Button
-    const promoBtn = card.querySelector('.promo-btn');
-    if (promoBtn) {
-      promoBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openPromoModal(p);
       });
     }
 
