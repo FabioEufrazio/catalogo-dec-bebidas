@@ -13,8 +13,11 @@
         var p = new URLSearchParams(window.location.search);
         var isClient = p.get('view') === 'public' || p.get('client') === '1';
         var h = localStorage.getItem('catalog_hide_prices');
-        if (isClient && h === 'true') {
-          document.documentElement.classList.add('prices-hidden');
+        if (isClient) {
+          document.documentElement.classList.add('client-mode');
+          if (h === 'true') {
+            document.documentElement.classList.add('prices-hidden');
+          }
         }
       } catch(e) {}
     })();
@@ -69,8 +72,8 @@
   <!-- Admin Toolbar -->
   <div class="admin-toolbar admin-only-ui">
     <div class="toolbar-group">
-      <button id="togglePricesBtn" class="btn">
-        <i class="fa-solid fa-eye-slash"></i> Ocultar Preços
+      <button id="togglePricesBtn" class="btn" title="Definir visibilidade dos preços para os clientes">
+        <i class="fa-solid fa-eye-slash"></i> Ocultar Preços (Clientes)
       </button>
       <button id="newProductBtn" class="btn btn-primary">
         <i class="fa-solid fa-plus"></i> Novo Produto
@@ -177,14 +180,16 @@
               <select id="prodCategory" class="form-control" required>
                 <option value="whiskies">Whiskies</option>
                 <option value="vodkas">Vodkas</option>
+                <option value="cervejas">Cervejas</option>
+                <option value="gins">Gins</option>
+                <option value="vinhos">Vinhos</option>
+                <option value="espumantes">Espumantes</option>
+                <option value="energeticos">Energéticos</option>
+                <option value="refrigerantes">Refrigerantes</option>
+                <option value="aguadecoco">Água de Coco</option>
+                <option value="sucos">Sucos</option>
                 <option value="licores">Licores</option>
                 <option value="xaropes">Xaropes</option>
-                <option value="sucos">Sucos</option>
-                <option value="aguadecoco">Água de Coco</option>
-                <option value="espumantes">Espumantes</option>
-                <option value="vinhos">Vinhos</option>
-                <option value="gins">Gins</option>
-                <option value="cervejas">Cervejas</option>
                 <option value="outros" selected>Outros</option>
               </select>
             </div>
@@ -392,14 +397,16 @@
         <select id="bulkCategorySelect" class="form-control">
           <option value="whiskies">Whiskies</option>
           <option value="vodkas">Vodkas</option>
+          <option value="cervejas">Cervejas</option>
+          <option value="gins">Gins</option>
+          <option value="vinhos">Vinhos</option>
+          <option value="espumantes">Espumantes</option>
+          <option value="energeticos">Energéticos</option>
+          <option value="refrigerantes">Refrigerantes</option>
+          <option value="aguadecoco">Água de Coco</option>
+          <option value="sucos">Sucos</option>
           <option value="licores">Licores</option>
           <option value="xaropes">Xaropes</option>
-          <option value="sucos">Sucos</option>
-          <option value="aguadecoco">Água de Coco</option>
-          <option value="espumantes">Espumantes</option>
-          <option value="vinhos">Vinhos</option>
-          <option value="gins">Gins</option>
-          <option value="cervejas">Cervejas</option>
           <option value="outros">Outros</option>
         </select>
       </div>
@@ -412,23 +419,35 @@
 
   <!-- MODAL: Firebase Config -->
   <div id="firebaseModal" class="modal-overlay">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
-        <h3 class="modal-title"><i class="fa-solid fa-fire"></i> Configuração do Firebase Firestore</h3>
+        <h3 class="modal-title"><i class="fa-solid fa-fire"></i> Configuração do Firebase</h3>
         <button class="modal-close-btn" data-close-modal="firebaseModal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
-          Insira as credenciais do seu projeto Firebase para ativar a sincronização em nuvem Firestore em tempo real.
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">
+          Cole o bloco <code>const firebaseConfig = { ... }</code> do seu console Firebase ou preencha os campos abaixo:
         </p>
+
+        <div style="margin-bottom: 16px;">
+          <label class="form-label" for="fbSnippetArea">Cole o código do Firebase aqui (Auto-preenchimento)</label>
+          <textarea id="fbSnippetArea" class="form-control" rows="3" placeholder="const firebaseConfig = { apiKey: &quot;AIzaSy...&quot;, projectId: &quot;catalogo-dec-bebidas&quot;, appId: &quot;1:3784...&quot; };" style="font-family: monospace; font-size: 0.75rem;"></textarea>
+        </div>
+
+        <div id="fbWarningAlert" style="display:none; color: #f59e0b; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; margin-bottom: 14px;"></div>
+
         <div class="form-grid">
           <div class="form-group-full">
-            <label class="form-label" for="fbApiKey">API Key</label>
+            <label class="form-label" for="fbApiKey">API Key <span style="color: var(--accent-gold); font-size: 0.75rem;">(Começa com AIzaSy...)</span></label>
             <input type="text" id="fbApiKey" class="form-control" placeholder="AIzaSy...">
           </div>
           <div class="form-group-full">
-            <label class="form-label" for="fbProjectId">Project ID</label>
-            <input type="text" id="fbProjectId" class="form-control" placeholder="meu-catalogo-12345">
+            <label class="form-label" for="fbProjectId">Project ID <span style="color: var(--text-muted); font-size: 0.75rem;">(ex: catalogo-dec-bebidas)</span></label>
+            <input type="text" id="fbProjectId" class="form-control" placeholder="catalogo-dec-bebidas">
+          </div>
+          <div class="form-group-full">
+            <label class="form-label" for="fbAppId">App ID <span style="color: var(--text-muted); font-size: 0.75rem;">(ex: 1:378404909818:web:7f6f...)</span></label>
+            <input type="text" id="fbAppId" class="form-control" placeholder="1:378404909818:web:7f6fec7e86fa5baf5f4f43">
           </div>
         </div>
       </div>
@@ -436,6 +455,57 @@
         <button type="button" id="clearFirebaseBtn" class="btn btn-danger">Desconectar Firebase</button>
         <button type="button" id="saveFirebaseBtn" class="btn btn-primary">Salvar e Conectar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Product Promotion -->
+  <div id="promoModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-fire" style="color: #f59e0b;"></i> Configurar Oferta Especial</h3>
+        <button class="modal-close-btn" data-close-modal="promoModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="promoForm">
+        <input type="hidden" id="promoProductId">
+        <div class="modal-body">
+          <div style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid var(--border-color);">
+            <div id="promoProductTitle" style="font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; color: #fff;">Produto</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+              Preço normal atual: <strong id="promoOriginalPriceText" style="color: var(--text-main);">R$ 0,00</strong>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <label class="form-label" for="promoPriceInput">Preço Promocional Unitário (R$)</label>
+            <input type="number" step="0.01" min="0.01" id="promoPriceInput" class="form-control" placeholder="Ex: 59.90" required style="font-size: 1.1rem; font-weight: 700; color: var(--accent-gold);">
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label class="form-label" for="promoExpiryInput">Válido até (Prazo da Oferta)</label>
+            <input type="date" id="promoExpiryInput" class="form-control" required>
+            <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
+              <i class="fa-solid fa-circle-info"></i> A oferta expira automaticamente às 23:59 deste dia e o produto voltará ao preço normal.
+            </small>
+          </div>
+
+          <!-- Live Discount Badge Preview -->
+          <div id="promoPreviewBox" style="display: none; background: rgba(245, 158, 11, 0.12); border: 1px dashed var(--accent-gold); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px; text-align: center;">
+            <span id="promoDiscountBadge" style="background: #ef4444; color: #fff; font-weight: 800; font-size: 0.85rem; padding: 2px 8px; border-radius: var(--radius-full); margin-right: 8px;">-0% OFF</span>
+            <span style="font-size: 0.85rem; color: var(--text-main);">Economia de <strong id="promoSavingsText" style="color: #10b981;">R$ 0,00</strong> por unidade</span>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 10px;">
+          <button type="button" id="removePromoBtn" class="btn btn-danger" style="display: none;">
+            <i class="fa-solid fa-trash-can"></i> Remover Oferta
+          </button>
+          <div style="display: flex; gap: 8px; margin-left: auto;">
+            <button type="button" class="btn" data-close-modal="promoModal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fa-solid fa-check"></i> Salvar Oferta
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -493,9 +563,12 @@
             <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
           </div>
         </div>
-        <div class="modal-footer" style="justify-content: space-between;">
-          <button type="button" id="bypassLoginBtn" class="btn btn-sm" title="Entrar sem login no modo local">Modo Local (Offline)</button>
-          <button type="submit" id="submitLoginBtn" class="btn btn-primary">Entrar no Gestor <i class="fa-solid fa-right-to-bracket"></i></button>
+        <div class="modal-footer" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <button type="submit" id="submitLoginBtn" class="btn btn-primary" style="flex: 1;">Entrar <i class="fa-solid fa-right-to-bracket"></i></button>
+            <button type="button" id="signupBtn" class="btn btn-purple" style="flex: 1;"><i class="fa-solid fa-user-plus"></i> Criar Nova Conta</button>
+          </div>
+          <button type="button" id="bypassLoginBtn" class="btn btn-sm btn-outline" style="width: 100%; font-size: 0.78rem; text-align: center;" title="Entrar sem login no modo local">⚡ Modo Local (Entrar sem Firebase)</button>
         </div>
       </form>
     </div>

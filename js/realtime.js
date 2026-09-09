@@ -68,16 +68,33 @@ class RealtimeEngine {
   }
 
   initFirebaseSync() {
-    const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
-    if (!rawConfig) return;
+    let rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+    if (!rawConfig) {
+      const defaultConfig = {
+        apiKey: "AIzaSyB2ArO22BUXnqIKc_Nelm3EapuQAiRRM80",
+        projectId: "catalogo-online-dec",
+        appId: "1:963138199795:web:da56b25b1da777193cd786",
+        authDomain: "catalogo-online-dec.firebaseapp.com"
+      };
+      rawConfig = JSON.stringify(defaultConfig);
+      localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, rawConfig);
+    }
 
     try {
       const config = JSON.parse(rawConfig);
       if (!config.apiKey || !config.projectId) return;
 
+      const fullConfig = {
+        apiKey: config.apiKey,
+        authDomain: config.authDomain || `${config.projectId.toLowerCase()}.firebaseapp.com`,
+        projectId: config.projectId,
+        storageBucket: config.storageBucket || `${config.projectId.toLowerCase()}.appspot.com`,
+        appId: config.appId || undefined
+      };
+
       if (typeof firebase !== 'undefined' && firebase.initializeApp) {
         if (!firebase.apps.length) {
-          firebase.initializeApp(config);
+          firebase.initializeApp(fullConfig);
         }
         this.db = firebase.firestore();
         this.firebaseActive = true;
@@ -93,77 +110,121 @@ class RealtimeEngine {
   setupCloudListeners() {
     if (!this.db) return;
 
-    // Listen to Settings
-    this.db.collection('settings').doc('__SETTINGS__').onSnapshot((doc) => {
-      if (doc.exists && !this.isSyncingFromRemote) {
-        const data = doc.data();
-        if (data.hidePrices !== undefined && data.hidePrices !== this.store.hidePrices) {
-          this.isSyncingFromRemote = true;
-          this.store.setHidePrices(data.hidePrices);
-          this.isSyncingFromRemote = false;
+    // Optimized Single-Document Cloud Listener (Uses only 1 Read instead of 1,000 Reads)
+    this.db.collection('catalogs').doc('active').onSnapshot({ includeMetadataChanges: true }, (doc) => {
+      if (this.isSyncingFromRemote || !doc.exists || doc.metadata.hasPendingWrites) return;
+      const data = doc.data();
+      if (!data) return;
+
+      this.isSyncingFromRemote = true;
+
+      if (data.hidePrices !== undefined && data.hidePrices !== this.store.hidePrices) {
+        this.store.setHidePrices(data.hidePrices);
+      }
+
+      if (Array.isArray(data.products)) {
+        // Fix flickering: Only update if the remote data is actually different from local state
+        const localHash = JSON.stringify(this.store.products);
+        const remoteHash = JSON.stringify(data.products);
+        if (localHash !== remoteHash) {
+          this.store.setAllProducts(data.products, false);
         }
       }
-    }, err => console.warn("Firestore settings listen error:", err));
 
-    // Listen to Products
-    this.db.collection('products').onSnapshot((snapshot) => {
-      if (this.isSyncingFromRemote || snapshot.metadata.hasPendingWrites) return;
-
-      const remoteProducts = [];
-      snapshot.forEach(doc => {
-        if (doc.id !== '__SETTINGS__') {
-          remoteProducts.push(doc.data());
-        }
-      });
-
-      if (remoteProducts.length > 0) {
-        this.isSyncingFromRemote = true;
-        this.store.setAllProducts(remoteProducts, false);
-        this.isSyncingFromRemote = false;
-      }
-    }, err => console.warn("Firestore products listen error:", err));
+      this.isSyncingFromRemote = false;
+    }, err => console.warn("Firestore catalog listen error:", err));
   }
 
   async syncToCloud(products, hidePrices) {
     if (!this.db || !this.firebaseActive) return;
 
-    try {
-      // Update Settings
-      await this.db.collection('settings').doc('__SETTINGS__').set({
-        hidePrices,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+    // Debounce cloud sync by 500ms to avoid unnecessary network requests
+    if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
 
-      // Update Products in batches of 80
-      const batchSize = 80;
-      for (let i = 0; i < products.length; i += batchSize) {
-        const batch = this.db.batch();
-        const chunk = products.slice(i, i + batchSize);
-        chunk.forEach(p => {
-          const ref = this.db.collection('products').doc(p.id);
-          batch.set(ref, p);
-        });
-        await batch.commit();
+    this.cloudSyncTimeout = setTimeout(async () => {
+      try {
+        const payload = {
+          hidePrices: !!hidePrices,
+          products: products || [],
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await this.db.collection('catalogs').doc('active').set(payload);
+      } catch (e) {
+        console.error("Cloud sync error:", e);
       }
-    } catch (e) {
-      console.error("Cloud sync error:", e);
-    }
+    }, 500);
   }
 
   async login(email, password) {
-    if (!typeof firebase !== 'undefined' || !firebase.auth) {
-      throw new Error("Firebase Auth não está inicializado.");
+    if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) {
+      throw new Error("Por favor, insira e salve suas credenciais do Firebase primeiro no botão 🔥 (Firebase) no topo.");
     }
-    return firebase.auth().signInWithEmailAndPassword(email, password);
+    try {
+      return await firebase.auth().signInWithEmailAndPassword(email, password);
+    } catch (err) {
+      throw this.translateAuthError(err);
+    }
+  }
+
+  async signUp(email, password) {
+    if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) {
+      throw new Error("Por favor, insira e salve suas credenciais do Firebase primeiro no botão 🔥 (Firebase) no topo.");
+    }
+    try {
+      return await firebase.auth().createUserWithEmailAndPassword(email, password);
+    } catch (err) {
+      throw this.translateAuthError(err);
+    }
+  }
+
+  async sendPasswordReset(email) {
+    if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) {
+      throw new Error("Por favor, insira e salve suas credenciais do Firebase primeiro no botão 🔥 (Firebase) no topo.");
+    }
+    try {
+      return await firebase.auth().sendPasswordResetEmail(email);
+    } catch (err) {
+      throw this.translateAuthError(err);
+    }
+  }
+
+  translateAuthError(err) {
+    const code = err ? (err.code || '') : '';
+    const message = err ? (err.message || '') : '';
+    console.warn("Firebase Auth Error:", code, message);
+
+    switch (code) {
+      case 'auth/user-not-found':
+        return new Error("Nenhum usuário cadastrado com este e-mail. Clique no botão 'Criar Nova Conta' para registrar este gestor.");
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return new Error("Senha incorreta. Verifique se o Caps Lock está ligado ou clique em 'Esqueci minha senha'.");
+      case 'auth/invalid-email':
+        return new Error("O formato do e-mail digitado é inválido.");
+      case 'auth/user-disabled':
+        return new Error("Esta conta de gestor foi desativada no Firebase.");
+      case 'auth/operation-not-allowed':
+        return new Error("O login por E-mail/Senha não está ativado no Firebase Console. Vá em Authentication > Sign-in method e ative 'E-mail/Senha'.");
+      case 'auth/email-already-in-use':
+        return new Error("Este e-mail já está cadastrado no Firebase. Tente entrar com a sua senha ou clique em 'Esqueci minha senha'.");
+      case 'auth/weak-password':
+        return new Error("A senha escolhida é muito fraca. Digite pelo menos 6 caracteres.");
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid-please-pass-a-valid-api-key':
+        return new Error("A API Key do Firebase digitada no botão 🔥 é inválida. Cole a API Key correta do seu projeto.");
+      default:
+        return new Error(message || "Erro de conexão/autenticação no Firebase. Verifique seus dados ou use o Modo Local.");
+    }
   }
 
   async logout() {
-    if (!typeof firebase !== 'undefined' || !firebase.auth) return;
+    if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0 || !firebase.auth) return;
     return firebase.auth().signOut();
   }
 
   onAuthStateChanged(callback) {
-    if (typeof firebase !== 'undefined' && firebase.auth) {
+    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 && firebase.auth) {
       return firebase.auth().onAuthStateChanged(callback);
     }
     return () => {};
