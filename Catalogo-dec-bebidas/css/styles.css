@@ -347,6 +347,42 @@ body {
   font-weight: 700;
 }
 
+/* Special Promo Category Pill */
+.pill-btn.pill-promo {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.pill-btn.pill-promo i {
+  color: #ef4444;
+  animation: flamePulse 1.8s infinite alternate;
+}
+
+.pill-btn.pill-promo:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.pill-btn.pill-promo.active {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+}
+
+.pill-btn.pill-promo.active .pill-count {
+  background: #fff;
+  color: #ef4444;
+  font-weight: 800;
+}
+
+@keyframes flamePulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px #ef4444); }
+  100% { transform: scale(1.15); filter: drop-shadow(0 0 6px #f59e0b); }
+}
+
 /* Search Bar & Stats Container */
 .search-container {
   max-width: 1440px;
@@ -723,6 +759,107 @@ body {
 .price-box-val {
   font-weight: 700;
   color: var(--text-main);
+}
+
+/* Card in Offer / Promo styling */
+.product-card.has-promo {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.12);
+}
+
+.product-card.has-promo:hover {
+  border-color: var(--accent-gold);
+  box-shadow: 0 6px 25px rgba(245, 158, 11, 0.25);
+}
+
+/* Fiery Promo Badge Tag on Image */
+.promo-badge-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #ef4444, #f59e0b);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 3;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.6);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Price Box Strikethrough & Promo Styles */
+.price-details-box.is-promo {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.price-original-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+.price-original-val {
+  text-decoration: line-through;
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+.price-promo-val {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #10b981;
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+}
+
+.promo-expiry-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: #f59e0b;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Promo Button in Card Admin Bar */
+.btn-promo-action {
+  font-size: 0.73rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.btn-promo-action:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.btn-promo-action.is-active-promo {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  color: #fca5a5;
+  font-weight: 700;
+}
+
+.btn-promo-action.is-active-promo:hover {
+  background: rgba(239, 68, 68, 0.32);
+  color: #fff;
 }
 
 /* Floating Bulk Actions Bar */

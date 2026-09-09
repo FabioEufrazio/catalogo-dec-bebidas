@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. Category Definitions
   const CATEGORIES = [
     { id: 'all', label: 'Todos', icon: 'fa-layer-group' },
+    { id: 'ofertas', label: 'Ofertas', icon: 'fa-fire', isPromo: true },
     { id: 'whiskies', label: 'Whiskies', icon: 'fa-bottle-droplet' },
     { id: 'vodkas', label: 'Vodkas', icon: 'fa-glass-water' },
     { id: 'cervejas', label: 'Cervejas', icon: 'fa-beer-mug-empty' },
@@ -41,6 +42,16 @@ document.addEventListener('DOMContentLoaded', () => {
       style: 'currency',
       currency: 'BRL'
     }).format(value || 0);
+  }
+
+  // Helper: Format Date BR (DD/MM/YYYY)
+  function formatDateBR(dateStr) {
+    if (!dateStr) return '';
+    const parts = String(dateStr).split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
   }
 
   // Toast Helper
@@ -123,6 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
     allProducts.forEach(p => {
       if (isClientMode && !p.active) return;
       counts['all']++;
+      if (productStore.isProductPromoActive(p)) {
+        counts['ofertas']++;
+      }
       const catKey = counts[p.category] !== undefined ? p.category : 'outros';
       counts[catKey]++;
     });
@@ -131,11 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     CATEGORIES.forEach(cat => {
       const count = counts[cat.id] || 0;
-      // Hide empty categories in client mode (except 'all')
+      // In client mode, if no active promos exist, hide 'ofertas' tab; also hide empty categories (except 'all')
       if (cat.id !== 'all' && count === 0) return;
 
+      const isPromoTab = cat.isPromo;
       const btn = document.createElement('button');
-      btn.className = `pill-btn ${currentCategory === cat.id ? 'active' : ''}`;
+      btn.className = `pill-btn ${isPromoTab ? 'pill-promo' : ''} ${currentCategory === cat.id ? 'active' : ''}`;
       btn.innerHTML = `
         <i class="fa-solid ${cat.icon}"></i>
         <span>${cat.label}</span>
@@ -166,7 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Filter by Category
-    if (currentCategory !== 'all') {
+    if (currentCategory === 'ofertas') {
+      products = products.filter(p => productStore.isProductPromoActive(p));
+    } else if (currentCategory !== 'all') {
       products = products.filter(p => p.category === currentCategory);
     }
 
@@ -177,6 +194,18 @@ document.addEventListener('DOMContentLoaded', () => {
         (p.description && p.description.toLowerCase().includes(q)) ||
         (p.code && String(p.code).toLowerCase().includes(q))
       );
+    }
+
+    // When viewing "Todos", products with active promos appear highlighted at the front
+    if (currentCategory === 'all') {
+      products.sort((a, b) => {
+        const aPromo = productStore.isProductPromoActive(a) ? 1 : 0;
+        const bPromo = productStore.isProductPromoActive(b) ? 1 : 0;
+        if (bPromo !== aPromo) {
+          return bPromo - aPromo;
+        }
+        return (a.manualPosition || 999999) - (b.manualPosition || 999999);
+      });
     }
 
     // Update Header Total Badge
@@ -231,8 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Create Individual Product Card DOM Element
   function createProductCard(p) {
     const isTarget = focusedCardProductId === p.id;
+    const isPromo = productStore.isProductPromoActive(p);
+    const discountPercent = isPromo && p.unitPrice > 0 
+      ? Math.round(((p.unitPrice - p.promoPrice) / p.unitPrice) * 100) 
+      : 0;
+
     const card = document.createElement('div');
-    card.className = `product-card ${!p.active ? 'inactive-product' : ''} ${selectedProductIds.has(p.id) ? 'selected-card' : ''} ${isTarget ? 'active-paste-target' : ''}`;
+    card.className = `product-card ${!p.active ? 'inactive-product' : ''} ${isPromo ? 'has-promo' : ''} ${selectedProductIds.has(p.id) ? 'selected-card' : ''} ${isTarget ? 'active-paste-target' : ''}`;
     card.dataset.id = p.id;
 
     card.addEventListener('click', (e) => {
@@ -256,6 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
         <div class="product-actions-bar">
+          <button class="btn-promo-action promo-btn ${isPromo ? 'is-active-promo' : ''}" title="${isPromo ? `Oferta Ativa: ${formatCurrency(p.promoPrice)} até ${formatDateBR(p.promoExpiry)}. Clique para editar ou remover.` : 'Colocar produto em oferta com prazo'}">
+            <i class="fa-solid ${isPromo ? 'fa-fire' : 'fa-tag'}"></i>
+            <span>Oferta</span>
+          </button>
           <button class="icon-action-btn toggle-active-btn" title="${p.active ? 'Produto Ativo (Visível para clientes). Clique para ocultar do cliente.' : 'Produto Oculto/Desativado! Clique para ativar e exibir aos clientes.'}">
             <i class="fa-solid ${p.active ? 'fa-toggle-on' : 'fa-toggle-off'}" style="color:${p.active ? 'var(--status-active)' : 'var(--text-dim)'}; font-size:1.1rem;"></i>
           </button>
@@ -274,6 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- Image Area -->
       <div class="product-image-container ${p.imageBase64 ? 'has-image' : ''}">
         <span class="category-tag">${catLabel}</span>
+        ${isPromo ? `<span class="promo-badge-tag"><i class="fa-solid fa-fire"></i> ${discountPercent > 0 ? `-${discountPercent}%` : 'OFERTA'}</span>` : ''}
         ${!p.active ? `<span class="inactive-status-tag admin-only-ui"><i class="fa-solid fa-eye-slash"></i> Oculto no Cliente</span>` : ''}
         ${p.code ? `<span class="sku-code-tag">COD: ${p.code}</span>` : ''}
         ${p.imageBase64 ? 
@@ -292,18 +331,43 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="product-card-body">
         <h4 class="product-title" title="${p.description}">${p.description}</h4>
 
-        <div class="price-details-box">
-          <div class="price-unit-row">
-            <span class="price-label">Unidade:</span>
-            <span class="price-unit-val">${formatCurrency(p.unitPrice)}</span>
-          </div>
-          ${p.showBoxTotal && p.qtyPerBox > 1 ? `
-            <div class="price-box-row">
-              <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
-              <span class="price-box-val">${formatCurrency(boxTotal)}</span>
+        ${isPromo ? `
+          <div class="price-details-box is-promo">
+            <div class="price-original-row">
+              <span class="price-label">De:</span>
+              <span class="price-original-val">${formatCurrency(p.unitPrice)}</span>
             </div>
-          ` : ''}
-        </div>
+            <div class="price-unit-row">
+              <span class="price-label">Por unidade:</span>
+              <span class="price-promo-val">${formatCurrency(p.promoPrice)}</span>
+            </div>
+            ${p.showBoxTotal && p.qtyPerBox > 1 ? `
+              <div class="price-box-row">
+                <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
+                <span class="price-box-val" style="color: #10b981;">${formatCurrency(p.promoPrice * p.qtyPerBox)}</span>
+              </div>
+            ` : ''}
+            ${p.promoExpiry ? `
+              <div class="promo-expiry-row">
+                <i class="fa-regular fa-clock"></i>
+                <span>Válido até ${formatDateBR(p.promoExpiry)}</span>
+              </div>
+            ` : ''}
+          </div>
+        ` : `
+          <div class="price-details-box">
+            <div class="price-unit-row">
+              <span class="price-label">Unidade:</span>
+              <span class="price-unit-val">${formatCurrency(p.unitPrice)}</span>
+            </div>
+            ${p.showBoxTotal && p.qtyPerBox > 1 ? `
+              <div class="price-box-row">
+                <span>Caixa c/ <strong>${p.qtyPerBox}</strong> un:</span>
+                <span class="price-box-val">${formatCurrency(boxTotal)}</span>
+              </div>
+            ` : ''}
+          </div>
+        `}
       </div>
     `;
 
@@ -397,6 +461,15 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         setActivePasteTarget(p.id);
         ImageUtils.openGoogleImageSearch(p.description);
+      });
+    }
+
+    // 3.1 Promo Offer Button
+    const promoBtn = card.querySelector('.promo-btn');
+    if (promoBtn) {
+      promoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openPromoModal(p);
       });
     }
 
@@ -559,6 +632,121 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal(modalId);
     });
   });
+
+  // Promo Modal Handlers
+  let currentPromoProduct = null;
+
+  function openPromoModal(product) {
+    currentPromoProduct = product;
+    if (!product) return;
+
+    const titleEl = document.getElementById('promoProductTitle');
+    const origPriceEl = document.getElementById('promoOriginalPriceText');
+    const idInput = document.getElementById('promoProductId');
+    const priceInput = document.getElementById('promoPriceInput');
+    const expiryInput = document.getElementById('promoExpiryInput');
+    const removeBtn = document.getElementById('removePromoBtn');
+
+    if (titleEl) titleEl.textContent = product.description;
+    if (origPriceEl) origPriceEl.textContent = formatCurrency(product.unitPrice);
+    if (idInput) idInput.value = product.id;
+
+    // Set min date to today (YYYY-MM-DD)
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    if (expiryInput) {
+      expiryInput.min = todayStr;
+      expiryInput.value = product.promoExpiry || '';
+    }
+
+    const isPromo = productStore.isProductPromoActive(product);
+    if (priceInput) {
+      priceInput.value = isPromo && product.promoPrice ? product.promoPrice : '';
+    }
+
+    if (removeBtn) {
+      removeBtn.style.display = isPromo ? 'inline-flex' : 'none';
+    }
+
+    updatePromoPreview();
+    openModal('promoModal');
+  }
+
+  function updatePromoPreview() {
+    if (!currentPromoProduct) return;
+    const priceInput = document.getElementById('promoPriceInput');
+    const previewBox = document.getElementById('promoPreviewBox');
+    const badgeEl = document.getElementById('promoDiscountBadge');
+    const savingsEl = document.getElementById('promoSavingsText');
+
+    const promoVal = parseFloat(priceInput ? priceInput.value : 0);
+    const origVal = parseFloat(currentPromoProduct.unitPrice) || 0;
+
+    if (promoVal > 0 && origVal > 0 && promoVal < origVal) {
+      const discount = Math.round(((origVal - promoVal) / origVal) * 100);
+      const savings = origVal - promoVal;
+      if (badgeEl) badgeEl.textContent = `-${discount}% OFF`;
+      if (savingsEl) savingsEl.textContent = formatCurrency(savings);
+      if (previewBox) previewBox.style.display = 'block';
+    } else {
+      if (previewBox) previewBox.style.display = 'none';
+    }
+  }
+
+  const promoPriceInput = document.getElementById('promoPriceInput');
+  if (promoPriceInput) {
+    promoPriceInput.addEventListener('input', updatePromoPreview);
+  }
+
+  const promoForm = document.getElementById('promoForm');
+  if (promoForm) {
+    promoForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!currentPromoProduct) return;
+
+      const id = document.getElementById('promoProductId').value;
+      const priceVal = parseFloat(document.getElementById('promoPriceInput').value);
+      const expiryVal = document.getElementById('promoExpiryInput').value;
+
+      if (isNaN(priceVal) || priceVal <= 0) {
+        showToast('Informe um preço promocional válido.', 'error');
+        return;
+      }
+
+      if (priceVal >= currentPromoProduct.unitPrice) {
+        showToast('O preço promocional deve ser menor que o preço normal.', 'error');
+        return;
+      }
+
+      if (!expiryVal) {
+        showToast('Informe a data de validade da oferta.', 'error');
+        return;
+      }
+
+      productStore.setProductPromo(id, {
+        active: true,
+        price: priceVal,
+        expiry: expiryVal
+      });
+
+      showToast(`Oferta salva para "${currentPromoProduct.description}" até ${formatDateBR(expiryVal)}!`);
+      closeModal('promoModal');
+    });
+  }
+
+  const removePromoBtn = document.getElementById('removePromoBtn');
+  if (removePromoBtn) {
+    removePromoBtn.addEventListener('click', () => {
+      if (!currentPromoProduct) return;
+      productStore.setProductPromo(currentPromoProduct.id, { active: false });
+      showToast(`Oferta encerrada. "${currentPromoProduct.description}" voltou ao preço normal.`);
+      closeModal('promoModal');
+    });
+  }
 
   // Lightbox Handler
   function openLightbox(product) {
