@@ -149,6 +149,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('productsGrid');
     if (!grid) return;
 
+    // Do not destroy grid elements if user is currently typing in a position input
+    if (document.activeElement && document.activeElement.classList.contains('pos-badge-input')) {
+      return;
+    }
+
     let products = productStore.getProducts();
 
     // Filter active items in client mode
@@ -331,6 +336,18 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         posInput.focus();
         posInput.select();
+      });
+
+      posWrapper.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        const res = prompt(`Digite a nova posição para "${p.description}" (Atual: ${p.manualPosition}):`, p.manualPosition);
+        if (res !== null) {
+          const val = parseInt(res.trim());
+          if (!isNaN(val) && val > 0 && val !== p.manualPosition) {
+            productStore.reorderProduct(p.id, val);
+            showToast(`Posição de "${p.description}" alterada para ${val}.`);
+          }
+        }
       });
 
       posInput.addEventListener('focus', (e) => {

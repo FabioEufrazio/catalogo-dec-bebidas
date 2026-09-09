@@ -111,8 +111,8 @@ class RealtimeEngine {
     if (!this.db) return;
 
     // Optimized Single-Document Cloud Listener (Uses only 1 Read instead of 1,000 Reads)
-    this.db.collection('catalogs').doc('active').onSnapshot((doc) => {
-      if (this.isSyncingFromRemote || !doc.exists) return;
+    this.db.collection('catalogs').doc('active').onSnapshot({ includeMetadataChanges: true }, (doc) => {
+      if (this.isSyncingFromRemote || !doc.exists || doc.metadata.hasPendingWrites) return;
       const data = doc.data();
       if (!data) return;
 
