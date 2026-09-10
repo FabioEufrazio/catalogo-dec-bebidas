@@ -265,8 +265,8 @@ class RealtimeEngine {
       }
     }, err => console.warn("Firestore catalog listen error:", err));
 
-    // Escuta remota de encartes/lâminas de ofertas em tempo real
-    this.db.collection('catalogs').doc('laminas').onSnapshot({ includeMetadataChanges: true }, (doc) => {
+    // Escuta remota de encartes/lâminas de ofertas em tempo real com suporte a múltiplos chunks
+    this.db.collection('catalogs').doc('laminas').onSnapshot({ includeMetadataChanges: true }, async (doc) => {
       if (this.isSyncingFromRemote || !doc.exists) return;
       if (doc.metadata && doc.metadata.hasPendingWrites) return;
 
@@ -276,8 +276,40 @@ class RealtimeEngine {
       }
 
       const data = doc.data();
-      if (data && Array.isArray(data.laminas)) {
-        this.applyRemoteLaminas(data.laminas);
+      if (!data) return;
+
+      const chunkCount = parseInt(data.chunkCount) || 1;
+      let remoteLaminas = [];
+
+      if (chunkCount > 1) {
+        try {
+          const chunkDocs = await Promise.all(
+            Array.from({ length: chunkCount }, (_, i) =>
+              this.db.collection('catalogs').doc(`laminas_chunk_${i}`).get()
+            )
+          );
+          chunkDocs.forEach(cDoc => {
+            if (cDoc.exists && Array.isArray(cDoc.data()?.laminas)) {
+              remoteLaminas.push(...cDoc.data().laminas);
+            }
+          });
+        } catch (e) {
+          console.warn("Erro ao ler laminas chunks via SDK, tentando REST...", e);
+          remoteLaminas = await this.readLaminasViaRest();
+        }
+      } else if (Array.isArray(data.laminas) && data.laminas.length > 0) {
+        remoteLaminas = data.laminas;
+      } else {
+        try {
+          const c0 = await this.db.collection('catalogs').doc('laminas_chunk_0').get();
+          if (c0.exists && Array.isArray(c0.data()?.laminas)) {
+            remoteLaminas = c0.data().laminas;
+          }
+        } catch (e2) {}
+      }
+
+      if (remoteLaminas.length > 0) {
+        this.applyRemoteLaminas(remoteLaminas);
       }
     }, err => console.warn("Firestore laminas listen error:", err));
   }
@@ -598,26 +630,29 @@ class RealtimeEngine {
       resultCount = await this.writeChunksViaRest(chunks, hidePrices);
     }
 
-    // 4. Publicar também encartes/lâminas de ofertas na nuvem
+    // 4. CHUNKING DE ENCARTES: Divide em blocos de no máximo 400KB para respeitar o limite de 1 MiB do Firestore
     const currentLaminas = (this.store.getLaminas() || []).map(l => this.sanitizeLaminaForCloud(l));
+    const laminaChunks = this.splitLaminasIntoChunks(currentLaminas, 400000);
     let laminasSuccess = false;
     let laminaErrorMsg = '';
 
+    console.log(`Publicando encartes na nuvem: ${currentLaminas.length} encartes em ${laminaChunks.length} bloco(s) Firestore.`);
+
     try {
       if (this.db && this.firebaseActive) {
-        await this.writeLaminasViaSDK(currentLaminas);
+        await this.writeLaminasViaSDK(laminaChunks);
         laminasSuccess = true;
       } else {
-        await this.writeLaminasViaRest(currentLaminas);
+        await this.writeLaminasViaRest(laminaChunks);
         laminasSuccess = true;
       }
-      console.log(`Encartes publicados na nuvem com sucesso: ${currentLaminas.length} encartes.`);
+      console.log(`Encartes publicados na nuvem com sucesso: ${currentLaminas.length} encartes em ${laminaChunks.length} bloco(s).`);
     } catch (errL) {
       console.warn("Publicação de encartes via SDK falhou, tentando via REST...", errL);
       try {
-        await this.writeLaminasViaRest(currentLaminas);
+        await this.writeLaminasViaRest(laminaChunks);
         laminasSuccess = true;
-        console.log(`Encartes publicados via REST: ${currentLaminas.length} encartes.`);
+        console.log(`Encartes publicados via REST: ${currentLaminas.length} encartes em ${laminaChunks.length} bloco(s).`);
       } catch (errL2) {
         console.error("Publicação de encartes via REST também falhou:", errL2);
         laminaErrorMsg = errL2.message || String(errL2);
@@ -645,13 +680,66 @@ class RealtimeEngine {
     };
   }
 
-  async writeLaminasViaSDK(laminas) {
+  splitLaminasIntoChunks(cleanLaminas, maxBytesPerChunk = 400000) {
+    if (!Array.isArray(cleanLaminas) || cleanLaminas.length === 0) {
+      return [[]];
+    }
+    const chunks = [];
+    let currentChunk = [];
+    let currentSize = 0;
+
+    for (const l of cleanLaminas) {
+      const imgLen = (l.imageUrl || '').length;
+      const titleLen = (l.title || '').length;
+      const itemSize = imgLen + titleLen + 300;
+
+      if (currentChunk.length > 0 && (currentSize + itemSize > maxBytesPerChunk)) {
+        chunks.push(currentChunk);
+        currentChunk = [l];
+        currentSize = itemSize;
+      } else {
+        currentChunk.push(l);
+        currentSize += itemSize;
+      }
+    }
+
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk);
+    }
+    return chunks;
+  }
+
+  async writeLaminasViaSDK(chunks) {
     if (!this.db || !this.firebaseActive) throw new Error("SDK não ativo");
+    const batch = this.db.batch();
     const laminasRef = this.db.collection('catalogs').doc('laminas');
-    await laminasRef.set({
-      laminas: laminas || [],
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+
+    if (chunks.length === 1 && chunks[0].length === 0) {
+      batch.set(laminasRef, {
+        chunkCount: 1,
+        totalLaminas: 0,
+        laminas: [],
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      chunks.forEach((chunk, i) => {
+        const chunkRef = this.db.collection('catalogs').doc(`laminas_chunk_${i}`);
+        batch.set(chunkRef, {
+          chunkIndex: i,
+          laminas: chunk,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      batch.set(laminasRef, {
+        chunkCount: chunks.length,
+        totalLaminas: chunks.reduce((acc, c) => acc + c.length, 0),
+        laminas: chunks.length === 1 ? chunks[0] : [],
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    await batch.commit();
   }
 
   formatRestLaminaValue(l) {
@@ -691,7 +779,31 @@ class RealtimeEngine {
     });
   }
 
-  async writeLaminasViaRest(laminas) {
+  async writeSingleLaminaChunkDocViaRest(projectId, docId, laminas, chunkIndex) {
+    const restPayload = {
+      fields: {
+        chunkIndex: { integerValue: String(chunkIndex || 0) },
+        laminas: {
+          arrayValue: {
+            values: (laminas || []).map(l => this.formatRestLaminaValue(l))
+          }
+        }
+      }
+    };
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/${docId}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(restPayload)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Falha HTTP ao salvar ${docId}: ${errText}`);
+    }
+    return true;
+  }
+
+  async writeLaminasViaRest(chunks) {
     let projectId = 'catalogo-online-dec';
     try {
       const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
@@ -703,11 +815,17 @@ class RealtimeEngine {
       }
     } catch (e) {}
 
+    for (let i = 0; i < chunks.length; i++) {
+      await this.writeSingleLaminaChunkDocViaRest(projectId, `laminas_chunk_${i}`, chunks[i], i);
+    }
+
     const restPayload = {
       fields: {
+        chunkCount: { integerValue: String(chunks.length) },
+        totalLaminas: { integerValue: String(chunks.reduce((acc, c) => acc + c.length, 0)) },
         laminas: {
           arrayValue: {
-            values: (laminas || []).map(l => this.formatRestLaminaValue(l))
+            values: chunks.length === 1 ? chunks[0].map(l => this.formatRestLaminaValue(l)) : []
           }
         }
       }
@@ -744,12 +862,36 @@ class RealtimeEngine {
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
-        return this.parseRestLaminas(json);
+        const chunkCount = parseInt(json.fields?.chunkCount?.integerValue || 1);
+        if (chunkCount > 1) {
+          return await this.readLaminasChunksViaRest(projectId, chunkCount);
+        }
+        const direct = this.parseRestLaminas(json);
+        if (direct.length > 0) return direct;
+        return await this.readLaminasChunksViaRest(projectId, 1);
       }
     } catch (e) {
       console.warn("Erro ao buscar encartes via REST:", e);
     }
     return [];
+  }
+
+  async readLaminasChunksViaRest(projectId, chunkCount) {
+    const allLaminas = [];
+    for (let i = 0; i < chunkCount; i++) {
+      try {
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/laminas_chunk_${i}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          const items = this.parseRestLaminas(json);
+          allLaminas.push(...items);
+        }
+      } catch (err) {
+        console.warn(`Erro ao carregar laminas_chunk_${i} via REST:`, err);
+      }
+    }
+    return allLaminas;
   }
 
   async syncLaminasToCloud(laminas) {
@@ -759,17 +901,19 @@ class RealtimeEngine {
     this.cloudLaminasTimeout = setTimeout(async () => {
       try {
         const cleanLaminas = (laminas || []).map(l => this.sanitizeLaminaForCloud(l));
+        const chunks = this.splitLaminasIntoChunks(cleanLaminas, 400000);
         if (this.db && this.firebaseActive) {
-          await this.writeLaminasViaSDK(cleanLaminas);
+          await this.writeLaminasViaSDK(chunks);
         } else {
-          await this.writeLaminasViaRest(cleanLaminas);
+          await this.writeLaminasViaRest(chunks);
         }
-        console.log("Firestore cloud sync de encartes concluído:", cleanLaminas.length);
+        console.log("Firestore cloud sync de encartes concluído em chunks:", chunks.length);
       } catch (e) {
         console.warn("Firestore sync encartes erro (tentando REST):", e);
         try {
           const cleanLaminas = (laminas || []).map(l => this.sanitizeLaminaForCloud(l));
-          await this.writeLaminasViaRest(cleanLaminas);
+          const chunks = this.splitLaminasIntoChunks(cleanLaminas, 400000);
+          await this.writeLaminasViaRest(chunks);
         } catch (restErr) {
           console.warn("REST encartes também falhou:", restErr);
         }
