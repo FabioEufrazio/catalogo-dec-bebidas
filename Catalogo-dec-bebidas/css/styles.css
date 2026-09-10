@@ -89,14 +89,18 @@ body.client-mode .status-toggle-wrapper,
 body.client-mode .center-google-btn,
 body.client-mode #cloudStatusBadge,
 body.client-mode #bulkActionsBar,
-body.client-mode .admin-toolbar {
+body.client-mode .admin-toolbar,
+body.client-mode .admin-only-ui {
+  display: none !important;
+}
+
+body.gestor-mode .client-only-ui {
   display: none !important;
 }
 
 /* Base Styles */
 html {
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
 }
 
 * {
@@ -113,7 +117,6 @@ body {
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
-  overscroll-behavior-y: none;
   background-image: 
     radial-gradient(circle at 15% 20%, rgba(245, 158, 11, 0.05) 0%, transparent 40%),
     radial-gradient(circle at 85% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
@@ -123,10 +126,16 @@ body {
 .app-header {
   background: #161922;
   border-bottom: 1px solid var(--border-color);
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 100;
-  padding: 12px 24px;
+  padding: max(12px, env(safe-area-inset-top)) 24px 12px 24px;
+}
+
+@media (min-width: 769px) {
+  .app-header {
+    position: sticky;
+    top: 0;
+  }
 }
 
 .header-container {
@@ -1734,17 +1743,18 @@ body {
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  contain: paint;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
 }
 
 .lamina-card:hover {
   transform: translateY(-4px);
   border-color: var(--accent-gold);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 15px rgba(245, 158, 11, 0.15);
+}
+
+.lamina-card:active {
+  transform: scale(0.98);
 }
 
 @media (hover: none) {
@@ -1757,27 +1767,43 @@ body {
 .lamina-img-container {
   position: relative;
   width: 100%;
+  aspect-ratio: 3 / 4;
   background: #0d0f15;
-  cursor: default;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 380px;
-  transform: translateZ(0);
-  touch-action: pan-x pan-y pinch-zoom;
 }
 
 .lamina-img {
   width: 100%;
-  height: auto;
-  max-height: 540px;
+  height: 100%;
   object-fit: contain;
   display: block;
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  image-rendering: -webkit-optimize-contrast;
+  background: #0d0f15;
+}
+
+.lamina-zoom-pill {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lamina-zoom-pill i {
+  color: var(--accent-gold);
 }
 
 .lamina-zoom-badge {
@@ -1974,12 +2000,44 @@ body {
 }
 
 @media (max-width: 640px) {
+  .categories-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 95;
+    background: rgba(15, 17, 23, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding-top: 8px;
+    padding-bottom: 8px;
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .category-pills {
+    padding-bottom: 2px;
+  }
   .laminas-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .lamina-card {
+    border-radius: var(--radius-md);
   }
   .lamina-img-container {
-    min-height: 300px;
+    aspect-ratio: 3 / 4;
+    min-height: auto;
+  }
+  .lamina-card-body {
+    padding: 8px 10px !important;
+    gap: 4px !important;
+  }
+  .lamina-validity-text {
+    font-size: 0.7rem !important;
+  }
+  .lamina-gestor-controls {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 4px;
   }
   .lamina-viewer-card {
     height: 98vh;
