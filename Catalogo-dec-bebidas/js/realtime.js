@@ -186,6 +186,10 @@ class RealtimeEngine {
     if (!isGestor || this.isLocal || !this.firebaseActive) return;
 
     try {
+      if (typeof ImageUtils !== 'undefined' && ImageUtils.optimizeAllLaminas) {
+        await ImageUtils.optimizeAllLaminas(this.store.laminas);
+        this.store.saveLaminas('cloud_optimize');
+      }
       const localLaminas = this.store.getLaminas();
       if (localLaminas && localLaminas.length > 0) {
         const cleanLaminas = localLaminas.map(l => this.sanitizeLaminaForCloud(l));
@@ -555,10 +559,16 @@ class RealtimeEngine {
       throw new Error("Modo cliente é apenas leitura.");
     }
 
-    // 1. OTIMIZAÇÃO PRÉ-PUBLICAÇÃO: Recompacta qualquer imagem pesada no catálogo para ~10KB-15KB
-    if (typeof ImageUtils !== 'undefined' && ImageUtils.optimizeAllProductImages) {
-      await ImageUtils.optimizeAllProductImages(this.store.products);
-      this.store.saveToStorage(false);
+    // 1. OTIMIZAÇÃO PRÉ-PUBLICAÇÃO: Recompacta qualquer imagem pesada no catálogo e nos encartes
+    if (typeof ImageUtils !== 'undefined') {
+      if (ImageUtils.optimizeAllProductImages) {
+        await ImageUtils.optimizeAllProductImages(this.store.products);
+        this.store.saveToStorage(false);
+      }
+      if (ImageUtils.optimizeAllLaminas) {
+        await ImageUtils.optimizeAllLaminas(this.store.laminas);
+        this.store.saveLaminas('cloud_optimize');
+      }
     }
 
     const cleanProducts = (this.store.products || []).map(p => this.sanitizeProductForCloud(p));
@@ -590,24 +600,36 @@ class RealtimeEngine {
 
     // 4. Publicar também encartes/lâminas de ofertas na nuvem
     const currentLaminas = (this.store.getLaminas() || []).map(l => this.sanitizeLaminaForCloud(l));
+    let laminasSuccess = false;
+    let laminaErrorMsg = '';
+
     try {
       if (this.db && this.firebaseActive) {
         await this.writeLaminasViaSDK(currentLaminas);
+        laminasSuccess = true;
       } else {
         await this.writeLaminasViaRest(currentLaminas);
+        laminasSuccess = true;
       }
       console.log(`Encartes publicados na nuvem com sucesso: ${currentLaminas.length} encartes.`);
     } catch (errL) {
       console.warn("Publicação de encartes via SDK falhou, tentando via REST...", errL);
       try {
         await this.writeLaminasViaRest(currentLaminas);
+        laminasSuccess = true;
         console.log(`Encartes publicados via REST: ${currentLaminas.length} encartes.`);
       } catch (errL2) {
-        console.warn("Publicação de encartes via REST também falhou:", errL2);
+        console.error("Publicação de encartes via REST também falhou:", errL2);
+        laminaErrorMsg = errL2.message || String(errL2);
       }
     }
 
-    return resultCount;
+    return {
+      productCount: resultCount,
+      laminaCount: currentLaminas.length,
+      laminasSuccess,
+      laminaErrorMsg
+    };
   }
 
   sanitizeLaminaForCloud(l) {

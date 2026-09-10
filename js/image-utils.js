@@ -83,6 +83,32 @@ class ImageUtils {
     return products;
   }
 
+  // Optimize and compress any oversized lamina / flyer images in memory before publishing
+  static async optimizeAllLaminas(laminas) {
+    if (!Array.isArray(laminas)) return laminas;
+    let count = 0;
+    for (const l of laminas) {
+      if (l.imageUrl && typeof l.imageUrl === 'string' && l.imageUrl.startsWith('data:image')) {
+        // Se a imagem de encarte tiver mais de 80KB (base64 > ~100.000 chars), recompacta para ~50-80KB
+        if (l.imageUrl.length > 80000) {
+          try {
+            const compressed = await ImageUtils.compressImage(l.imageUrl, 800, 1200, 0.70);
+            if (compressed && compressed.length < l.imageUrl.length) {
+              l.imageUrl = compressed;
+              count++;
+            }
+          } catch (e) {
+            console.warn("Could not recompress lamina image:", l.id, e);
+          }
+        }
+      }
+    }
+    if (count > 0) {
+      console.log(`Otimização pré-publicação de encartes: ${count} encartes recompactados para sincronização rápida na nuvem.`);
+    }
+    return laminas;
+  }
+
   // Handle image upload from file input
   static handleFileUpload(file) {
     return new Promise((resolve, reject) => {

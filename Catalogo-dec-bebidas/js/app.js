@@ -2433,8 +2433,15 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         publishCloudBtn.disabled = true;
         publishCloudBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publicando na Nuvem...';
-        const count = await realtimeEngine.forcePublishToCloud();
-        showToast(`Catálogo publicado com sucesso! ${count} produtos sincronizados na nuvem.`);
+        const res = await realtimeEngine.forcePublishToCloud();
+        const pCount = typeof res === 'object' ? res.productCount : res;
+        const lCount = typeof res === 'object' ? res.laminaCount : 0;
+        const lSuccess = typeof res === 'object' ? res.laminasSuccess : true;
+        if (lSuccess) {
+          showToast(`Catálogo publicado com sucesso! ${pCount} produtos e ${lCount} encartes sincronizados na nuvem.`);
+        } else {
+          showToast(`Produtos sincronizados (${pCount}), mas ocorreu erro nos encartes: ${res.laminaErrorMsg}`, 'warning');
+        }
       } catch (err) {
         showToast('Erro ao publicar na nuvem: ' + err.message, 'error');
       } finally {
