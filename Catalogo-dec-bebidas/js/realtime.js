@@ -167,9 +167,52 @@ class RealtimeEngine {
     try {
       if (this.db && this.firebaseActive) {
         const doc = await this.db.collection('catalogs').doc('laminas').get();
-        if (doc.exists && doc.data() && Array.isArray(doc.data().laminas)) {
-          this.applyRemoteLaminas(doc.data().laminas);
-          return;
+        if (doc.exists && doc.data()) {
+          const data = doc.data();
+          const chunkCount = parseInt(data.chunkCount) || 1;
+          let remoteLaminas = [];
+
+          if (chunkCount > 1) {
+            try {
+              const chunkDocs = await Promise.all(
+                Array.from({ length: chunkCount }, (_, i) => 
+                  this.db.collection('catalogs').doc(`laminas_chunk_${i}`).get()
+                )
+              );
+              chunkDocs.forEach(cDoc => {
+                if (cDoc.exists) {
+                  const d = cDoc.data();
+                  if (Array.isArray(d?.laminas)) {
+                    remoteLaminas.push(...d.laminas);
+                  } else if (d?.laminas && typeof d.laminas === 'object' && d.laminas.id) {
+                    remoteLaminas.push(d.laminas);
+                  }
+                }
+              });
+            } catch (e) {
+              console.warn("Erro ao buscar laminas chunks via SDK inicial, buscando via REST...", e);
+              remoteLaminas = await this.readLaminasViaRest();
+            }
+          } else if (Array.isArray(data.laminas) && data.laminas.length > 0) {
+            remoteLaminas = data.laminas;
+          } else {
+            try {
+              const c0 = await this.db.collection('catalogs').doc('laminas_chunk_0').get();
+              if (c0.exists) {
+                const d0 = c0.data();
+                if (Array.isArray(d0?.laminas)) {
+                  remoteLaminas = d0.laminas;
+                } else if (d0?.laminas && typeof d0.laminas === 'object' && d0.laminas.id) {
+                  remoteLaminas = [d0.laminas];
+                }
+              }
+            } catch (e2) {}
+          }
+
+          if (remoteLaminas.length > 0) {
+            this.applyRemoteLaminas(remoteLaminas);
+            return;
+          }
         }
       }
       const remoteLaminas = await this.readLaminasViaRest();
@@ -193,12 +236,13 @@ class RealtimeEngine {
       const localLaminas = this.store.getLaminas();
       if (localLaminas && localLaminas.length > 0) {
         const cleanLaminas = localLaminas.map(l => this.sanitizeLaminaForCloud(l));
+        const chunks = this.splitLaminasIntoChunks(cleanLaminas, 400000);
         if (this.db) {
-          await this.writeLaminasViaSDK(cleanLaminas);
+          await this.writeLaminasViaSDK(chunks);
         } else {
-          await this.writeLaminasViaRest(cleanLaminas);
+          await this.writeLaminasViaRest(chunks);
         }
-        console.log("Encartes do gestor sincronizados com a nuvem na inicialização:", cleanLaminas.length);
+        console.log("Encartes do gestor sincronizados com a nuvem na inicialização:", cleanLaminas.length, "em", chunks.length, "chunk(s)");
       }
     } catch (e) {
       console.warn("Auto-sync inicial de encartes do gestor:", e);
@@ -293,8 +337,13 @@ class RealtimeEngine {
             )
           );
           chunkDocs.forEach(cDoc => {
-            if (cDoc.exists && Array.isArray(cDoc.data()?.laminas)) {
-              remoteLaminas.push(...cDoc.data().laminas);
+            if (cDoc.exists) {
+              const cd = cDoc.data();
+              if (Array.isArray(cd?.laminas)) {
+                remoteLaminas.push(...cd.laminas);
+              } else if (cd?.laminas && typeof cd.laminas === 'object' && cd.laminas.id) {
+                remoteLaminas.push(cd.laminas);
+              }
             }
           });
         } catch (e) {
@@ -306,8 +355,13 @@ class RealtimeEngine {
       } else {
         try {
           const c0 = await this.db.collection('catalogs').doc('laminas_chunk_0').get();
-          if (c0.exists && Array.isArray(c0.data()?.laminas)) {
-            remoteLaminas = c0.data().laminas;
+          if (c0.exists) {
+            const cd0 = c0.data();
+            if (Array.isArray(cd0?.laminas)) {
+              remoteLaminas = cd0.laminas;
+            } else if (cd0?.laminas && typeof cd0.laminas === 'object' && cd0.laminas.id) {
+              remoteLaminas = [cd0.laminas];
+            }
           }
         } catch (e2) {}
       }
@@ -740,8 +794,19 @@ class RealtimeEngine {
     return chunks;
   }
 
-  async writeLaminasViaSDK(chunks) {
+  normalizeLaminaChunks(chunksOrLaminas) {
+    if (!Array.isArray(chunksOrLaminas) || chunksOrLaminas.length === 0) {
+      return [[]];
+    }
+    if (Array.isArray(chunksOrLaminas[0])) {
+      return chunksOrLaminas;
+    }
+    return this.splitLaminasIntoChunks(chunksOrLaminas, 400000);
+  }
+
+  async writeLaminasViaSDK(chunksInput) {
     if (!this.db || !this.firebaseActive) throw new Error("SDK não ativo");
+    const chunks = this.normalizeLaminaChunks(chunksInput);
     const batch = this.db.batch();
     const laminasRef = this.db.collection('catalogs').doc('laminas');
 
@@ -757,14 +822,15 @@ class RealtimeEngine {
         const chunkRef = this.db.collection('catalogs').doc(`laminas_chunk_${i}`);
         batch.set(chunkRef, {
           chunkIndex: i,
-          laminas: chunk,
+          laminas: Array.isArray(chunk) ? chunk : [chunk],
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
 
+      const total = chunks.reduce((acc, c) => acc + (Array.isArray(c) ? c.length : 1), 0);
       batch.set(laminasRef, {
         chunkCount: chunks.length,
-        totalLaminas: chunks.reduce((acc, c) => acc + c.length, 0),
+        totalLaminas: total,
         laminas: chunks.length === 1 ? chunks[0] : [],
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -791,11 +857,16 @@ class RealtimeEngine {
   }
 
   parseRestLaminas(docJson) {
-    if (!docJson || !docJson.fields || !docJson.fields.laminas || !docJson.fields.laminas.arrayValue) {
+    if (!docJson || !docJson.fields || !docJson.fields.laminas) {
       return [];
     }
-    const values = docJson.fields.laminas.arrayValue.values || [];
-    return values.map(v => {
+    let rawItems = [];
+    if (docJson.fields.laminas.arrayValue?.values) {
+      rawItems = docJson.fields.laminas.arrayValue.values;
+    } else if (docJson.fields.laminas.mapValue) {
+      rawItems = [docJson.fields.laminas];
+    }
+    return rawItems.map(v => {
       const f = v.mapValue?.fields || {};
       return {
         id: f.id?.stringValue || '',
@@ -807,16 +878,17 @@ class RealtimeEngine {
         manualPosition: parseInt(f.manualPosition?.integerValue || 1),
         createdAt: f.createdAt?.stringValue || ''
       };
-    });
+    }).filter(l => l.id || l.imageUrl);
   }
 
   async writeSingleLaminaChunkDocViaRest(projectId, docId, laminas, chunkIndex) {
+    const items = Array.isArray(laminas) ? laminas : [laminas];
     const restPayload = {
       fields: {
         chunkIndex: { integerValue: String(chunkIndex || 0) },
         laminas: {
           arrayValue: {
-            values: (laminas || []).map(l => this.formatRestLaminaValue(l))
+            values: items.map(l => this.formatRestLaminaValue(l))
           }
         }
       }
@@ -844,7 +916,7 @@ class RealtimeEngine {
     }
   }
 
-  async writeLaminasViaRest(chunks) {
+  async writeLaminasViaRest(chunksInput) {
     let projectId = 'catalogo-online-dec';
     try {
       const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
@@ -856,14 +928,17 @@ class RealtimeEngine {
       }
     } catch (e) {}
 
+    const chunks = this.normalizeLaminaChunks(chunksInput);
+
     for (let i = 0; i < chunks.length; i++) {
       await this.writeSingleLaminaChunkDocViaRest(projectId, `laminas_chunk_${i}`, chunks[i], i);
     }
 
+    const total = chunks.reduce((acc, c) => acc + (Array.isArray(c) ? c.length : 1), 0);
     const restPayload = {
       fields: {
         chunkCount: { integerValue: String(chunks.length) },
-        totalLaminas: { integerValue: String(chunks.reduce((acc, c) => acc + c.length, 0)) },
+        totalLaminas: { integerValue: String(total) },
         laminas: {
           arrayValue: {
             values: chunks.length === 1 ? chunks[0].map(l => this.formatRestLaminaValue(l)) : []
