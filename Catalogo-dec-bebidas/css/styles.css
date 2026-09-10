@@ -1735,12 +1735,23 @@ body {
   flex-direction: column;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  contain: paint;
 }
 
 .lamina-card:hover {
   transform: translateY(-4px);
   border-color: var(--accent-gold);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 15px rgba(245, 158, 11, 0.15);
+}
+
+@media (hover: none) {
+  .lamina-card:hover {
+    transform: none !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  }
 }
 
 .lamina-img-container {
@@ -1753,6 +1764,8 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 380px;
+  transform: translateZ(0);
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 .lamina-img {
@@ -1761,6 +1774,10 @@ body {
   max-height: 540px;
   object-fit: contain;
   display: block;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 .lamina-zoom-badge {

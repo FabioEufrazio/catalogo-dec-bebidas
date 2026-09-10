@@ -373,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.innerHTML = `
         <div class="lamina-img-container">
-          <img src="${lamina.imageUrl}" alt="${lamina.validity || 'Encarte Promocional'}" class="lamina-img" loading="lazy">
+          <img src="${lamina.imageUrl}" alt="${lamina.validity || 'Encarte Promocional'}" class="lamina-img" decoding="sync">
         </div>
         <div class="lamina-card-body" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
           ${lamina.validity ? `
