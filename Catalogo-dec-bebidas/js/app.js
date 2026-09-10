@@ -844,7 +844,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target.closest('.admin-only-ui') || ['INPUT', 'BUTTON', 'I', 'LABEL', 'SELECT'].includes(e.target.tagName)) {
         return;
       }
-      setActivePasteTarget(p.id);
+      if (isClientMode) {
+        openProductQuickView(p);
+      } else {
+        setActivePasteTarget(p.id);
+      }
     });
 
     card.addEventListener('mouseenter', () => {
@@ -1192,6 +1196,76 @@ document.addEventListener('DOMContentLoaded', () => {
       const modalId = btn.getAttribute('data-close-modal');
       closeModal(modalId);
     });
+  });
+
+  // Product Quick View Modal Handlers (Visualização com Foto Maior, Código e Descrição)
+  function openProductQuickView(product) {
+    if (!product) return;
+    const modal = document.getElementById('productQuickViewModal');
+    if (!modal) return;
+
+    const imgEl = document.getElementById('quickViewProductImg');
+    const noImgEl = document.getElementById('quickViewProductNoImg');
+    const titleEl = document.getElementById('quickViewProductTitle');
+    const codeEl = document.getElementById('quickViewProductCode');
+    const catEl = document.getElementById('quickViewProductCategory');
+    const unitPriceEl = document.getElementById('quickViewUnitPrice');
+    const boxRowEl = document.getElementById('quickViewBoxRow');
+    const boxLabelEl = document.getElementById('quickViewBoxLabel');
+    const boxPriceEl = document.getElementById('quickViewBoxPrice');
+
+    if (titleEl) titleEl.textContent = product.description || 'Produto';
+    if (codeEl) codeEl.textContent = product.code ? `CÓD: ${product.code}` : 'SEM CÓDIGO';
+
+    const catObj = CATEGORIES.find(c => c.id === product.category);
+    if (catEl) catEl.textContent = catObj ? catObj.label : 'Outros';
+
+    if (imgEl && noImgEl) {
+      if (product.imageBase64) {
+        imgEl.src = product.imageBase64;
+        imgEl.alt = product.description || 'Foto do Produto';
+        imgEl.style.display = 'block';
+        noImgEl.style.display = 'none';
+      } else {
+        imgEl.src = '';
+        imgEl.style.display = 'none';
+        noImgEl.style.display = 'flex';
+      }
+    }
+
+    if (unitPriceEl) {
+      unitPriceEl.textContent = formatCurrency(product.unitPrice);
+    }
+
+    if (boxRowEl) {
+      if (product.showBoxTotal && product.qtyPerBox > 1) {
+        const boxTotal = product.unitPrice * product.qtyPerBox;
+        if (boxLabelEl) boxLabelEl.innerHTML = `Caixa c/ <strong>${product.qtyPerBox}</strong> un:`;
+        if (boxPriceEl) boxPriceEl.textContent = formatCurrency(boxTotal);
+        boxRowEl.style.display = 'flex';
+      } else {
+        boxRowEl.style.display = 'none';
+      }
+    }
+
+    openModal('productQuickViewModal');
+  }
+
+  // Click outside to close modals & Escape key
+  const quickViewModal = document.getElementById('productQuickViewModal');
+  if (quickViewModal) {
+    quickViewModal.addEventListener('click', (e) => {
+      if (e.target === quickViewModal) {
+        closeModal('productQuickViewModal');
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeModal('productQuickViewModal');
+      closeModal('laminaViewerModal');
+    }
   });
 
   // Promo Modal Handlers

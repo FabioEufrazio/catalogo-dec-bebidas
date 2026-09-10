@@ -1255,6 +1255,150 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+/* Product Quick View Modal (Visualização Maior do Produto) */
+.product-quickview-overlay {
+  z-index: 250;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.product-quickview-card {
+  max-width: 480px;
+  width: 100%;
+  background: #141721;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+}
+
+.product-quickview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  background: #191c28;
+  border-bottom: 1px solid var(--border-color);
+  gap: 12px;
+}
+
+.product-quickview-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.product-quickview-meta .sku-code-tag {
+  position: static;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-gold);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.product-quickview-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.product-quickview-img-wrapper {
+  width: 100%;
+  height: 300px;
+  background: #0d0f17;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.product-quickview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 10px;
+}
+
+.product-quickview-no-img {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.product-quickview-no-img i {
+  font-size: 3rem;
+  opacity: 0.4;
+}
+
+.product-quickview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.product-quickview-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.product-quickview-price-box {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quickview-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.quickview-box-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  border-top: 1px dashed rgba(245, 158, 11, 0.2);
+  padding-top: 6px;
+}
+
+html.prices-hidden body.client-mode .product-quickview-price-box {
+  display: none !important;
+}
+
+body.client-mode .product-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+body.client-mode .product-card:active {
+  transform: scale(0.98);
+}
+
 /* Diff Table inside Excel Preview Modal */
 .diff-table-wrapper {
   max-height: 400px;

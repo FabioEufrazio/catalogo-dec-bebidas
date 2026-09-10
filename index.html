@@ -70,7 +70,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=5.6">
+  <link rel="stylesheet" href="css/styles.css?v=5.7">
 </head>
 <body>
 
@@ -843,6 +843,44 @@
     </div>
   </div>
 
+  <!-- MODAL: Visualização Rápida do Produto (Foto Maior, Código e Descrição) -->
+  <div id="productQuickViewModal" class="modal-overlay product-quickview-overlay">
+    <div class="modal-card product-quickview-card">
+      <div class="product-quickview-header">
+        <div class="product-quickview-meta">
+          <span id="quickViewProductCategory" class="category-tag">Categoria</span>
+          <span id="quickViewProductCode" class="sku-code-tag">COD: 000</span>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="productQuickViewModal" title="Fechar (Esc)">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="product-quickview-body">
+        <div class="product-quickview-img-wrapper" id="quickViewImgContainer">
+          <img id="quickViewProductImg" src="" alt="Foto do Produto" class="product-quickview-img">
+          <div id="quickViewProductNoImg" class="product-quickview-no-img" style="display: none;">
+            <i class="fa-solid fa-wine-bottle"></i>
+            <span>Sem Foto Cadastrada</span>
+          </div>
+        </div>
+        <div class="product-quickview-info">
+          <h3 id="quickViewProductTitle" class="product-quickview-title">Descrição do Produto</h3>
+          
+          <div id="quickViewPriceBox" class="product-quickview-price-box">
+            <div class="quickview-price-row">
+              <span class="price-label">Preço Unitário:</span>
+              <span id="quickViewUnitPrice" class="price-unit-val">R$ 0,00</span>
+            </div>
+            <div id="quickViewBoxRow" class="quickview-box-row" style="display: none;">
+              <span id="quickViewBoxLabel">Caixa c/ 12 un:</span>
+              <span id="quickViewBoxPrice" class="price-box-val">R$ 0,00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Visualizador de Lâmina em Tela Cheia com Zoom -->
   <div id="laminaViewerModal" class="modal-overlay lamina-viewer-overlay">
     <div class="lamina-viewer-card">
@@ -929,11 +967,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/sample-data.js?v=5.6"></script>
-  <script src="js/store.js?v=5.6"></script>
-  <script src="js/realtime.js?v=5.6"></script>
-  <script src="js/excel.js?v=5.6"></script>
-  <script src="js/image-utils.js?v=5.6"></script>
-  <script src="js/app.js?v=5.6"></script>
+  <script src="js/sample-data.js?v=5.7"></script>
+  <script src="js/store.js?v=5.7"></script>
+  <script src="js/realtime.js?v=5.7"></script>
+  <script src="js/excel.js?v=5.7"></script>
+  <script src="js/image-utils.js?v=5.7"></script>
+  <script src="js/app.js?v=5.7"></script>
 </body>
 </html>
