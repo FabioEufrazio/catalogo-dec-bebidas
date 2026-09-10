@@ -2433,17 +2433,24 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         publishCloudBtn.disabled = true;
         publishCloudBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publicando na Nuvem...';
-        const res = await realtimeEngine.forcePublishToCloud();
+        
+        const publishPromise = realtimeEngine.forcePublishToCloud();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Tempo limite de sincronização esgotado (12s). Verifique sua conexão e tente novamente.")), 12000)
+        );
+
+        const res = await Promise.race([publishPromise, timeoutPromise]);
         const pCount = typeof res === 'object' ? res.productCount : res;
         const lCount = typeof res === 'object' ? res.laminaCount : 0;
         const lSuccess = typeof res === 'object' ? res.laminasSuccess : true;
         if (lSuccess) {
           showToast(`Catálogo publicado com sucesso! ${pCount} produtos e ${lCount} encartes sincronizados na nuvem.`);
         } else {
-          showToast(`Produtos sincronizados (${pCount}), mas ocorreu erro nos encartes: ${res.laminaErrorMsg}`, 'warning');
+          showToast(`Produtos sincronizados (${pCount}), mas ocorreu aviso nos encartes: ${res.laminaErrorMsg}`, 'warning');
         }
       } catch (err) {
-        showToast('Erro ao publicar na nuvem: ' + err.message, 'error');
+        console.error("Erro na publicação:", err);
+        showToast('Erro ao publicar na nuvem: ' + (err.message || err), 'error');
       } finally {
         publishCloudBtn.disabled = false;
         publishCloudBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Publicar Online';

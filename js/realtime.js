@@ -488,17 +488,26 @@ class RealtimeEngine {
     };
 
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/${docId}`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(restPayload)
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Falha HTTP ${res.status}: ${errText}`);
+    try {
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(restPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Falha HTTP ${res.status}: ${errText}`);
+      }
+      return true;
+    } catch (err) {
+      clearTimeout(timer);
+      throw err;
     }
-    return true;
   }
 
   async writeChunkDocViaRest(projectId, docId, products, chunkIndex) {
@@ -514,17 +523,26 @@ class RealtimeEngine {
     };
 
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/${docId}`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(restPayload)
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Falha HTTP ${res.status}: ${errText}`);
+    try {
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(restPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Falha HTTP ${res.status}: ${errText}`);
+      }
+      return true;
+    } catch (err) {
+      clearTimeout(timer);
+      throw err;
     }
-    return true;
   }
 
   async writeChunksViaRest(chunks, hidePrices) {
@@ -638,17 +656,21 @@ class RealtimeEngine {
 
     console.log(`Publicando encartes na nuvem: ${currentLaminas.length} encartes em ${laminaChunks.length} bloco(s) Firestore.`);
 
+    const sdkLaminasPromise = (async () => {
+      if (!this.db || !this.firebaseActive) throw new Error("SDK não ativo");
+      return await this.writeLaminasViaSDK(laminaChunks);
+    })();
+
+    const timeoutLaminasPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("TIMEOUT_SDK_LAMINAS")), 3500)
+    );
+
     try {
-      if (this.db && this.firebaseActive) {
-        await this.writeLaminasViaSDK(laminaChunks);
-        laminasSuccess = true;
-      } else {
-        await this.writeLaminasViaRest(laminaChunks);
-        laminasSuccess = true;
-      }
-      console.log(`Encartes publicados na nuvem com sucesso: ${currentLaminas.length} encartes em ${laminaChunks.length} bloco(s).`);
+      await Promise.race([sdkLaminasPromise, timeoutLaminasPromise]);
+      laminasSuccess = true;
+      console.log(`Encartes publicados na nuvem via SDK: ${currentLaminas.length} encartes.`);
     } catch (errL) {
-      console.warn("Publicação de encartes via SDK falhou, tentando via REST...", errL);
+      console.warn("Publicação de encartes via SDK falhou/demorou, usando fallback REST...", errL);
       try {
         await this.writeLaminasViaRest(laminaChunks);
         laminasSuccess = true;
@@ -791,16 +813,26 @@ class RealtimeEngine {
       }
     };
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/${docId}`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(restPayload)
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Falha HTTP ao salvar ${docId}: ${errText}`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+
+    try {
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(restPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Falha HTTP ao salvar ${docId}: ${errText}`);
+      }
+      return true;
+    } catch (err) {
+      clearTimeout(timer);
+      throw err;
     }
-    return true;
   }
 
   async writeLaminasViaRest(chunks) {
@@ -832,17 +864,26 @@ class RealtimeEngine {
     };
 
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/laminas`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(restPayload)
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Falha HTTP ao salvar encartes: ${errText}`);
+    try {
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(restPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Falha HTTP ao salvar metadata de encartes: ${errText}`);
+      }
+      return true;
+    } catch (err) {
+      clearTimeout(timer);
+      throw err;
     }
-    return true;
   }
 
   async readLaminasViaRest() {

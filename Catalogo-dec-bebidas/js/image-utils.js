@@ -6,14 +6,20 @@
 class ImageUtils {
   // Compress image file or data URL to lightweight 360x360 JPEG 65% quality
   static compressImage(src, maxWidth = 360, maxHeight = 360, quality = 0.65) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!src) return resolve('');
+
+      const timer = setTimeout(() => {
+        resolve(src);
+      }, 2500);
+
       const img = new Image();
       if (typeof src === 'string' && (src.startsWith('http://') || src.startsWith('https://'))) {
         img.crossOrigin = 'Anonymous';
       }
 
       img.onload = () => {
+        clearTimeout(timer);
         try {
           let width = img.width;
           let height = img.height;
@@ -42,15 +48,13 @@ class ImageUtils {
           const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
           resolve(compressedBase64);
         } catch (e) {
-          // Fallback if canvas is tainted by CORS
           resolve(src);
         }
       };
 
       img.onerror = () => {
-        // Fallback to src string directly if canvas image load fails
-        if (src) resolve(src);
-        else reject(new Error("Não foi possível carregar a imagem."));
+        clearTimeout(timer);
+        resolve(src);
       };
 
       img.src = src;
