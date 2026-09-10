@@ -237,6 +237,10 @@ class RealtimeEngine {
         this.store.setHidePrices(data.hidePrices);
       }
 
+      if (Array.isArray(data.categories) && data.categories.length > 0) {
+        this.store.setCategories(data.categories, 'cloud');
+      }
+
       const chunkCount = parseInt(data.chunkCount) || 1;
       let remoteProducts = [];
 
@@ -574,12 +578,16 @@ class RealtimeEngine {
   async writeChunksViaSDK(chunks, hidePrices) {
     const batch = this.db.batch();
     const activeRef = this.db.collection('catalogs').doc('active');
+    const categories = (this.store && typeof this.store.getCategories === 'function') 
+      ? this.store.getCategories() 
+      : [];
 
     if (chunks.length === 1) {
       batch.set(activeRef, {
         chunkCount: 1,
         hidePrices: !!hidePrices,
         products: chunks[0],
+        categories: categories,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     } else {
@@ -596,6 +604,7 @@ class RealtimeEngine {
         chunkCount: chunks.length,
         hidePrices: !!hidePrices,
         products: chunks[0],
+        categories: categories,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }

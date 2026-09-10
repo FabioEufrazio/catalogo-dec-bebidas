@@ -4,24 +4,40 @@
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Category Definitions
-  const CATEGORIES = [
-    { id: 'all', label: 'Todos', icon: 'fa-layer-group' },
-    { id: 'ofertas', label: 'Ofertas', icon: 'fa-fire', isPromo: true },
-    { id: 'whiskies', label: 'Whiskies', icon: 'fa-bottle-droplet' },
-    { id: 'vodkas', label: 'Vodkas', icon: 'fa-glass-water' },
-    { id: 'cervejas', label: 'Cervejas', icon: 'fa-beer-mug-empty' },
-    { id: 'gins', label: 'Gins', icon: 'fa-glass-whiskey' },
-    { id: 'vinhos', label: 'Vinhos', icon: 'fa-wine-glass' },
-    { id: 'espumantes', label: 'Espumantes', icon: 'fa-champagne-glasses' },
-    { id: 'energeticos', label: 'Energéticos', icon: 'fa-bolt' },
-    { id: 'refrigerantes', label: 'Refrigerantes', icon: 'fa-bottle-pop' },
-    { id: 'aguadecoco', label: 'Água de Coco', icon: 'fa-bottle-water' },
-    { id: 'sucos', label: 'Sucos', icon: 'fa-glass-water-droplet' },
-    { id: 'licores', label: 'Licores', icon: 'fa-wine-glass-empty' },
-    { id: 'xaropes', label: 'Xaropes', icon: 'fa-prescription-bottle' },
-    { id: 'outros', label: 'Outros', icon: 'fa-boxes-stacked' }
-  ];
+  // 1. Dynamic Category Definitions (managed by productStore)
+  let CATEGORIES = productStore.getCategories();
+
+  // Helper: Populate product category dropdowns dynamically
+  function populateCategorySelects() {
+    CATEGORIES = productStore.getCategories();
+    const assignableCategories = CATEGORIES.filter(c => c.id !== 'all' && c.id !== 'ofertas');
+
+    const prodCatSelect = document.getElementById('prodCategory');
+    if (prodCatSelect) {
+      const currentVal = prodCatSelect.value;
+      prodCatSelect.innerHTML = assignableCategories.map(c => 
+        `<option value="${c.id}">${c.label}</option>`
+      ).join('');
+      if (currentVal && assignableCategories.some(c => c.id === currentVal)) {
+        prodCatSelect.value = currentVal;
+      } else {
+        prodCatSelect.value = 'outros';
+      }
+    }
+
+    const bulkCatSelect = document.getElementById('bulkCategorySelect');
+    if (bulkCatSelect) {
+      const currentVal = bulkCatSelect.value;
+      bulkCatSelect.innerHTML = assignableCategories.map(c => 
+        `<option value="${c.id}">${c.label}</option>`
+      ).join('');
+      if (currentVal && assignableCategories.some(c => c.id === currentVal)) {
+        bulkCatSelect.value = currentVal;
+      } else if (assignableCategories.length > 0) {
+        bulkCatSelect.value = assignableCategories[0].id;
+      }
+    }
+  }
 
   // State Variables
   let isClientMode = false;
@@ -147,6 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderCategoryPills() {
     const container = document.getElementById('categoryPills');
     if (!container) return;
+
+    CATEGORIES = productStore.getCategories();
+
+    // If current category was deleted or invalid, fallback to 'all'
+    if (!CATEGORIES.some(c => c.id === currentCategory)) {
+      currentCategory = 'all';
+      sessionStorage.setItem('catalog_current_category', 'all');
+    }
 
     const allProducts = productStore.getProducts();
 
@@ -2718,6 +2742,310 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
+  // CATEGORY MANAGER CONTROLLER
+  // ==========================================================================
+  const POPULAR_CATEGORY_ICONS = [
+    'fa-tag', 'fa-bottle-droplet', 'fa-glass-water', 'fa-beer-mug-empty',
+    'fa-wine-glass', 'fa-champagne-glasses', 'fa-wine-bottle', 'fa-bolt',
+    'fa-bottle-pop', 'fa-bottle-water', 'fa-glass-water-droplet', 'fa-boxes-stacked',
+    'fa-fire', 'fa-cube', 'fa-martini-glass-citrus', 'fa-mug-hot',
+    'fa-lemon', 'fa-star', 'fa-award', 'fa-burst', 'fa-gift', 'fa-shield-halved'
+  ];
+
+  function setupCategoryManagerEvents() {
+    const manageBtn = document.getElementById('manageCategoriesBtn');
+    const iconPickerBtn = document.getElementById('toggleIconPickerBtn');
+    const iconGrid = document.getElementById('categoryIconPickerGrid');
+    const iconInput = document.getElementById('newCategoryIcon');
+    const iconPreview = document.getElementById('newCategoryIconPreview');
+    const addForm = document.getElementById('addCategoryForm');
+
+    // Populate Icon Grid for New Category
+    if (iconGrid) {
+      iconGrid.innerHTML = POPULAR_CATEGORY_ICONS.map(ic => `
+        <button type="button" class="btn btn-sm btn-icon cat-icon-choice" data-icon="${ic}" style="width: 34px; height: 34px; padding: 0; font-size: 0.95rem; color: #cbd5e1;" title="${ic}">
+          <i class="fa-solid ${ic}"></i>
+        </button>
+      `).join('');
+
+      iconGrid.addEventListener('click', (e) => {
+        const btn = e.target.closest('.cat-icon-choice');
+        if (!btn) return;
+        const icon = btn.dataset.icon;
+        if (iconInput) iconInput.value = icon;
+        if (iconPreview) iconPreview.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+        iconGrid.style.display = 'none';
+      });
+    }
+
+    if (iconPickerBtn && iconGrid) {
+      iconPickerBtn.addEventListener('click', () => {
+        iconGrid.style.display = (iconGrid.style.display === 'grid') ? 'none' : 'grid';
+      });
+    }
+
+    // Open Modal Button
+    if (manageBtn) {
+      manageBtn.addEventListener('click', () => {
+        renderCategoryManagerList();
+        openModal('categoryManagerModal');
+      });
+    }
+
+    // Add Category Form Submit
+    if (addForm) {
+      addForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const nameInput = document.getElementById('newCategoryName');
+        const label = (nameInput?.value || '').trim();
+        const icon = iconInput?.value || 'fa-tag';
+
+        if (!label) {
+          showToast('Informe o nome da categoria.', 'warning');
+          return;
+        }
+
+        try {
+          const newCat = productStore.addCategory({ label, icon });
+          showToast(`Categoria "${newCat.label}" adicionada com sucesso!`, 'success');
+          if (nameInput) nameInput.value = '';
+          if (iconInput) iconInput.value = 'fa-tag';
+          if (iconPreview) iconPreview.innerHTML = '<i class="fa-solid fa-tag"></i>';
+          if (iconGrid) iconGrid.style.display = 'none';
+
+          populateCategorySelects();
+          renderCategoryManagerList();
+          renderCategoryPills();
+        } catch (err) {
+          showToast(err.message || 'Erro ao adicionar categoria.', 'error');
+        }
+      });
+    }
+
+    // List Delegated Actions (Move Up, Move Down, Edit, Delete)
+    const listContainer = document.getElementById('categoryListContainer');
+    if (listContainer) {
+      listContainer.addEventListener('click', (e) => {
+        const target = e.target;
+
+        // Move Up
+        const moveUpBtn = target.closest('.move-cat-up-btn');
+        if (moveUpBtn) {
+          const catId = moveUpBtn.dataset.catId;
+          productStore.moveCategory(catId, -1);
+          renderCategoryManagerList();
+          renderCategoryPills();
+          return;
+        }
+
+        // Move Down
+        const moveDownBtn = target.closest('.move-cat-down-btn');
+        if (moveDownBtn) {
+          const catId = moveDownBtn.dataset.catId;
+          productStore.moveCategory(catId, 1);
+          renderCategoryManagerList();
+          renderCategoryPills();
+          return;
+        }
+
+        // Delete Category
+        const deleteBtn = target.closest('.delete-cat-btn');
+        if (deleteBtn) {
+          const catId = deleteBtn.dataset.catId;
+          const cat = productStore.getCategories().find(c => c.id === catId);
+          if (!cat) return;
+
+          const products = productStore.getProducts();
+          const linkedCount = products.filter(p => p.category === catId).length;
+
+          let confirmMsg = `Tem certeza que deseja excluir a categoria "${cat.label}"?`;
+          if (linkedCount > 0) {
+            confirmMsg = `A categoria "${cat.label}" possui ${linkedCount} produto(s) associado(s).\n\nAo excluir, esses produtos serão automaticamente transferidos para "Outros".\n\nDeseja continuar?`;
+          }
+
+          if (confirm(confirmMsg)) {
+            const res = productStore.deleteCategory(catId, 'outros');
+            if (res.success) {
+              showToast(`Categoria "${cat.label}" excluída com sucesso! ${res.migratedProductsCount > 0 ? `(${res.migratedProductsCount} produtos movidos para Outros)` : ''}`, 'info');
+              populateCategorySelects();
+              renderCategoryManagerList();
+              renderCategoryPills();
+              renderProducts();
+            }
+          }
+          return;
+        }
+
+        // Start Inline Edit
+        const editBtn = target.closest('.edit-cat-btn');
+        if (editBtn) {
+          const catId = editBtn.dataset.catId;
+          showCategoryInlineEdit(catId);
+          return;
+        }
+
+        // Cancel Inline Edit
+        const cancelEditBtn = target.closest('.cancel-cat-edit-btn');
+        if (cancelEditBtn) {
+          renderCategoryManagerList();
+          return;
+        }
+
+        // Save Inline Edit
+        const saveEditBtn = target.closest('.save-cat-edit-btn');
+        if (saveEditBtn) {
+          const catId = saveEditBtn.dataset.catId;
+          const row = document.getElementById(`cat-row-${catId}`);
+          if (!row) return;
+
+          const nameInput = row.querySelector('.inline-cat-name-input');
+          const iconSelect = row.querySelector('.inline-cat-icon-select');
+          const newLabel = (nameInput?.value || '').trim();
+          const newIcon = iconSelect?.value || 'fa-tag';
+
+          if (!newLabel) {
+            showToast('O nome da categoria não pode ser vazio.', 'warning');
+            return;
+          }
+
+          try {
+            productStore.updateCategory(catId, { label: newLabel, icon: newIcon });
+            showToast('Categoria atualizada com sucesso!', 'success');
+            populateCategorySelects();
+            renderCategoryManagerList();
+            renderCategoryPills();
+            renderProducts();
+          } catch (err) {
+            showToast(err.message || 'Erro ao atualizar categoria.', 'error');
+          }
+          return;
+        }
+      });
+    }
+  }
+
+  function showCategoryInlineEdit(catId) {
+    const row = document.getElementById(`cat-row-${catId}`);
+    if (!row) return;
+
+    const cat = productStore.getCategories().find(c => c.id === catId);
+    if (!cat) return;
+
+    row.style.background = '#1e293b';
+    row.style.borderColor = '#6366f1';
+    row.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #a5b4fc; display: flex; align-items: center; justify-content: space-between;">
+          <span><i class="fa-solid fa-pen-to-square"></i> Editando Categoria: <code>${cat.id}</code></span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 160px;">
+            <input type="text" class="form-control inline-cat-name-input" value="${cat.label}" placeholder="Nome da Categoria" style="height: 36px; font-size: 0.85rem;" required>
+          </div>
+          <div style="width: 150px;">
+            <select class="form-control inline-cat-icon-select" style="height: 36px; font-size: 0.82rem;">
+              ${POPULAR_CATEGORY_ICONS.map(ic => `
+                <option value="${ic}" ${cat.icon === ic ? 'selected' : ''}>${ic.replace('fa-', '')}</option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 6px;">
+          <button type="button" class="btn btn-sm cancel-cat-edit-btn" style="padding: 4px 10px; font-size: 0.75rem;">Cancelar</button>
+          <button type="button" class="btn btn-sm btn-primary save-cat-edit-btn" data-cat-id="${cat.id}" style="background: #10b981; border: none; padding: 4px 12px; font-size: 0.75rem; font-weight: 700;">
+            Salvar <i class="fa-solid fa-check"></i>
+          </button>
+        </div>
+      </div>
+    `;
+    const input = row.querySelector('.inline-cat-name-input');
+    if (input) input.focus();
+  }
+
+  function renderCategoryManagerList() {
+    CATEGORIES = productStore.getCategories();
+    const container = document.getElementById('categoryListContainer');
+    const totalBadge = document.getElementById('categoryTotalCount');
+    if (totalBadge) totalBadge.textContent = CATEGORIES.length;
+    if (!container) return;
+
+    const products = productStore.getProducts();
+    const counts = {};
+    CATEGORIES.forEach(c => counts[c.id] = 0);
+    products.forEach(p => {
+      if (counts[p.category] !== undefined) {
+        counts[p.category]++;
+      } else {
+        counts['outros'] = (counts['outros'] || 0) + 1;
+      }
+    });
+
+    container.innerHTML = '';
+
+    CATEGORIES.forEach((cat, index) => {
+      const isSystem = cat.system || cat.id === 'all' || cat.id === 'ofertas';
+      const isFallback = cat.id === 'outros';
+      const count = isSystem ? (cat.id === 'all' ? products.length : (counts['ofertas'] || 0)) : (counts[cat.id] || 0);
+
+      const card = document.createElement('div');
+      card.className = 'category-item-row';
+      card.id = `cat-row-${cat.id}`;
+      card.style.cssText = `
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      `;
+
+      card.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+          <div style="width: 32px; height: 32px; border-radius: 6px; background: ${isSystem ? '#312e81' : '#1e293b'}; color: ${isSystem ? '#a5b4fc' : '#fbbf24'}; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0;">
+            <i class="fa-solid ${cat.icon || 'fa-tag'}"></i>
+          </div>
+          <div style="min-width: 0; flex: 1;">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span class="cat-label-display" style="font-weight: 600; font-size: 0.88rem; color: #f1f5f9;">${cat.label}</span>
+              ${isSystem ? '<span style="font-size: 0.65rem; background: #3730a3; color: #c7d2fe; padding: 1px 5px; border-radius: 4px; font-weight: 700;">SISTEMA</span>' : ''}
+              ${isFallback ? '<span style="font-size: 0.65rem; background: #334155; color: #cbd5e1; padding: 1px 5px; border-radius: 4px; font-weight: 600;">PADRÃO</span>' : ''}
+            </div>
+            <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
+              ${count} ${count === 1 ? 'produto' : 'produtos'} • ID: <code>${cat.id}</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ações -->
+        <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+          ${!isSystem ? `
+            <button type="button" class="btn btn-sm btn-icon move-cat-up-btn" data-cat-id="${cat.id}" title="Mover para cima" style="width: 30px; height: 30px; padding: 0;" ${index <= 2 ? 'disabled' : ''}>
+              <i class="fa-solid fa-arrow-up" style="font-size: 0.75rem;"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-icon move-cat-down-btn" data-cat-id="${cat.id}" title="Mover para baixo" style="width: 30px; height: 30px; padding: 0;" ${index >= CATEGORIES.length - 1 ? 'disabled' : ''}>
+              <i class="fa-solid fa-arrow-down" style="font-size: 0.75rem;"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline edit-cat-btn" data-cat-id="${cat.id}" title="Editar Nome e Ícone" style="padding: 3px 8px; font-size: 0.75rem;">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          ` : `
+            <span style="font-size: 0.7rem; color: #475569; font-style: italic; padding: 0 4px;">Fixo</span>
+          `}
+          ${!isSystem && !isFallback ? `
+            <button type="button" class="btn btn-sm btn-danger delete-cat-btn" data-cat-id="${cat.id}" title="Excluir Categoria" style="padding: 3px 8px; font-size: 0.75rem;">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          ` : ''}
+        </div>
+      `;
+
+      container.appendChild(card);
+    });
+  }
+
+  // ==========================================================================
   // GESTOR AUTHENTICATION & SECRET ACCESS TRIGGERS
   // ==========================================================================
   const MASTER_PASSWORDS = ['dec2026', 'admin123', 'gestor2026'];
@@ -2982,6 +3310,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function scheduleUIRender() {
     if (renderRafId) cancelAnimationFrame(renderRafId);
     renderRafId = requestAnimationFrame(() => {
+      populateCategorySelects();
+      const catModal = document.getElementById('categoryManagerModal');
+      if (catModal && catModal.classList.contains('active')) {
+        renderCategoryManagerList();
+      }
       syncPriceModeUI();
       renderCategoryPills();
       renderProducts();
@@ -2996,6 +3329,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // 12. Initial Kickoff
   setupLaminaViewerEvents();
   setupAddLaminaModalEvents();
+  setupCategoryManagerEvents();
+  populateCategorySelects();
   checkMode();
   syncPriceModeUI();
   renderCategoryPills();

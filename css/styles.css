@@ -2172,3 +2172,29 @@ body.client-mode .product-card:active {
     transform: scale(2.2);
   }
 }
+
+/* ==========================================================================
+   Category Manager Modal & Rows
+   ========================================================================== */
+.category-item-row {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.category-item-row:hover {
+  border-color: #3b82f6;
+}
+.cat-icon-choice {
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.cat-icon-choice:hover {
+  background: #334155 !important;
+  color: #fbbf24 !important;
+  transform: scale(1.1);
+}
+@media (max-width: 600px) {
+  .category-add-card {
+    padding: 10px !important;
+  }
+  .category-item-row {
+    padding: 8px 10px !important;
+  }
+}

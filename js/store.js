@@ -7,8 +7,27 @@ const STORAGE_KEYS = {
   PRODUCTS: 'catalog_products_v1',
   HIDE_PRICES: 'catalog_hide_prices',
   FIREBASE_CONFIG: 'catalog_firebase_config',
-  LAMINAS: 'catalog_laminas_v1'
+  LAMINAS: 'catalog_laminas_v1',
+  CATEGORIES: 'catalog_categories_v1'
 };
+
+const DEFAULT_CATEGORIES = [
+  { id: 'all', label: 'Todos', icon: 'fa-layer-group', system: true },
+  { id: 'ofertas', label: 'Ofertas', icon: 'fa-fire', isPromo: true, system: true },
+  { id: 'whiskies', label: 'Whiskies', icon: 'fa-bottle-droplet' },
+  { id: 'vodkas', label: 'Vodkas', icon: 'fa-glass-water' },
+  { id: 'cervejas', label: 'Cervejas', icon: 'fa-beer-mug-empty' },
+  { id: 'gins', label: 'Gins', icon: 'fa-glass-whiskey' },
+  { id: 'vinhos', label: 'Vinhos', icon: 'fa-wine-glass' },
+  { id: 'espumantes', label: 'Espumantes', icon: 'fa-champagne-glasses' },
+  { id: 'energeticos', label: 'Energéticos', icon: 'fa-bolt' },
+  { id: 'refrigerantes', label: 'Refrigerantes', icon: 'fa-bottle-pop' },
+  { id: 'aguadecoco', label: 'Água de Coco', icon: 'fa-bottle-water' },
+  { id: 'sucos', label: 'Sucos', icon: 'fa-glass-water-droplet' },
+  { id: 'licores', label: 'Licores', icon: 'fa-wine-glass-empty' },
+  { id: 'xaropes', label: 'Xaropes', icon: 'fa-prescription-bottle' },
+  { id: 'outros', label: 'Outros', icon: 'fa-boxes-stacked', isDefaultFallback: true }
+];
 
 const DEFAULT_LAMINAS = [
   {
@@ -100,6 +119,7 @@ class ProductStore {
   constructor() {
     this.products = [];
     this.laminas = [];
+    this.categories = [];
     this.hidePrices = false;
     this.listeners = new Set();
     this.init();
@@ -112,6 +132,9 @@ class ProductStore {
 
     // Load Laminas de Ofertas
     this.loadLaminas();
+
+    // Load Categories
+    this.loadCategories();
 
     // Load Products
     const urlParams = new URLSearchParams(window.location.search);
@@ -593,6 +616,176 @@ class ProductStore {
     this.laminas[targetIndex] = temp;
     this.ensureLaminaPositions();
     this.saveLaminas();
+  }
+
+  // ==========================================
+  // Categories Management Methods
+  // ==========================================
+  loadCategories() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.categories = parsed;
+        } else {
+          this.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        }
+      } else {
+        this.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+      }
+    } catch (e) {
+      console.warn("Erro ao carregar categorias salvas:", e);
+      this.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    }
+
+    // Ensure system categories 'all' and 'ofertas' exist at the front
+    const hasAll = this.categories.some(c => c.id === 'all');
+    if (!hasAll) {
+      this.categories.unshift({ id: 'all', label: 'Todos', icon: 'fa-layer-group', system: true });
+    }
+    const hasOfertas = this.categories.some(c => c.id === 'ofertas');
+    if (!hasOfertas) {
+      const allIdx = this.categories.findIndex(c => c.id === 'all');
+      this.categories.splice(allIdx + 1, 0, { id: 'ofertas', label: 'Ofertas', icon: 'fa-fire', isPromo: true, system: true });
+    }
+    // Ensure 'outros' exists
+    const hasOutros = this.categories.some(c => c.id === 'outros');
+    if (!hasOutros) {
+      this.categories.push({ id: 'outros', label: 'Outros', icon: 'fa-boxes-stacked', isDefaultFallback: true });
+    }
+
+    this.saveCategories(false);
+  }
+
+  getCategories() {
+    if (!Array.isArray(this.categories) || this.categories.length === 0) {
+      return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    }
+    return JSON.parse(JSON.stringify(this.categories));
+  }
+
+  saveCategories(notify = true, source = 'categories_updated') {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(this.categories));
+    } catch (e) {
+      console.warn("Erro ao salvar categorias:", e);
+    }
+    if (notify) {
+      this.notify(source);
+    }
+  }
+
+  slugifyCategory(text) {
+    if (!text) return 'cat_' + Date.now();
+    return String(text)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || ('cat_' + Date.now());
+  }
+
+  addCategory({ label, icon, id = null }) {
+    if (!Array.isArray(this.categories)) this.categories = [];
+    const trimmedLabel = String(label || '').trim();
+    if (!trimmedLabel) throw new Error("O nome da categoria não pode ser vazio.");
+
+    let catId = id ? this.slugifyCategory(id) : this.slugifyCategory(trimmedLabel);
+    
+    // Ensure uniqueness
+    let uniqueId = catId;
+    let counter = 2;
+    while (this.categories.some(c => c.id === uniqueId)) {
+      uniqueId = `${catId}_${counter}`;
+      counter++;
+    }
+
+    const newCategory = {
+      id: uniqueId,
+      label: trimmedLabel,
+      icon: (icon || 'fa-tag').trim()
+    };
+
+    // Insert before 'outros' if 'outros' exists at the end
+    const outrosIdx = this.categories.findIndex(c => c.id === 'outros');
+    if (outrosIdx !== -1) {
+      this.categories.splice(outrosIdx, 0, newCategory);
+    } else {
+      this.categories.push(newCategory);
+    }
+
+    this.saveCategories(true, 'category_added');
+    return newCategory;
+  }
+
+  updateCategory(id, { label, icon }) {
+    if (!Array.isArray(this.categories)) return null;
+    if (id === 'all' || id === 'ofertas') {
+      throw new Error("Categorias de sistema não podem ser alteradas.");
+    }
+    const cat = this.categories.find(c => c.id === id);
+    if (!cat) throw new Error("Categoria não encontrada.");
+
+    if (label && String(label).trim()) {
+      cat.label = String(label).trim();
+    }
+    if (icon && String(icon).trim()) {
+      cat.icon = String(icon).trim();
+    }
+
+    this.saveCategories(true, 'category_updated');
+    return cat;
+  }
+
+  deleteCategory(id, fallbackCategory = 'outros') {
+    if (id === 'all' || id === 'ofertas' || id === 'outros') {
+      throw new Error("Categorias do sistema e categoria padrão não podem ser excluídas.");
+    }
+    const initialLen = this.categories.length;
+    this.categories = this.categories.filter(c => c.id !== id);
+    if (this.categories.length === initialLen) return { success: false, migratedProductsCount: 0 };
+
+    // Migrate any products that had this category to fallbackCategory
+    let migratedProductsCount = 0;
+    if (Array.isArray(this.products)) {
+      this.products.forEach(p => {
+        if (p.category === id) {
+          p.category = fallbackCategory;
+          migratedProductsCount++;
+        }
+      });
+      if (migratedProductsCount > 0) {
+        this.saveToStorage(true);
+      }
+    }
+
+    this.saveCategories(true, 'category_deleted');
+    return { success: true, migratedProductsCount };
+  }
+
+  moveCategory(id, direction) {
+    if (!Array.isArray(this.categories)) return;
+    if (id === 'all' || id === 'ofertas') return; // Cannot move system tabs
+
+    const index = this.categories.findIndex(c => c.id === id);
+    if (index === -1) return;
+
+    // Minimum target index is 2 (so we never displace 'all' and 'ofertas')
+    const targetIndex = index + direction;
+    if (targetIndex < 2 || targetIndex >= this.categories.length) return;
+
+    const temp = this.categories[index];
+    this.categories[index] = this.categories[targetIndex];
+    this.categories[targetIndex] = temp;
+
+    this.saveCategories(true, 'categories_reordered');
+  }
+
+  setCategories(categories, source = 'cloud') {
+    if (!Array.isArray(categories) || categories.length === 0) return;
+    this.categories = categories;
+    this.saveCategories(true, source);
   }
 }
 
