@@ -1743,31 +1743,17 @@ body {
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .lamina-card:hover {
-  transform: translateY(-4px);
   border-color: var(--accent-gold);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 15px rgba(245, 158, 11, 0.15);
-}
-
-.lamina-card:active {
-  transform: scale(0.98);
-}
-
-@media (hover: none) {
-  .lamina-card:hover {
-    transform: none !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
-  }
 }
 
 .lamina-img-container {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
   background: #0d0f15;
   overflow: hidden;
   display: flex;
@@ -1777,33 +1763,9 @@ body {
 
 .lamina-img {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
+  height: auto;
   display: block;
   background: #0d0f15;
-}
-
-.lamina-zoom-pill {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 20px;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  pointer-events: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.lamina-zoom-pill i {
-  color: var(--accent-gold);
 }
 
 .lamina-zoom-badge {
@@ -2017,27 +1979,26 @@ body {
     padding-bottom: 2px;
   }
   .laminas-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
   .lamina-card {
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
   }
   .lamina-img-container {
-    aspect-ratio: 3 / 4;
+    width: 100%;
     min-height: auto;
   }
   .lamina-card-body {
-    padding: 8px 10px !important;
-    gap: 4px !important;
+    padding: 10px 14px !important;
   }
   .lamina-validity-text {
-    font-size: 0.7rem !important;
+    font-size: 0.85rem !important;
   }
   .lamina-gestor-controls {
     width: 100%;
     justify-content: space-between;
-    margin-top: 4px;
+    margin-top: 6px;
   }
   .lamina-viewer-card {
     height: 98vh;

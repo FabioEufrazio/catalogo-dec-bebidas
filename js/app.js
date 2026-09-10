@@ -374,16 +374,13 @@ document.addEventListener('DOMContentLoaded', () => {
       card.innerHTML = `
         <div class="lamina-img-container">
           <img src="${lamina.imageUrl}" alt="${lamina.validity || 'Encarte Promocional'}" class="lamina-img" decoding="sync">
-          <span class="lamina-zoom-pill">
-            <i class="fa-solid fa-magnifying-glass-plus"></i> Ampliar
-          </span>
         </div>
-        <div class="lamina-card-body" style="padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 6px;">
+        <div class="lamina-card-body" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
           ${lamina.validity ? `
-            <span class="lamina-validity-text" style="font-size: 0.8rem; color: #f59e0b; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+            <span class="lamina-validity-text" style="font-size: 0.85rem; color: #f59e0b; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
               <i class="fa-regular fa-clock"></i> ${lamina.validity}
             </span>
-          ` : '<span class="lamina-validity-text" style="font-size: 0.75rem; color: var(--text-muted);"><i class="fa-solid fa-tags" style="color: var(--accent-gold);"></i> Oferta Especial</span>'}
+          ` : '<span></span>'}
           ${isGestor ? `
             <div class="lamina-gestor-controls" style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
               <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border-color);">
@@ -403,13 +400,6 @@ document.addEventListener('DOMContentLoaded', () => {
           ` : ''}
         </div>
       `;
-
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.lamina-gestor-controls') || e.target.closest('.lamina-btn-delete') || e.target.closest('input')) {
-          return;
-        }
-        openLaminaViewer(lamina);
-      });
 
       if (isGestor) {
         const posInput = card.querySelector('.lamina-pos-input');
