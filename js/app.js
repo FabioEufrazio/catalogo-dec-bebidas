@@ -650,9 +650,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     imgEl.addEventListener('touchend', endTouch);
     imgEl.addEventListener('touchcancel', endTouch);
-  }-glass-plus"></i>';
-      });
-    }
   }
 
   let pendingLaminas = [];
