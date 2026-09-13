@@ -485,13 +485,29 @@ document.addEventListener('DOMContentLoaded', () => {
     laminasGrid.replaceChildren(fragment);
   }
 
+  let currentPinchScale = 1;
+  let currentPinchPanX = 0;
+  let currentPinchPanY = 0;
+
+  function resetLaminaViewerTransform() {
+    const imgEl = document.getElementById('viewerLaminaImg');
+    if (!imgEl) return;
+    currentPinchScale = 1;
+    currentPinchPanX = 0;
+    currentPinchPanY = 0;
+    imgEl.style.transform = `scale(1) translate(0px, 0px)`;
+    imgEl.classList.add('with-transition');
+    viewerIsZoomed = false;
+    const zoomInBtn = document.getElementById('viewerZoomInBtn');
+    if (zoomInBtn) zoomInBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+  }
+
   function openLaminaViewer(lamina) {
     const modal = document.getElementById('laminaViewerModal');
     const titleEl = document.getElementById('viewerLaminaTitle');
     const validityEl = document.getElementById('viewerLaminaValidity');
     const imgEl = document.getElementById('viewerLaminaImg');
     const whatsAppBtn = document.getElementById('viewerOrderWhatsAppBtn');
-    const zoomInBtn = document.getElementById('viewerZoomInBtn');
 
     if (!modal || !imgEl) return;
 
@@ -501,12 +517,12 @@ document.addEventListener('DOMContentLoaded', () => {
       validityEl.style.display = lamina.validity ? 'inline-block' : 'none';
     }
     imgEl.src = lamina.imageUrl;
-    imgEl.classList.remove('is-zoomed');
-    viewerIsZoomed = false;
-    if (zoomInBtn) zoomInBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+    
+    resetLaminaViewerTransform();
 
     if (whatsAppBtn) {
-      const msg = encodeURIComponent(`Olá! Gostaria de fazer um pedido com base nas ofertas do encarte "${lamina.title}".`);
+      const msg = encodeURIComponent(`Olá! Gostaria de fazer um pedido com base nas ofertas do encarte 
+"${lamina.title}".`);
       whatsAppBtn.href = `https://wa.me/5581999999999?text=${msg}`;
     }
 
@@ -521,7 +537,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleZoom = () => {
       if (!imgEl) return;
       viewerIsZoomed = !viewerIsZoomed;
-      imgEl.classList.toggle('is-zoomed', viewerIsZoomed);
+      imgEl.classList.add('with-transition');
+      
+      if (viewerIsZoomed) {
+        currentPinchScale = window.innerWidth <= 640 ? 2.2 : 1.75;
+      } else {
+        currentPinchScale = 1;
+        currentPinchPanX = 0;
+        currentPinchPanY = 0;
+      }
+      
+      imgEl.style.transform = `scale(${currentPinchScale}) translate(${currentPinchPanX}px, ${currentPinchPanY}px)`;
+      
       if (zoomInBtn) {
         zoomInBtn.innerHTML = viewerIsZoomed 
           ? '<i class="fa-solid fa-magnifying-glass-minus"></i>' 
@@ -529,14 +556,101 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    if (imgEl) imgEl.addEventListener('click', toggleZoom);
     if (zoomInBtn) zoomInBtn.addEventListener('click', toggleZoom);
     if (zoomResetBtn) {
-      zoomResetBtn.addEventListener('click', () => {
-        if (!imgEl) return;
-        viewerIsZoomed = false;
-        imgEl.classList.remove('is-zoomed');
-        if (zoomInBtn) zoomInBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+      zoomResetBtn.addEventListener('click', resetLaminaViewerTransform);
+    }
+    
+    // Pinch to Zoom & Panning Implementation
+    if (!imgEl) return;
+    
+    let isDragging = false;
+    let startPanX = 0, startPanY = 0;
+    let initialDistance = 0;
+    let initialScale = 1;
+    let lastTouchTime = 0;
+
+    const getDistance = (touches) => {
+      if (touches.length < 2) return 0;
+      return Math.hypot(
+        touches[0].clientX - touches[1].clientX,
+        touches[0].clientY - touches[1].clientY
+      );
+    };
+
+    const applyTransform = () => {
+      imgEl.style.transform = `scale(${currentPinchScale}) translate(${currentPinchPanX}px, ${currentPinchPanY}px)`;
+    };
+
+    imgEl.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        // Double tap to zoom
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTouchTime;
+        if (tapLength < 300 && tapLength > 0) {
+          toggleZoom();
+          e.preventDefault();
+          return;
+        }
+        lastTouchTime = currentTime;
+        
+        // Setup for panning
+        if (currentPinchScale > 1) {
+          isDragging = true;
+          startPanX = e.touches[0].clientX - currentPinchPanX * currentPinchScale;
+          startPanY = e.touches[0].clientY - currentPinchPanY * currentPinchScale;
+          imgEl.classList.remove('with-transition');
+        }
+      } else if (e.touches.length === 2) {
+        // Setup for pinch
+        isDragging = false;
+        imgEl.classList.remove('with-transition');
+        initialDistance = getDistance(e.touches);
+        initialScale = currentPinchScale;
+      }
+    }, { passive: false });
+
+    imgEl.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && isDragging && currentPinchScale > 1) {
+        e.preventDefault(); // Prevent native scroll
+        currentPinchPanX = (e.touches[0].clientX - startPanX) / currentPinchScale;
+        currentPinchPanY = (e.touches[0].clientY - startPanY) / currentPinchScale;
+        applyTransform();
+      } else if (e.touches.length === 2) {
+        e.preventDefault(); // Prevent native zoom/scroll
+        const currentDistance = getDistance(e.touches);
+        if (initialDistance > 0) {
+          let scaleDelta = currentDistance / initialDistance;
+          currentPinchScale = Math.min(Math.max(1, initialScale * scaleDelta), 4); // Limit zoom between 1x and 4x
+          if (currentPinchScale === 1) {
+            currentPinchPanX = 0;
+            currentPinchPanY = 0;
+          }
+          applyTransform();
+          viewerIsZoomed = currentPinchScale > 1;
+          if (zoomInBtn) {
+            zoomInBtn.innerHTML = viewerIsZoomed 
+              ? '<i class="fa-solid fa-magnifying-glass-minus"></i>' 
+              : '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+          }
+        }
+      }
+    }, { passive: false });
+
+    const endTouch = () => {
+      isDragging = false;
+      initialDistance = 0;
+      imgEl.classList.add('with-transition');
+      
+      // Reset if zoomed out too much
+      if (currentPinchScale < 1.05) {
+        resetLaminaViewerTransform();
+      }
+    };
+
+    imgEl.addEventListener('touchend', endTouch);
+    imgEl.addEventListener('touchcancel', endTouch);
+  }-glass-plus"></i>';
       });
     }
   }
@@ -644,8 +758,8 @@ document.addEventListener('DOMContentLoaded', () => {
           try {
             let compressed = e.target.result;
             if (typeof ImageUtils !== 'undefined' && ImageUtils.compressImage) {
-              // Comprime mantendo alta definição para encartes (até 1080x1440, qualidade 78%)
-              compressed = await ImageUtils.compressImage(e.target.result, 1080, 1440, 0.78);
+              // Comprime mantendo altíssima definição para o Motor Renderizador (até 2048x2048, qualidade WEBP 85%)
+              compressed = await ImageUtils.compressImage(e.target.result, 2048, 2048, 0.85);
             }
             pendingLaminas.push({
               name: file.name,

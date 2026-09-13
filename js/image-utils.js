@@ -41,11 +41,20 @@ class ImageUtils {
           canvas.height = height || maxHeight;
 
           const ctx = canvas.getContext('2d');
+          
+          // Motor Renderizador de Alta Qualidade
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          // Exportar em WEBP para reter nitidez, fallback se não suportar
+          let compressedBase64 = canvas.toDataURL('image/webp', quality);
+          if (!compressedBase64 || compressedBase64 === 'data:,') {
+            compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          }
           resolve(compressedBase64);
         } catch (e) {
           resolve(src);

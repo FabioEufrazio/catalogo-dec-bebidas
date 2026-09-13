@@ -2116,12 +2116,16 @@ body.client-mode .product-card:active {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
   border-radius: var(--radius-sm);
   cursor: zoom-in;
+  touch-action: none; /* Prevents native scroll during pinch-to-zoom */
+}
+
+.viewer-lamina-img.with-transition {
   transition: transform 0.25s ease;
 }
 
 .viewer-lamina-img.is-zoomed {
   cursor: zoom-out;
-  transform: scale(1.75);
+  /* Transform is now dynamic in JS, but we keep a default fallback scale */
 }
 
 @media (max-width: 640px) {
@@ -2167,9 +2171,6 @@ body.client-mode .product-card:active {
   }
   .lamina-viewer-header {
     padding: 10px 12px;
-  }
-  .viewer-lamina-img.is-zoomed {
-    transform: scale(2.2);
   }
 }
 
