@@ -1306,38 +1306,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Product Quick View Modal Handlers (Visualização com Foto Maior, Código e Descrição)
-  const quickViewState = { scale: 1, panX: 0, panY: 0, onZoomChange: null };
-
-  function resetQuickViewTransform() {
-    const imgEl = document.getElementById('quickViewProductImg');
-    if (!imgEl) return;
-    quickViewState.scale = 1;
-    quickViewState.panX = 0;
-    quickViewState.panY = 0;
-    imgEl.style.transform = `scale(1) translate(0px, 0px)`;
-    imgEl.classList.add('with-transition');
-  }
-
-  function toggleQuickViewZoom() {
-    const imgEl = document.getElementById('quickViewProductImg');
-    if (!imgEl) return;
-    
-    if (quickViewState.scale > 1) {
-      resetQuickViewTransform();
-    } else {
-      quickViewState.scale = window.innerWidth <= 640 ? 2.2 : 1.75;
-      quickViewState.panX = 0;
-      quickViewState.panY = 0;
-      imgEl.classList.add('with-transition');
-      imgEl.style.transform = `scale(${quickViewState.scale}) translate(0px, 0px)`;
-    }
-  }
-
   function openProductQuickView(product) {
     if (!product) return;
     const modal = document.getElementById('productQuickViewModal');
     if (!modal) return;
-
+  
     const imgEl = document.getElementById('quickViewProductImg');
     const noImgEl = document.getElementById('quickViewProductNoImg');
     const titleEl = document.getElementById('quickViewProductTitle');
@@ -1347,22 +1320,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const boxRowEl = document.getElementById('quickViewBoxRow');
     const boxLabelEl = document.getElementById('quickViewBoxLabel');
     const boxPriceEl = document.getElementById('quickViewBoxPrice');
-
+  
     if (titleEl) titleEl.textContent = product.description || 'Produto';
     if (codeEl) codeEl.textContent = product.code ? `CÓD: ${product.code}` : 'SEM CÓDIGO';
-
+  
     const catObj = CATEGORIES.find(c => c.id === product.category);
     if (catEl) catEl.textContent = catObj ? catObj.label : 'Outros';
-
+  
     if (imgEl && noImgEl) {
       if (product.imageBase64) {
         imgEl.src = product.imageBase64;
         imgEl.alt = product.description || 'Foto do Produto';
         imgEl.style.display = 'block';
         noImgEl.style.display = 'none';
-
-        resetQuickViewTransform();
-        setupPinchToZoom(imgEl, toggleQuickViewZoom, resetQuickViewTransform, quickViewState);
+        
+        // Reset transform to default since we removed custom zoom
+        imgEl.style.transform = `scale(1) translate(0px, 0px)`;
       } else {
         imgEl.src = '';
         imgEl.style.display = 'none';
