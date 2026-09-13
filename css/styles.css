@@ -1278,12 +1278,24 @@ body {
 
 .product-quickview-header {
   position: absolute;
-  top: -45px;
-  right: 0;
+  top: 12px;
+  right: 12px;
   background: transparent;
   border: none;
   padding: 0;
   z-index: 10;
+}
+
+.product-quickview-header .modal-close-btn {
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  border-radius: 50%;
+  justify-content: center;
+}
+
+.product-quickview-header .modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
 }
 
 .product-quickview-meta {
