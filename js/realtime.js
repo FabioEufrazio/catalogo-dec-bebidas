@@ -172,6 +172,11 @@ class RealtimeEngine {
           const chunkCount = parseInt(data.chunkCount) || 1;
           let remoteLaminas = [];
 
+          if (data.totalLaminas === 0) {
+            this.applyRemoteLaminas([]);
+            return;
+          }
+
           if (chunkCount > 1) {
             try {
               const chunkDocs = await Promise.all(
@@ -193,7 +198,7 @@ class RealtimeEngine {
               console.warn("Erro ao buscar laminas chunks via SDK inicial, buscando via REST...", e);
               remoteLaminas = await this.readLaminasViaRest();
             }
-          } else if (Array.isArray(data.laminas) && data.laminas.length > 0) {
+          } else if (Array.isArray(data.laminas)) {
             remoteLaminas = data.laminas;
           } else {
             try {
@@ -209,14 +214,14 @@ class RealtimeEngine {
             } catch (e2) {}
           }
 
-          if (remoteLaminas.length > 0) {
+          if (remoteLaminas) {
             this.applyRemoteLaminas(remoteLaminas);
             return;
           }
         }
       }
       const remoteLaminas = await this.readLaminasViaRest();
-      if (remoteLaminas.length > 0) {
+      if (remoteLaminas) {
         this.applyRemoteLaminas(remoteLaminas);
       }
     } catch (e) {
@@ -326,6 +331,11 @@ class RealtimeEngine {
       const data = doc.data();
       if (!data) return;
 
+      if (data.totalLaminas === 0) {
+        this.applyRemoteLaminas([]);
+        return;
+      }
+
       const chunkCount = parseInt(data.chunkCount) || 1;
       let remoteLaminas = [];
 
@@ -350,7 +360,7 @@ class RealtimeEngine {
           console.warn("Erro ao ler laminas chunks via SDK, tentando REST...", e);
           remoteLaminas = await this.readLaminasViaRest();
         }
-      } else if (Array.isArray(data.laminas) && data.laminas.length > 0) {
+      } else if (Array.isArray(data.laminas)) {
         remoteLaminas = data.laminas;
       } else {
         try {
@@ -366,7 +376,8 @@ class RealtimeEngine {
         } catch (e2) {}
       }
 
-      if (remoteLaminas.length > 0) {
+      // Permite sincronização de array vazio caso o gestor apague todos os encartes
+      if (remoteLaminas) {
         this.applyRemoteLaminas(remoteLaminas);
       }
     }, err => console.warn("Firestore laminas listen error:", err));
@@ -817,6 +828,12 @@ class RealtimeEngine {
         laminas: [],
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      // FORCE clear ghost chunk
+      batch.set(this.db.collection('catalogs').doc('laminas_chunk_0'), {
+        chunkIndex: 0,
+        laminas: [],
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     } else {
       chunks.forEach((chunk, i) => {
         const chunkRef = this.db.collection('catalogs').doc(`laminas_chunk_${i}`);
@@ -987,6 +1004,10 @@ class RealtimeEngine {
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
+        
+        const totalLaminas = parseInt(json.fields?.totalLaminas?.integerValue || 0);
+        if (totalLaminas === 0) return [];
+
         const chunkCount = parseInt(json.fields?.chunkCount?.integerValue || 1);
         if (chunkCount > 1) {
           return await this.readLaminasChunksViaRest(projectId, chunkCount);
