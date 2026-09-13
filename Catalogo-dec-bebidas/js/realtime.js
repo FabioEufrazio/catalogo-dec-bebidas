@@ -350,7 +350,7 @@ class RealtimeEngine {
           console.warn("Erro ao ler laminas chunks via SDK, tentando REST...", e);
           remoteLaminas = await this.readLaminasViaRest();
         }
-      } else if (Array.isArray(data.laminas) && data.laminas.length > 0) {
+      } else if (Array.isArray(data.laminas)) {
         remoteLaminas = data.laminas;
       } else {
         try {
@@ -366,7 +366,8 @@ class RealtimeEngine {
         } catch (e2) {}
       }
 
-      if (remoteLaminas.length > 0) {
+      // Permite sincronização de array vazio caso o gestor apague todos os encartes
+      if (remoteLaminas) {
         this.applyRemoteLaminas(remoteLaminas);
       }
     }, err => console.warn("Firestore laminas listen error:", err));
