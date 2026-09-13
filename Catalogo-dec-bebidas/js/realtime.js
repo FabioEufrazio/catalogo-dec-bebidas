@@ -193,7 +193,7 @@ class RealtimeEngine {
               console.warn("Erro ao buscar laminas chunks via SDK inicial, buscando via REST...", e);
               remoteLaminas = await this.readLaminasViaRest();
             }
-          } else if (Array.isArray(data.laminas) && data.laminas.length > 0) {
+          } else if (Array.isArray(data.laminas)) {
             remoteLaminas = data.laminas;
           } else {
             try {
@@ -209,14 +209,14 @@ class RealtimeEngine {
             } catch (e2) {}
           }
 
-          if (remoteLaminas.length > 0) {
+          if (remoteLaminas) {
             this.applyRemoteLaminas(remoteLaminas);
             return;
           }
         }
       }
       const remoteLaminas = await this.readLaminasViaRest();
-      if (remoteLaminas.length > 0) {
+      if (remoteLaminas) {
         this.applyRemoteLaminas(remoteLaminas);
       }
     } catch (e) {
