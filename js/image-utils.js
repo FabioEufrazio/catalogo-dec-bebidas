@@ -4,8 +4,8 @@
    ========================================================================== */
 
 class ImageUtils {
-  // Compress image file or data URL to lightweight 360x360 JPEG 65% quality
-  static compressImage(src, maxWidth = 360, maxHeight = 360, quality = 0.65) {
+  // Compress image file or data URL to lightweight WEBP/JPEG
+  static compressImage(src, maxWidth = 600, maxHeight = 600, quality = 0.75) {
     return new Promise((resolve) => {
       if (!src) return resolve('');
 
