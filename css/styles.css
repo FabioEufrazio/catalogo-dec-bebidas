@@ -1259,67 +1259,56 @@ body {
 .product-quickview-overlay {
   z-index: 250;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.9);
 }
 
 .product-quickview-card {
-  max-width: 480px;
+  max-width: 500px;
   width: 100%;
-  background: #141721;
-  border: 1px solid var(--border-color);
+  background: transparent;
+  border: none;
   border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  overflow: visible;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .product-quickview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 18px;
-  background: #191c28;
-  border-bottom: 1px solid var(--border-color);
-  gap: 12px;
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  z-index: 10;
 }
 
 .product-quickview-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.product-quickview-meta .sku-code-tag {
-  position: static;
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--accent-gold);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 700;
+  display: none; /* Esconder TAGs e código */
 }
 
 .product-quickview-body {
-  padding: 18px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0;
 }
 
 .product-quickview-img-wrapper {
   width: 100%;
-  height: 300px;
-  background: #0d0f17;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  height: 60vh;
+  min-height: 400px;
+  background: #ffffff;
+  border: none;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   position: relative;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .product-quickview-img {
@@ -1327,7 +1316,12 @@ body {
   max-height: 100%;
   object-fit: contain;
   display: block;
-  padding: 10px;
+  padding: 16px;
+  touch-action: none;
+}
+
+.product-quickview-img.with-transition {
+  transition: transform 0.25s ease;
 }
 
 .product-quickview-no-img {
@@ -1336,7 +1330,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: var(--text-dim);
+  color: #888;
   font-size: 0.9rem;
 }
 
@@ -1346,16 +1340,7 @@ body {
 }
 
 .product-quickview-info {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.product-quickview-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-main);
-  line-height: 1.4;
+  display: none;
 }
 
 .product-quickview-price-box {
