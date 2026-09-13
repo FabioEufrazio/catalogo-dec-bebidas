@@ -485,85 +485,13 @@ document.addEventListener('DOMContentLoaded', () => {
     laminasGrid.replaceChildren(fragment);
   }
 
-  let currentPinchScale = 1;
-  let currentPinchPanX = 0;
-  let currentPinchPanY = 0;
-
-  function resetLaminaViewerTransform() {
-    const imgEl = document.getElementById('viewerLaminaImg');
-    if (!imgEl) return;
-    currentPinchScale = 1;
-    currentPinchPanX = 0;
-    currentPinchPanY = 0;
-    imgEl.style.transform = `scale(1) translate(0px, 0px)`;
-    imgEl.classList.add('with-transition');
-    viewerIsZoomed = false;
-    const zoomInBtn = document.getElementById('viewerZoomInBtn');
-    if (zoomInBtn) zoomInBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i>';
-  }
-
-  function openLaminaViewer(lamina) {
-    const modal = document.getElementById('laminaViewerModal');
-    const titleEl = document.getElementById('viewerLaminaTitle');
-    const validityEl = document.getElementById('viewerLaminaValidity');
-    const imgEl = document.getElementById('viewerLaminaImg');
-    const whatsAppBtn = document.getElementById('viewerOrderWhatsAppBtn');
-
-    if (!modal || !imgEl) return;
-
-    if (titleEl) titleEl.textContent = lamina.title || 'Encarte de Ofertas';
-    if (validityEl) {
-      validityEl.textContent = lamina.validity ? `Validade: ${lamina.validity}` : '';
-      validityEl.style.display = lamina.validity ? 'inline-block' : 'none';
-    }
-    imgEl.src = lamina.imageUrl;
-    
-    resetLaminaViewerTransform();
-
-    if (whatsAppBtn) {
-      const msg = encodeURIComponent(`Olá! Gostaria de fazer um pedido com base nas ofertas do encarte 
-"${lamina.title}".`);
-      whatsAppBtn.href = `https://wa.me/5581999999999?text=${msg}`;
-    }
-
-    modal.classList.add('is-open');
-  }
-
-  function setupLaminaViewerEvents() {
-    const imgEl = document.getElementById('viewerLaminaImg');
-    const zoomInBtn = document.getElementById('viewerZoomInBtn');
-    const zoomResetBtn = document.getElementById('viewerZoomResetBtn');
-
-    const toggleZoom = () => {
-      if (!imgEl) return;
-      viewerIsZoomed = !viewerIsZoomed;
-      imgEl.classList.add('with-transition');
-      
-      if (viewerIsZoomed) {
-        currentPinchScale = window.innerWidth <= 640 ? 2.2 : 1.75;
-      } else {
-        currentPinchScale = 1;
-        currentPinchPanX = 0;
-        currentPinchPanY = 0;
-      }
-      
-      imgEl.style.transform = `scale(${currentPinchScale}) translate(${currentPinchPanX}px, ${currentPinchPanY}px)`;
-      
-      if (zoomInBtn) {
-        zoomInBtn.innerHTML = viewerIsZoomed 
-          ? '<i class="fa-solid fa-magnifying-glass-minus"></i>' 
-          : '<i class="fa-solid fa-magnifying-glass-plus"></i>';
-      }
-    };
-
-    if (zoomInBtn) zoomInBtn.addEventListener('click', toggleZoom);
-    if (zoomResetBtn) {
-      zoomResetBtn.addEventListener('click', resetLaminaViewerTransform);
-    }
-    
-    // Pinch to Zoom & Panning Implementation
+  function setupPinchToZoom(imgEl, toggleZoomCb, resetTransformCb, state) {
     if (!imgEl) return;
     
+    // Cleanup previous listeners if any (to avoid duplicates on dynamic elements)
+    if (imgEl._pinchSetup) return;
+    imgEl._pinchSetup = true;
+
     let isDragging = false;
     let startPanX = 0, startPanY = 0;
     let initialDistance = 0;
@@ -579,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const applyTransform = () => {
-      imgEl.style.transform = `scale(${currentPinchScale}) translate(${currentPinchPanX}px, ${currentPinchPanY}px)`;
+      imgEl.style.transform = `scale(${state.scale}) translate(${state.panX}px, ${state.panY}px)`;
     };
 
     imgEl.addEventListener('touchstart', (e) => {
@@ -588,17 +516,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentTime = new Date().getTime();
         const tapLength = currentTime - lastTouchTime;
         if (tapLength < 300 && tapLength > 0) {
-          toggleZoom();
+          if (toggleZoomCb) toggleZoomCb();
           e.preventDefault();
           return;
         }
         lastTouchTime = currentTime;
         
         // Setup for panning
-        if (currentPinchScale > 1) {
+        if (state.scale > 1) {
           isDragging = true;
-          startPanX = e.touches[0].clientX - currentPinchPanX * currentPinchScale;
-          startPanY = e.touches[0].clientY - currentPinchPanY * currentPinchScale;
+          startPanX = e.touches[0].clientX - state.panX * state.scale;
+          startPanY = e.touches[0].clientY - state.panY * state.scale;
           imgEl.classList.remove('with-transition');
         }
       } else if (e.touches.length === 2) {
@@ -606,33 +534,28 @@ document.addEventListener('DOMContentLoaded', () => {
         isDragging = false;
         imgEl.classList.remove('with-transition');
         initialDistance = getDistance(e.touches);
-        initialScale = currentPinchScale;
+        initialScale = state.scale;
       }
     }, { passive: false });
 
     imgEl.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 1 && isDragging && currentPinchScale > 1) {
+      if (e.touches.length === 1 && isDragging && state.scale > 1) {
         e.preventDefault(); // Prevent native scroll
-        currentPinchPanX = (e.touches[0].clientX - startPanX) / currentPinchScale;
-        currentPinchPanY = (e.touches[0].clientY - startPanY) / currentPinchScale;
+        state.panX = (e.touches[0].clientX - startPanX) / state.scale;
+        state.panY = (e.touches[0].clientY - startPanY) / state.scale;
         applyTransform();
       } else if (e.touches.length === 2) {
         e.preventDefault(); // Prevent native zoom/scroll
         const currentDistance = getDistance(e.touches);
         if (initialDistance > 0) {
           let scaleDelta = currentDistance / initialDistance;
-          currentPinchScale = Math.min(Math.max(1, initialScale * scaleDelta), 4); // Limit zoom between 1x and 4x
-          if (currentPinchScale === 1) {
-            currentPinchPanX = 0;
-            currentPinchPanY = 0;
+          state.scale = Math.min(Math.max(1, initialScale * scaleDelta), 4); // Limit zoom between 1x and 4x
+          if (state.scale === 1) {
+            state.panX = 0;
+            state.panY = 0;
           }
           applyTransform();
-          viewerIsZoomed = currentPinchScale > 1;
-          if (zoomInBtn) {
-            zoomInBtn.innerHTML = viewerIsZoomed 
-              ? '<i class="fa-solid fa-magnifying-glass-minus"></i>' 
-              : '<i class="fa-solid fa-magnifying-glass-plus"></i>';
-          }
+          if (state.onZoomChange) state.onZoomChange(state.scale > 1);
         }
       }
     }, { passive: false });
@@ -643,13 +566,67 @@ document.addEventListener('DOMContentLoaded', () => {
       imgEl.classList.add('with-transition');
       
       // Reset if zoomed out too much
-      if (currentPinchScale < 1.05) {
-        resetLaminaViewerTransform();
+      if (state.scale < 1.05) {
+        if (resetTransformCb) resetTransformCb();
       }
     };
 
     imgEl.addEventListener('touchend', endTouch);
     imgEl.addEventListener('touchcancel', endTouch);
+  }
+
+  const laminaState = { scale: 1, panX: 0, panY: 0, onZoomChange: null };
+
+  function resetLaminaViewerTransform() {
+    const imgEl = document.getElementById('viewerLaminaImg');
+    if (!imgEl) return;
+    laminaState.scale = 1;
+    laminaState.panX = 0;
+    laminaState.panY = 0;
+    imgEl.style.transform = `scale(1) translate(0px, 0px)`;
+    imgEl.classList.add('with-transition');
+    viewerIsZoomed = false;
+    const zoomInBtn = document.getElementById('viewerZoomInBtn');
+    if (zoomInBtn) zoomInBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+  }
+
+  function setupLaminaViewerEvents() {
+    const imgEl = document.getElementById('viewerLaminaImg');
+    const zoomInBtn = document.getElementById('viewerZoomInBtn');
+    const zoomResetBtn = document.getElementById('viewerZoomResetBtn');
+
+    laminaState.onZoomChange = (isZoomed) => {
+      viewerIsZoomed = isZoomed;
+      if (zoomInBtn) {
+        zoomInBtn.innerHTML = viewerIsZoomed 
+          ? '<i class="fa-solid fa-magnifying-glass-minus"></i>' 
+          : '<i class="fa-solid fa-magnifying-glass-plus"></i>';
+      }
+    };
+
+    const toggleZoom = () => {
+      if (!imgEl) return;
+      viewerIsZoomed = !viewerIsZoomed;
+      imgEl.classList.add('with-transition');
+      
+      if (viewerIsZoomed) {
+        laminaState.scale = window.innerWidth <= 640 ? 2.2 : 1.75;
+      } else {
+        laminaState.scale = 1;
+        laminaState.panX = 0;
+        laminaState.panY = 0;
+      }
+      
+      imgEl.style.transform = `scale(${laminaState.scale}) translate(${laminaState.panX}px, ${laminaState.panY}px)`;
+      laminaState.onZoomChange(viewerIsZoomed);
+    };
+
+    if (zoomInBtn) zoomInBtn.addEventListener('click', toggleZoom);
+    if (zoomResetBtn) {
+      zoomResetBtn.addEventListener('click', resetLaminaViewerTransform);
+    }
+    
+    setupPinchToZoom(imgEl, toggleZoom, resetLaminaViewerTransform, laminaState);
   }
 
   let pendingLaminas = [];
@@ -1329,6 +1306,33 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Product Quick View Modal Handlers (Visualização com Foto Maior, Código e Descrição)
+  const quickViewState = { scale: 1, panX: 0, panY: 0, onZoomChange: null };
+
+  function resetQuickViewTransform() {
+    const imgEl = document.getElementById('quickViewProductImg');
+    if (!imgEl) return;
+    quickViewState.scale = 1;
+    quickViewState.panX = 0;
+    quickViewState.panY = 0;
+    imgEl.style.transform = `scale(1) translate(0px, 0px)`;
+    imgEl.classList.add('with-transition');
+  }
+
+  function toggleQuickViewZoom() {
+    const imgEl = document.getElementById('quickViewProductImg');
+    if (!imgEl) return;
+    
+    if (quickViewState.scale > 1) {
+      resetQuickViewTransform();
+    } else {
+      quickViewState.scale = window.innerWidth <= 640 ? 2.2 : 1.75;
+      quickViewState.panX = 0;
+      quickViewState.panY = 0;
+      imgEl.classList.add('with-transition');
+      imgEl.style.transform = `scale(${quickViewState.scale}) translate(0px, 0px)`;
+    }
+  }
+
   function openProductQuickView(product) {
     if (!product) return;
     const modal = document.getElementById('productQuickViewModal');
@@ -1356,6 +1360,9 @@ document.addEventListener('DOMContentLoaded', () => {
         imgEl.alt = product.description || 'Foto do Produto';
         imgEl.style.display = 'block';
         noImgEl.style.display = 'none';
+
+        resetQuickViewTransform();
+        setupPinchToZoom(imgEl, toggleQuickViewZoom, resetQuickViewTransform, quickViewState);
       } else {
         imgEl.src = '';
         imgEl.style.display = 'none';
