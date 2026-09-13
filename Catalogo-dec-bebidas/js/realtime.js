@@ -172,6 +172,11 @@ class RealtimeEngine {
           const chunkCount = parseInt(data.chunkCount) || 1;
           let remoteLaminas = [];
 
+          if (data.totalLaminas === 0) {
+            this.applyRemoteLaminas([]);
+            return;
+          }
+
           if (chunkCount > 1) {
             try {
               const chunkDocs = await Promise.all(
@@ -325,6 +330,11 @@ class RealtimeEngine {
 
       const data = doc.data();
       if (!data) return;
+
+      if (data.totalLaminas === 0) {
+        this.applyRemoteLaminas([]);
+        return;
+      }
 
       const chunkCount = parseInt(data.chunkCount) || 1;
       let remoteLaminas = [];
@@ -818,6 +828,12 @@ class RealtimeEngine {
         laminas: [],
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      // FORCE clear ghost chunk
+      batch.set(this.db.collection('catalogs').doc('laminas_chunk_0'), {
+        chunkIndex: 0,
+        laminas: [],
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     } else {
       chunks.forEach((chunk, i) => {
         const chunkRef = this.db.collection('catalogs').doc(`laminas_chunk_${i}`);
@@ -988,6 +1004,10 @@ class RealtimeEngine {
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
+        
+        const totalLaminas = parseInt(json.fields?.totalLaminas?.integerValue || 0);
+        if (totalLaminas === 0) return [];
+
         const chunkCount = parseInt(json.fields?.chunkCount?.integerValue || 1);
         if (chunkCount > 1) {
           return await this.readLaminasChunksViaRest(projectId, chunkCount);
