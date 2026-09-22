@@ -144,11 +144,6 @@ class ProductStore {
     if (savedProducts) {
       try {
         this.products = JSON.parse(savedProducts);
-        this.products.forEach(p => {
-          p.promoActive = false;
-          p.promoPrice = 0;
-          p.promoExpiry = '';
-        });
       } catch (e) {
         console.error("Error parsing saved products:", e);
         this.products = [];
@@ -191,8 +186,16 @@ class ProductStore {
     if (recordHistory) {
       this.recordState();
     }
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(this.products));
-    localStorage.setItem(STORAGE_KEYS.HIDE_PRICES, String(this.hidePrices));
+    try {
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(this.products));
+      localStorage.setItem(STORAGE_KEYS.HIDE_PRICES, String(this.hidePrices));
+    } catch (e) {
+      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014) {
+        alert("⚠️ O limite de armazenamento do navegador foi atingido! Suas alterações não puderam ser salvas localmente.\n\nClique no botão 'Publicar Online' para otimizar as imagens e liberar espaço, ou remova fotos pesadas.");
+      } else {
+        console.error("Erro ao salvar no localStorage:", e);
+      }
+    }
     this.notify('local');
   }
 
@@ -205,12 +208,8 @@ class ProductStore {
     });
 
     // Synchronize manualPosition property with array index sequence 1..N
-    // Clear legacy product-level offer flags since offers are now officially handled via Laminas / Encartes
     this.products.forEach((p, idx) => {
       p.manualPosition = idx + 1;
-      p.promoActive = false;
-      p.promoPrice = 0;
-      p.promoExpiry = '';
     });
   }
 
