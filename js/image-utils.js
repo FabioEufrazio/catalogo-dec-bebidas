@@ -96,16 +96,42 @@ class ImageUtils {
     return products;
   }
 
+  // Compress a flyer/lamina image with adaptive quality so it stays crisp and lightweight (< ~120KB)
+  static async compressLaminaImage(src) {
+    if (!src || typeof src !== 'string') return '';
+    try {
+      // 1st pass: high definition 1080x1440 at 0.78 quality
+      let compressed = await ImageUtils.compressImage(src, 1080, 1440, 0.78);
+      // 2nd pass: if still > 140KB base64 (~105KB binary), step down to 900x1280 at 0.70
+      if (compressed && compressed.length > 140000) {
+        const secondPass = await ImageUtils.compressImage(src, 900, 1280, 0.70);
+        if (secondPass && secondPass.length < compressed.length) {
+          compressed = secondPass;
+        }
+      }
+      // 3rd pass: if still > 190KB base64, step down to 800x1120 at 0.62
+      if (compressed && compressed.length > 190000) {
+        const thirdPass = await ImageUtils.compressImage(src, 800, 1120, 0.62);
+        if (thirdPass && thirdPass.length < compressed.length) {
+          compressed = thirdPass;
+        }
+      }
+      return compressed || src;
+    } catch (e) {
+      return src;
+    }
+  }
+
   // Optimize and compress any oversized lamina / flyer images in memory before publishing
   static async optimizeAllLaminas(laminas) {
     if (!Array.isArray(laminas)) return laminas;
     let count = 0;
     for (const l of laminas) {
       if (l.imageUrl && typeof l.imageUrl === 'string' && l.imageUrl.startsWith('data:image')) {
-        // Se a imagem de encarte tiver mais de 80KB (base64 > ~100.000 chars), recompacta para ~50-80KB
-        if (l.imageUrl.length > 80000) {
+        // Se a imagem de encarte tiver mais de ~105KB (base64 > 140.000 chars), recompacta de forma adaptativa
+        if (l.imageUrl.length > 140000) {
           try {
-            const compressed = await ImageUtils.compressImage(l.imageUrl, 800, 1200, 0.70);
+            const compressed = await ImageUtils.compressLaminaImage(l.imageUrl);
             if (compressed && compressed.length < l.imageUrl.length) {
               l.imageUrl = compressed;
               count++;
@@ -117,7 +143,7 @@ class ImageUtils {
       }
     }
     if (count > 0) {
-      console.log(`Otimização pré-publicação de encartes: ${count} encartes recompactados para sincronização rápida na nuvem.`);
+      console.log(`Otimização de encartes: ${count} encartes recompactados para armazenamento e sincronização rápida.`);
     }
     return laminas;
   }

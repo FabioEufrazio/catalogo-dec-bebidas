@@ -376,6 +376,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!laminasGrid) return;
 
     const laminas = productStore.getLaminas();
+
+    // Update Header Total Badge if on ofertas tab
+    if (currentCategory === 'ofertas') {
+      const headerBadge = document.getElementById('headerTotalBadge');
+      if (headerBadge) {
+        headerBadge.textContent = `${laminas.length} ${laminas.length === 1 ? 'encarte' : 'encartes'}`;
+      }
+    }
+
     if (laminas.length === 0) {
       laminasGrid.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1; padding: 40px 20px;">
@@ -391,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fragment = document.createDocumentFragment();
 
     laminas.forEach((lamina, idx) => {
+      const currentPos = idx + 1;
       const card = document.createElement('article');
       card.className = 'lamina-card';
       card.dataset.id = lamina.id;
@@ -407,9 +417,9 @@ document.addEventListener('DOMContentLoaded', () => {
           ` : '<span></span>'}
           ${isGestor ? `
             <div class="lamina-gestor-controls" style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
-              <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <div class="lamina-pos-wrapper" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border-color); cursor: text;" title="Clique para digitar a nova posição e pressione Enter">
                 <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">POS:</span>
-                <input type="number" min="1" max="${laminas.length}" value="${lamina.manualPosition || idx + 1}" class="lamina-pos-input" style="width: 44px; padding: 2px 4px; font-size: 0.8rem; font-weight: bold; text-align: center; background: var(--bg-dark); color: var(--accent-gold); border: 1px solid var(--border-color); border-radius: 4px;" title="Digite a posição e pressione Enter">
+                <input type="text" inputmode="numeric" value="${currentPos}" class="lamina-pos-input" style="width: 44px; padding: 2px 4px; font-size: 0.8rem; font-weight: bold; text-align: center; background: var(--bg-dark); color: var(--accent-gold); border: 1px solid var(--border-color); border-radius: 4px;" title="Digite a posição (1 a ${laminas.length}) e pressione Enter">
               </div>
               <button type="button" class="btn btn-outline btn-sm lamina-move-prev" title="Mover para trás" ${idx === 0 ? 'disabled style="opacity: 0.35; cursor: not-allowed; padding: 4px 8px; font-size: 0.8rem;"' : 'style="padding: 4px 8px; font-size: 0.8rem;"'}>
                 <i class="fa-solid fa-arrow-left"></i>
@@ -426,43 +436,82 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       if (isGestor) {
+        const posWrapper = card.querySelector('.lamina-pos-wrapper');
         const posInput = card.querySelector('.lamina-pos-input');
-        if (posInput) {
-          const handlePosChange = () => {
-            const newPos = parseInt(posInput.value, 10);
-            if (!isNaN(newPos) && newPos >= 1 && newPos !== (lamina.manualPosition || idx + 1)) {
-              productStore.reorderLamina(lamina.id, newPos);
-              renderLaminas();
-              showToast(`Encarte reposicionado para a posição ${newPos}.`, 'success');
+        if (posWrapper && posInput) {
+          let isEditing = false;
+
+          const stopEvents = ['mousedown', 'mouseup', 'click', 'pointerdown', 'focusin'];
+          stopEvents.forEach(evt => {
+            posWrapper.addEventListener(evt, (e) => e.stopPropagation());
+            posInput.addEventListener(evt, (e) => e.stopPropagation());
+          });
+
+          posWrapper.addEventListener('click', (e) => {
+            e.stopPropagation();
+            posInput.focus();
+            posInput.select();
+          });
+
+          posInput.addEventListener('focus', (e) => {
+            e.stopPropagation();
+            isEditing = true;
+            setTimeout(() => posInput.select(), 0);
+          });
+
+          const commitPosChange = () => {
+            if (!isEditing) return;
+            isEditing = false;
+            const rawVal = String(posInput.value || '').trim();
+            const parsedPos = parseInt(rawVal, 10);
+            if (!isNaN(parsedPos) && parsedPos >= 1) {
+              const targetPos = Math.max(1, Math.min(laminas.length, parsedPos));
+              if (targetPos !== currentPos) {
+                productStore.reorderLamina(lamina.id, targetPos);
+                showToast(`Encarte reposicionado para a posição ${targetPos}.`, 'success');
+                return;
+              }
             }
+            posInput.value = currentPos;
           };
+
           posInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              handlePosChange();
+              commitPosChange();
+              posInput.blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              isEditing = false;
+              posInput.value = currentPos;
+              posInput.blur();
             }
           });
-          posInput.addEventListener('blur', handlePosChange);
-          posInput.addEventListener('click', (e) => e.stopPropagation());
+
+          posInput.addEventListener('blur', () => {
+            commitPosChange();
+          });
         }
 
         const prevBtn = card.querySelector('.lamina-move-prev');
         if (prevBtn && idx > 0) {
+          prevBtn.addEventListener('mousedown', (e) => e.preventDefault());
           prevBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            productStore.moveLamina(lamina.id, -1);
-            renderLaminas();
-            showToast('Posição alterada.', 'info');
+            if (productStore.moveLamina(lamina.id, -1)) {
+              showToast(`Encarte movido para a posição ${currentPos - 1}.`, 'info');
+            }
           });
         }
 
         const nextBtn = card.querySelector('.lamina-move-next');
         if (nextBtn && idx < laminas.length - 1) {
+          nextBtn.addEventListener('mousedown', (e) => e.preventDefault());
           nextBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            productStore.moveLamina(lamina.id, 1);
-            renderLaminas();
-            showToast('Posição alterada.', 'info');
+            if (productStore.moveLamina(lamina.id, 1)) {
+              showToast(`Encarte movido para a posição ${currentPos + 1}.`, 'info');
+            }
           });
         }
 
@@ -472,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             if (confirm('Tem certeza que deseja excluir este encarte?')) {
               productStore.deleteLamina(lamina.id);
-              renderLaminas();
               showToast('Encarte excluído com sucesso.', 'info');
             }
           });
@@ -630,6 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let pendingLaminas = [];
+  let isProcessingLaminaFiles = false;
 
   function setupAddLaminaModalEvents() {
     const addBtn = document.getElementById('addNewLaminaBtn');
@@ -642,6 +691,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const countBadge = document.getElementById('laminaPreviewCountBadge');
     const removePreviewBtn = document.getElementById('removeLaminaPreviewBtn');
     const addMoreBtn = document.getElementById('addMoreLaminasBtn');
+    const submitBtn = document.getElementById('submitAddLaminaBtn');
+
+    function setSubmitProcessingState(processing, current = 0, total = 0) {
+      isProcessingLaminaFiles = processing;
+      if (!submitBtn) return;
+      if (processing) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.65';
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processando (${current}/${total})...`;
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.innerHTML = `Salvar Lâminas <i class="fa-solid fa-check"></i>`;
+      }
+    }
 
     function updatePreviewsUI() {
       if (!previewContainer || !previewGrid) return;
@@ -663,18 +727,39 @@ document.addEventListener('DOMContentLoaded', () => {
           <button type="button" class="remove-single-lamina-btn" data-index="${idx}" style="position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(239,68,68,0.92); color: #fff; border: none; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);" title="Remover esta lâmina">
             <i class="fa-solid fa-xmark"></i>
           </button>
-          <span style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.75); color: var(--accent-gold); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 800;">
-            #${idx + 1}
-          </span>
+          <div style="position: absolute; bottom: 4px; left: 4px; right: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="background: rgba(0,0,0,0.8); color: var(--accent-gold); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 800;">
+              #${idx + 1}
+            </span>
+            <div style="display: flex; gap: 3px;">
+              ${idx > 0 ? `<button type="button" class="move-pending-lamina-btn" data-index="${idx}" data-dir="-1" style="width: 20px; height: 20px; border-radius: 4px; background: rgba(0,0,0,0.8); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 0.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Mover para trás"><i class="fa-solid fa-arrow-left"></i></button>` : ''}
+              ${idx < pendingLaminas.length - 1 ? `<button type="button" class="move-pending-lamina-btn" data-index="${idx}" data-dir="1" style="width: 20px; height: 20px; border-radius: 4px; background: rgba(0,0,0,0.8); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 0.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Mover para frente"><i class="fa-solid fa-arrow-right"></i></button>` : ''}
+            </div>
+          </div>
         </div>
       `).join('');
 
       previewGrid.querySelectorAll('.remove-single-lamina-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          const index = parseInt(btn.dataset.index);
+          const index = parseInt(btn.dataset.index, 10);
           if (!isNaN(index) && index >= 0 && index < pendingLaminas.length) {
             pendingLaminas.splice(index, 1);
+            updatePreviewsUI();
+          }
+        });
+      });
+
+      previewGrid.querySelectorAll('.move-pending-lamina-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const index = parseInt(btn.dataset.index, 10);
+          const dir = parseInt(btn.dataset.dir, 10);
+          const target = index + dir;
+          if (!isNaN(index) && !isNaN(dir) && target >= 0 && target < pendingLaminas.length) {
+            const temp = pendingLaminas[index];
+            pendingLaminas[index] = pendingLaminas[target];
+            pendingLaminas[target] = temp;
             updatePreviewsUI();
           }
         });
@@ -693,7 +778,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (confirm(`⚠️ ATENÇÃO: Deseja realmente apagar TODOS os ${count} encartes de ofertas de uma só vez?\n\nEsta ação removerá todos os encartes do catálogo.`)) {
           productStore.deleteAllLaminas();
-          renderLaminas();
           showToast('Todos os encartes foram apagados com sucesso!', 'success');
         }
       });
@@ -705,6 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         if (form) form.reset();
         pendingLaminas = [];
+        setSubmitProcessingState(false);
         updatePreviewsUI();
         modal.classList.add('active');
       });
@@ -712,51 +797,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (modal) {
       modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
+        if (e.target === modal && !isProcessingLaminaFiles) {
           modal.classList.remove('active');
         }
       });
     }
 
-    const processFiles = (files) => {
+    const readFileAsDataURL = (file) => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+
+    const processFiles = async (files) => {
       const fileList = Array.from(files).filter(f => f.type && f.type.startsWith('image/'));
       if (fileList.length === 0) {
         showToast('Por favor, selecione arquivos de imagem válidos (PNG, JPG, WEBP).', 'error');
         return;
       }
 
-      let loaded = 0;
-      fileList.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          try {
-            let compressed = e.target.result;
-            if (typeof ImageUtils !== 'undefined' && ImageUtils.compressImage) {
-              // Comprime mantendo altíssima definição para o Motor Renderizador (até 2048x2048, qualidade WEBP 85%)
-              compressed = await ImageUtils.compressImage(e.target.result, 2048, 2048, 0.85);
+      setSubmitProcessingState(true, 0, fileList.length);
+      let processedCount = 0;
+
+      // Process sequentially in the exact selection order so no image is dropped or scrambled
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setSubmitProcessingState(true, i + 1, fileList.length);
+        try {
+          const rawDataUrl = await readFileAsDataURL(file);
+          if (rawDataUrl) {
+            let compressed = rawDataUrl;
+            if (typeof ImageUtils !== 'undefined') {
+              if (ImageUtils.compressLaminaImage) {
+                compressed = await ImageUtils.compressLaminaImage(rawDataUrl);
+              } else if (ImageUtils.compressImage) {
+                compressed = await ImageUtils.compressImage(rawDataUrl, 1080, 1440, 0.78);
+              }
             }
             pendingLaminas.push({
               name: file.name,
-              base64: compressed
+              base64: compressed || rawDataUrl
             });
-          } catch (err) {
-            pendingLaminas.push({
-              name: file.name,
-              base64: e.target.result
-            });
-          }
-          loaded++;
-          if (loaded === fileList.length) {
+            processedCount++;
             updatePreviewsUI();
-            showToast(`${fileList.length} ${fileList.length === 1 ? 'lâmina carregada' : 'lâminas carregadas'}!`, 'info');
           }
-        };
-        reader.readAsDataURL(file);
-      });
+        } catch (err) {
+          console.warn("Erro ao processar arquivo de encarte:", file.name, err);
+        }
+      }
+
+      setSubmitProcessingState(false);
+      updatePreviewsUI();
+      if (processedCount > 0) {
+        showToast(`${processedCount} ${processedCount === 1 ? 'lâmina carregada' : 'lâminas carregadas'} na ordem selecionada!`, 'info');
+      }
     };
 
     if (dropzone && fileInput) {
-      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('click', () => {
+        if (!isProcessingLaminaFiles) fileInput.click();
+      });
       fileInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) {
           processFiles(e.target.files);
@@ -774,18 +875,21 @@ document.addEventListener('DOMContentLoaded', () => {
       dropzone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropzone.style.borderColor = 'var(--border-color)';
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        if (!isProcessingLaminaFiles && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           processFiles(e.dataTransfer.files);
         }
       });
     }
 
     if (addMoreBtn && fileInput) {
-      addMoreBtn.addEventListener('click', () => fileInput.click());
+      addMoreBtn.addEventListener('click', () => {
+        if (!isProcessingLaminaFiles) fileInput.click();
+      });
     }
 
     if (removePreviewBtn) {
       removePreviewBtn.addEventListener('click', () => {
+        if (isProcessingLaminaFiles) return;
         pendingLaminas = [];
         if (fileInput) fileInput.value = '';
         updatePreviewsUI();
@@ -795,6 +899,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (form) {
       form.addEventListener('submit', (e) => {
         e.preventDefault();
+        if (isProcessingLaminaFiles) {
+          showToast('Aguarde o término do processamento das imagens antes de salvar.', 'warning');
+          return;
+        }
         if (pendingLaminas.length === 0) {
           showToast('Por favor, selecione ou arraste pelo menos uma imagem de encarte.', 'error');
           return;
@@ -802,25 +910,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const validityInput = document.getElementById('laminaValidityInput');
         const validity = validityInput ? validityInput.value.trim() : '';
+        const nowTs = Date.now();
 
-        pendingLaminas.forEach((item, idx) => {
-          const newLamina = {
-            id: 'LAM_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + idx,
-            title: validity ? `Promoção ${validity}` : 'Encarte de Ofertas',
-            imageUrl: item.base64,
-            validity: validity,
-            description: '',
-            active: true,
-            createdAt: new Date().toISOString()
-          };
-          productStore.addLamina(newLamina);
-        });
+        const batchToSave = pendingLaminas.map((item, idx) => ({
+          id: `LAM_${nowTs}_${idx}_${Math.random().toString(36).substring(2, 8)}`,
+          title: validity ? `Promoção ${validity}` : 'Encarte de Ofertas',
+          imageUrl: item.base64,
+          validity: validity,
+          description: '',
+          active: true,
+          createdAt: new Date(nowTs + idx).toISOString()
+        }));
 
-        const count = pendingLaminas.length;
+        const count = batchToSave.length;
         pendingLaminas = [];
         modal.classList.remove('active');
-        renderLaminas();
-        showToast(`Sucesso! ${count} ${count === 1 ? 'nova lâmina adicionada' : 'novas lâminas adicionadas'} com o período definido!`, 'success');
+        productStore.addLaminas(batchToSave);
+        showToast(`Sucesso! ${count} ${count === 1 ? 'nova lâmina salva' : 'novas lâminas salvas'} na ordem definida!`, 'success');
       });
     }
   }
@@ -2620,7 +2726,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const publishPromise = realtimeEngine.forcePublishToCloud();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Tempo limite de sincronização esgotado (12s). Verifique sua conexão e tente novamente.")), 12000)
+          setTimeout(() => reject(new Error("Tempo limite de sincronização esgotado (30s). Verifique sua conexão e tente novamente.")), 30000)
         );
 
         const res = await Promise.race([publishPromise, timeoutPromise]);

@@ -12,11 +12,23 @@ class RealtimeEngine {
     this.isSyncingFromRemote = false;
 
     const urlParams = new URLSearchParams(window.location.search);
-    this.isClientView = urlParams.get('view') === 'public' || urlParams.get('client') === '1';
+    this.forceClientView = urlParams.get('view') === 'public' || urlParams.get('client') === '1';
     this.isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
     this.initLocalSync();
     this.initFirebaseSync();
+  }
+
+  // Modo cliente = link público (?view=public / ?client=1) OU visitante sem login de gestor.
+  // Avaliado dinamicamente para refletir login/logout sem recarregar a página.
+  get isClientView() {
+    return this.forceClientView || localStorage.getItem('catalog_gestor_logged') !== 'true';
+  }
+
+  // Sessão de gestor só vale fora do link público. No link do cliente a flag de gestor
+  // (que o Firebase Auth grava automaticamente) NUNCA pode bloquear as atualizações da nuvem.
+  isGestorSession() {
+    return !this.isClientView;
   }
 
   initLocalSync() {
@@ -57,9 +69,9 @@ class RealtimeEngine {
         this.store.notify('storage_event');
         this.isSyncingFromRemote = false;
       }
-      if (e.key === STORAGE_KEYS.LAMINAS) {
+      if (e.key === STORAGE_KEYS.LAMINAS || e.key === STORAGE_KEYS.LAMINAS_META) {
         this.isSyncingFromRemote = true;
-        this.store.loadLaminas();
+        this.store.loadLaminas(true);
         this.store.notify('storage_event');
         this.isSyncingFromRemote = false;
       }
@@ -67,6 +79,9 @@ class RealtimeEngine {
 
     // Subscribe to store changes to broadcast locally
     this.store.subscribe((products, hidePrices, source) => {
+      // Abas de cliente são somente-leitura e eventos remotos não devem causar loop
+      if (this.isClientView || this.isSyncingFromRemote) return;
+
       if (source === 'laminas_updated') {
         if (this.channel) {
           this.channel.postMessage({
@@ -75,8 +90,12 @@ class RealtimeEngine {
           });
         }
         if (!this.isLocal && !this.isClientView && this.firebaseActive) {
-          this.syncLaminasToCloud(this.store.getLaminas());
+          this.syncLaminasToCloud();
         }
+        return;
+      }
+
+      if (source === 'idb_restored' || source === 'cloud_optimize') {
         return;
       }
 
@@ -148,21 +167,110 @@ class RealtimeEngine {
         this.firebaseActive = true;
         this.setupCloudListeners();
         this.updateCloudBadgeUI(true);
+        this.fetchInitialProductsFromCloud();
         this.fetchInitialLaminasFromCloud();
         this.syncInitialGestorLaminasToCloud();
       } else {
+        this.fetchInitialProductsFromCloud();
         this.fetchInitialLaminasFromCloud();
       }
     } catch (err) {
       console.warn("Firebase initialization error:", err);
       this.updateCloudBadgeUI(false);
+      this.fetchInitialProductsFromCloud();
       this.fetchInitialLaminasFromCloud();
     }
   }
 
-  async fetchInitialLaminasFromCloud() {
-    const isGestor = localStorage.getItem('catalog_gestor_logged') === 'true';
-    if (isGestor) return;
+  async fetchInitialProductsFromCloud() {
+    if (this.isGestorSession()) return;
+
+    try {
+      if (this.db && this.firebaseActive) {
+        const doc = await this.db.collection('catalogs').doc('active').get();
+        if (doc.exists && doc.data()) {
+          const data = doc.data();
+          if (data.hidePrices !== undefined && data.hidePrices !== this.store.hidePrices) {
+            this.store.setHidePrices(data.hidePrices);
+          }
+          if (Array.isArray(data.categories) && data.categories.length > 0) {
+            this.store.setCategories(data.categories, 'cloud');
+          }
+          const chunkCount = parseInt(data.chunkCount) || 1;
+          let remoteProducts = [];
+          if (chunkCount > 1) {
+            try {
+              const chunkDocs = await Promise.all(
+                Array.from({ length: chunkCount }, (_, i) => 
+                  this.db.collection('catalogs').doc(`chunk_${i}`).get()
+                )
+              );
+              chunkDocs.forEach(cDoc => {
+                if (cDoc.exists && Array.isArray(cDoc.data()?.products)) {
+                  remoteProducts.push(...cDoc.data().products);
+                }
+              });
+            } catch (e) {
+              console.warn("Erro ao buscar chunks via SDK inicial, buscando via REST...", e);
+              remoteProducts = await this.readChunksViaRest(chunkCount);
+            }
+          } else if (Array.isArray(data.products)) {
+            remoteProducts = data.products;
+          }
+
+          if (remoteProducts && remoteProducts.length > 0) {
+            this.applyRemoteProducts(remoteProducts);
+            return;
+          }
+        }
+      }
+      const remoteProducts = await this.readInitialProductsViaRest();
+      if (remoteProducts && remoteProducts.length > 0) {
+        this.applyRemoteProducts(remoteProducts);
+      }
+    } catch (e) {
+      console.warn("Tentativa inicial de buscar produtos via nuvem:", e);
+    }
+  }
+
+  async readInitialProductsViaRest() {
+    let projectId = 'catalogo-online-dec';
+    try {
+      const rawConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+      if (rawConfig) {
+        const parsed = JSON.parse(rawConfig);
+        if (parsed.projectId && parsed.projectId !== 'catalogo-dec-bebidas' && parsed.projectId !== 'catalogo-de-bebidas-1') {
+          projectId = parsed.projectId;
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/active`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.fields?.hidePrices?.booleanValue !== undefined) {
+          this.store.setHidePrices(json.fields.hidePrices.booleanValue);
+        }
+        const chunkCount = parseInt(json.fields?.chunkCount?.integerValue || 1);
+        if (chunkCount > 1) {
+          return await this.readChunksViaRest(chunkCount);
+        }
+        return this.parseRestProducts(json);
+      }
+    } catch (e) {
+      console.warn("Erro ao ler produtos iniciais via REST:", e);
+    }
+    return [];
+  }
+
+
+  async fetchInitialLaminasFromCloud(forceEvenIfGestor = false) {
+    if (this.store && this.store.laminasReadyPromise) {
+      await this.store.laminasReadyPromise;
+    }
+    if (this.isGestorSession() && !forceEvenIfGestor) return;
 
     try {
       if (this.db && this.firebaseActive) {
@@ -198,7 +306,7 @@ class RealtimeEngine {
               console.warn("Erro ao buscar laminas chunks via SDK inicial, buscando via REST...", e);
               remoteLaminas = await this.readLaminasViaRest();
             }
-          } else if (Array.isArray(data.laminas)) {
+          } else if (Array.isArray(data.laminas) && data.laminas.length > 0) {
             remoteLaminas = data.laminas;
           } else {
             try {
@@ -214,14 +322,14 @@ class RealtimeEngine {
             } catch (e2) {}
           }
 
-          if (remoteLaminas) {
+          if (remoteLaminas && remoteLaminas.length > 0) {
             this.applyRemoteLaminas(remoteLaminas);
             return;
           }
         }
       }
       const remoteLaminas = await this.readLaminasViaRest();
-      if (remoteLaminas) {
+      if (remoteLaminas && remoteLaminas.length > 0) {
         this.applyRemoteLaminas(remoteLaminas);
       }
     } catch (e) {
@@ -230,27 +338,55 @@ class RealtimeEngine {
   }
 
   async syncInitialGestorLaminasToCloud() {
-    const isGestor = !this.isClientView && (localStorage.getItem('catalog_gestor_logged') === 'true');
-    if (!isGestor || this.isLocal || !this.firebaseActive) return;
+    if (this.store && this.store.laminasReadyPromise) {
+      await this.store.laminasReadyPromise;
+    }
+    if (!this.isGestorSession()) return;
 
     try {
-      if (typeof ImageUtils !== 'undefined' && ImageUtils.optimizeAllLaminas) {
-        await ImageUtils.optimizeAllLaminas(this.store.laminas);
-        this.store.saveLaminas('cloud_optimize');
+      // 1. Se este navegador do gestor ainda não tinha encartes salvos localmente (DEFAULT_LAMINAS),
+      // busca da nuvem em vez de sobrescrever a nuvem (inclusive em ambiente local/localhost!).
+      if (!this.store.hasCustomLocalLaminas) {
+        await this.fetchInitialLaminasFromCloud(true);
+        return;
       }
-      const localLaminas = this.store.getLaminas();
-      if (localLaminas && localLaminas.length > 0) {
-        const cleanLaminas = localLaminas.map(l => this.sanitizeLaminaForCloud(l));
-        const chunks = this.splitLaminasIntoChunks(cleanLaminas, 400000);
-        if (this.db) {
-          await this.writeLaminasViaSDK(chunks);
-        } else {
-          await this.writeLaminasViaRest(chunks);
+
+      // No ambiente local, modificações locais não sobem automaticamente na abertura
+      if (this.isLocal || !this.firebaseActive) return;
+
+      // 2. Verifica os encartes atuais na nuvem antes de qualquer sincronização de inicialização:
+      // NUNCA sobrescrever a nuvem na abertura da página se a nuvem tiver mais encartes (ex: quando o cache antigo do navegador truncou em 13)
+      // ou se algum encarte local estiver sem imagem!
+      const localLaminas = this.store.getLaminas() || [];
+      const remoteLaminas = await this.readLaminasViaRest();
+
+      if (Array.isArray(remoteLaminas) && remoteLaminas.length > 0) {
+        const hasMissingLocalImages = localLaminas.some(l => !l.imageUrl);
+        let localMeta = null;
+        try {
+          const rawMeta = localStorage.getItem(STORAGE_KEYS.LAMINAS_META);
+          if (rawMeta) localMeta = JSON.parse(rawMeta);
+        } catch (e) {}
+
+        // Se o navegador ainda não tinha LAMINAS_META (veio da versão antiga que truncou no 13º encarte)
+        // ou se a nuvem tem mais encartes ou imagens faltando localmente, restaura da nuvem!
+        if (!localMeta || remoteLaminas.length > localLaminas.length || hasMissingLocalImages) {
+          if (hasMissingLocalImages && localMeta && Array.isArray(localMeta.order)) {
+            const remoteImgMap = new Map(remoteLaminas.map(r => [r.id, r.imageUrl]));
+            localLaminas.forEach(l => {
+              if (!l.imageUrl && remoteImgMap.has(l.id)) {
+                l.imageUrl = remoteImgMap.get(l.id);
+              }
+            });
+            this.store.setAllLaminas(localLaminas, 'cloud');
+          } else {
+            this.applyRemoteLaminas(remoteLaminas);
+          }
+          return;
         }
-        console.log("Encartes do gestor sincronizados com a nuvem na inicialização:", cleanLaminas.length, "em", chunks.length, "chunk(s)");
       }
     } catch (e) {
-      console.warn("Auto-sync inicial de encartes do gestor:", e);
+      console.warn("Reconciliação inicial de encartes do gestor:", e);
     }
   }
 
@@ -274,8 +410,8 @@ class RealtimeEngine {
       // 2. BLINDAGEM DO GESTOR: Se o usuário estiver no MODO GESTOR (autenticado),
       // a tela dele é a autoridade máxima de edição. NUNCA deixar um snapshot antigo da nuvem
       // sobrescrever o que o gestor acabou de colar (Ctrl+V) ou editar!
-      const isGestor = localStorage.getItem('catalog_gestor_logged') === 'true';
-      if (isGestor) {
+      // (No link público ?view=public isso NÃO se aplica: o cliente sempre recebe da nuvem.)
+      if (this.isGestorSession()) {
         return;
       }
 
@@ -323,8 +459,7 @@ class RealtimeEngine {
       if (this.isSyncingFromRemote || !doc.exists) return;
       if (doc.metadata && doc.metadata.hasPendingWrites) return;
 
-      const isGestor = localStorage.getItem('catalog_gestor_logged') === 'true';
-      if (isGestor) {
+      if (this.isGestorSession()) {
         return;
       }
 
@@ -384,14 +519,21 @@ class RealtimeEngine {
   }
 
   applyRemoteLaminas(remoteLaminas) {
+    const sortedRemote = Array.isArray(remoteLaminas)
+      ? [...remoteLaminas].sort((a, b) => (Number(a.manualPosition) || 9999) - (Number(b.manualPosition) || 9999))
+      : [];
+    sortedRemote.forEach((l, idx) => {
+      l.manualPosition = idx + 1;
+    });
+
     const current = this.store.getLaminas() || [];
-    const localSig = current.map(l => `${l.id}:${l.validity}:${l.manualPosition || 0}:${(l.imageUrl || '').length}`).join(';');
-    const remoteSig = (remoteLaminas || []).map(l => `${l.id}:${l.validity}:${l.manualPosition || 0}:${(l.imageUrl || '').length}`).join(';');
+    const localSig = current.map((l, idx) => `${l.id}:${l.validity}:${l.manualPosition || idx + 1}:${(l.imageUrl || '').length}`).join(';');
+    const remoteSig = sortedRemote.map((l, idx) => `${l.id}:${l.validity}:${l.manualPosition || idx + 1}:${(l.imageUrl || '').length}`).join(';');
 
     if (localSig !== remoteSig) {
-      console.log(`Recebendo atualização de encartes da nuvem para clientes: ${(remoteLaminas || []).length} encartes.`);
+      console.log(`Recebendo atualização de encartes da nuvem: ${sortedRemote.length} encartes.`);
       this.isSyncingFromRemote = true;
-      this.store.setAllLaminas(remoteLaminas, 'cloud');
+      this.store.setAllLaminas(sortedRemote, 'cloud');
       this.isSyncingFromRemote = false;
     }
   }
@@ -723,36 +865,22 @@ class RealtimeEngine {
     }
 
     // 4. CHUNKING DE ENCARTES: Divide em blocos de no máximo 400KB para respeitar o limite de 1 MiB do Firestore
-    const currentLaminas = (this.store.getLaminas() || []).map(l => this.sanitizeLaminaForCloud(l));
+    const currentLaminas = (this.store.getLaminas() || []).map((l, idx) =>
+      this.sanitizeLaminaForCloud({ ...l, manualPosition: idx + 1 })
+    );
     const laminaChunks = this.splitLaminasIntoChunks(currentLaminas, 400000);
     let laminasSuccess = false;
     let laminaErrorMsg = '';
 
     console.log(`Publicando encartes na nuvem: ${currentLaminas.length} encartes em ${laminaChunks.length} bloco(s) Firestore.`);
 
-    const sdkLaminasPromise = (async () => {
-      if (!this.db || !this.firebaseActive) throw new Error("SDK não ativo");
-      return await this.writeLaminasViaSDK(laminaChunks);
-    })();
-
-    const timeoutLaminasPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("TIMEOUT_SDK_LAMINAS")), 3500)
-    );
-
     try {
-      await Promise.race([sdkLaminasPromise, timeoutLaminasPromise]);
+      await this.publishLaminasChunksWithFallback(laminaChunks);
       laminasSuccess = true;
-      console.log(`Encartes publicados na nuvem via SDK: ${currentLaminas.length} encartes.`);
-    } catch (errL) {
-      console.warn("Publicação de encartes via SDK falhou/demorou, usando fallback REST...", errL);
-      try {
-        await this.writeLaminasViaRest(laminaChunks);
-        laminasSuccess = true;
-        console.log(`Encartes publicados via REST: ${currentLaminas.length} encartes em ${laminaChunks.length} bloco(s).`);
-      } catch (errL2) {
-        console.error("Publicação de encartes via REST também falhou:", errL2);
-        laminaErrorMsg = errL2.message || String(errL2);
-      }
+      console.log(`Encartes publicados na nuvem: ${currentLaminas.length} encartes em ${laminaChunks.length} bloco(s).`);
+    } catch (errL2) {
+      console.error("Publicação de encartes falhou:", errL2);
+      laminaErrorMsg = errL2.message || String(errL2);
     }
 
     return {
@@ -761,6 +889,26 @@ class RealtimeEngine {
       laminasSuccess,
       laminaErrorMsg
     };
+  }
+
+  async publishLaminasChunksWithFallback(laminaChunks) {
+    const sdkLaminasPromise = (async () => {
+      if (!this.db || !this.firebaseActive) throw new Error("SDK não ativo");
+      return await this.writeLaminasViaSDK(laminaChunks);
+    })();
+
+    const timeoutLaminasPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("TIMEOUT_SDK_LAMINAS")), 6000)
+    );
+
+    try {
+      await Promise.race([sdkLaminasPromise, timeoutLaminasPromise]);
+      return true;
+    } catch (errL) {
+      console.warn("Sincronização de encartes via SDK falhou/demorou, usando fallback REST...", errL);
+      await this.writeLaminasViaRest(laminaChunks);
+      return true;
+    }
   }
 
   sanitizeLaminaForCloud(l) {
@@ -844,6 +992,16 @@ class RealtimeEngine {
         });
       });
 
+      // Limpeza ativa de blocos fantasmas antigos no Firestore (até chunk 10)
+      for (let i = chunks.length; i < 10; i++) {
+        const ghostRef = this.db.collection('catalogs').doc(`laminas_chunk_${i}`);
+        batch.set(ghostRef, {
+          chunkIndex: i,
+          laminas: [],
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
       const total = chunks.reduce((acc, c) => acc + (Array.isArray(c) ? c.length : 1), 0);
       batch.set(laminasRef, {
         chunkCount: chunks.length,
@@ -903,6 +1061,7 @@ class RealtimeEngine {
     const restPayload = {
       fields: {
         chunkIndex: { integerValue: String(chunkIndex || 0) },
+        updatedAt: { stringValue: new Date().toISOString() },
         laminas: {
           arrayValue: {
             values: items.map(l => this.formatRestLaminaValue(l))
@@ -912,7 +1071,7 @@ class RealtimeEngine {
     };
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/${docId}`;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 12000);
 
     try {
       const res = await fetch(url, {
@@ -947,15 +1106,27 @@ class RealtimeEngine {
 
     const chunks = this.normalizeLaminaChunks(chunksInput);
 
-    for (let i = 0; i < chunks.length; i++) {
-      await this.writeSingleLaminaChunkDocViaRest(projectId, `laminas_chunk_${i}`, chunks[i], i);
+    await Promise.all(
+      chunks.map((chunk, i) =>
+        this.writeSingleLaminaChunkDocViaRest(projectId, `laminas_chunk_${i}`, chunk, i)
+      )
+    );
+
+    // Limpeza ativa de blocos fantasmas antigos no Firestore (até chunk 10)
+    const clearGhostPromises = [];
+    for (let i = chunks.length; i < 10; i++) {
+      clearGhostPromises.push(
+        this.writeSingleLaminaChunkDocViaRest(projectId, `laminas_chunk_${i}`, [], i)
+      );
     }
+    await Promise.all(clearGhostPromises);
 
     const total = chunks.reduce((acc, c) => acc + (Array.isArray(c) ? c.length : 1), 0);
     const restPayload = {
       fields: {
         chunkCount: { integerValue: String(chunks.length) },
         totalLaminas: { integerValue: String(total) },
+        updatedAt: { stringValue: new Date().toISOString() },
         laminas: {
           arrayValue: {
             values: chunks.length === 1 ? chunks[0].map(l => this.formatRestLaminaValue(l)) : []
@@ -966,7 +1137,7 @@ class RealtimeEngine {
 
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/laminas`;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 12000);
 
     try {
       const res = await fetch(url, {
@@ -1023,48 +1194,58 @@ class RealtimeEngine {
   }
 
   async readLaminasChunksViaRest(projectId, chunkCount) {
-    const allLaminas = [];
-    for (let i = 0; i < chunkCount; i++) {
+    const chunkPromises = Array.from({ length: chunkCount }, async (_, i) => {
       try {
         const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/catalogs/laminas_chunk_${i}`;
         const res = await fetch(url);
         if (res.ok) {
           const json = await res.json();
-          const items = this.parseRestLaminas(json);
-          allLaminas.push(...items);
+          return this.parseRestLaminas(json);
         }
       } catch (err) {
         console.warn(`Erro ao carregar laminas_chunk_${i} via REST:`, err);
       }
-    }
-    return allLaminas;
+      return [];
+    });
+
+    const chunkResults = await Promise.all(chunkPromises);
+    const allLaminas = [];
+    chunkResults.forEach(items => allLaminas.push(...items));
+    return allLaminas.sort((a, b) => (Number(a.manualPosition) || 9999) - (Number(b.manualPosition) || 9999));
   }
 
-  async syncLaminasToCloud(laminas) {
+  async syncLaminasToCloud() {
     if (this.isClientView) return;
     if (this.cloudLaminasTimeout) clearTimeout(this.cloudLaminasTimeout);
 
     this.cloudLaminasTimeout = setTimeout(async () => {
-      try {
-        const cleanLaminas = (laminas || []).map(l => this.sanitizeLaminaForCloud(l));
-        const chunks = this.splitLaminasIntoChunks(cleanLaminas, 400000);
-        if (this.db && this.firebaseActive) {
-          await this.writeLaminasViaSDK(chunks);
-        } else {
-          await this.writeLaminasViaRest(chunks);
-        }
-        console.log("Firestore cloud sync de encartes concluído em chunks:", chunks.length);
-      } catch (e) {
-        console.warn("Firestore sync encartes erro (tentando REST):", e);
-        try {
-          const cleanLaminas = (laminas || []).map(l => this.sanitizeLaminaForCloud(l));
-          const chunks = this.splitLaminasIntoChunks(cleanLaminas, 400000);
-          await this.writeLaminasViaRest(chunks);
-        } catch (restErr) {
-          console.warn("REST encartes também falhou:", restErr);
-        }
+      if (this.isSyncingLaminasInFlight) {
+        this.hasPendingLaminasSync = true;
+        return;
       }
-    }, 800);
+
+      this.isSyncingLaminasInFlight = true;
+      try {
+        do {
+          this.hasPendingLaminasSync = false;
+          if (typeof ImageUtils !== 'undefined' && ImageUtils.optimizeAllLaminas) {
+            await ImageUtils.optimizeAllLaminas(this.store.laminas);
+          }
+          // Always grab the latest ordered laminas from the store
+          const latestLaminas = this.store.getLaminas() || [];
+          const cleanLaminas = latestLaminas.map((l, idx) =>
+            this.sanitizeLaminaForCloud({ ...l, manualPosition: idx + 1 })
+          );
+          const chunks = this.splitLaminasIntoChunks(cleanLaminas, 400000);
+          await this.publishLaminasChunksWithFallback(chunks);
+          console.log("Firestore cloud sync de encartes concluído:", cleanLaminas.length, "em", chunks.length, "chunk(s)");
+        } while (this.hasPendingLaminasSync);
+      } catch (e) {
+        console.warn("Falha na sincronização automática de encartes:", e);
+      } finally {
+        this.isSyncingLaminasInFlight = false;
+      }
+    }, 600);
   }
 
   async syncToCloud(products, hidePrices) {

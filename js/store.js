@@ -8,7 +8,61 @@ const STORAGE_KEYS = {
   HIDE_PRICES: 'catalog_hide_prices',
   FIREBASE_CONFIG: 'catalog_firebase_config',
   LAMINAS: 'catalog_laminas_v1',
+  LAMINAS_META: 'catalog_laminas_meta_v1',
   CATEGORIES: 'catalog_categories_v1'
+};
+
+// High-capacity IndexedDB storage to prevent 5MB localStorage QuotaExceededError from dropping flyers/positions
+const CatalogoStorageDB = {
+  dbPromise: null,
+  open() {
+    if (this.dbPromise) return this.dbPromise;
+    this.dbPromise = new Promise((resolve) => {
+      if (typeof indexedDB === 'undefined') return resolve(null);
+      try {
+        const req = indexedDB.open('CatalogoBebidasDB', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('kv')) {
+            db.createObjectStore('kv');
+          }
+        };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = () => resolve(null);
+      } catch (err) {
+        resolve(null);
+      }
+    });
+    return this.dbPromise;
+  },
+  async get(key) {
+    const db = await this.open();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction('kv', 'readonly');
+        const req = tx.objectStore('kv').get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      } catch (err) {
+        resolve(null);
+      }
+    });
+  },
+  async set(key, value) {
+    const db = await this.open();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(value, key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (err) {
+        resolve(false);
+      }
+    });
+  }
 };
 
 const DEFAULT_CATEGORIES = [
@@ -121,6 +175,8 @@ class ProductStore {
     this.laminas = [];
     this.categories = [];
     this.hidePrices = false;
+    this.hasCustomLocalLaminas = false;
+    this.laminasReadyPromise = Promise.resolve();
     this.listeners = new Set();
     this.init();
   }
@@ -191,7 +247,15 @@ class ProductStore {
       localStorage.setItem(STORAGE_KEYS.HIDE_PRICES, String(this.hidePrices));
     } catch (e) {
       if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014) {
-        alert("⚠️ O limite de armazenamento do navegador foi atingido! Suas alterações não puderam ser salvas localmente.\n\nClique no botão 'Publicar Online' para otimizar as imagens e liberar espaço, ou remova fotos pesadas.");
+        const params = new URLSearchParams(window.location.search);
+        const isClient = params.get('view') === 'public' || params.get('client') === '1' ||
+                         localStorage.getItem('catalog_gestor_logged') !== 'true';
+        if (isClient) {
+          // Cliente: dados vêm da nuvem e ficam em memória; não bloquear a tela com alert.
+          console.warn("localStorage cheio no cliente; catálogo mantido apenas em memória.", e);
+        } else {
+          alert("⚠️ O limite de armazenamento do navegador foi atingido! Suas alterações não puderam ser salvas localmente.\n\nClique no botão 'Publicar Online' para otimizar as imagens e liberar espaço, ou remova fotos pesadas.");
+        }
       } else {
         console.error("Erro ao salvar no localStorage:", e);
       }
@@ -530,91 +594,278 @@ class ProductStore {
     });
   }
 
-  loadLaminas() {
+  sortLaminasByPosition() {
+    if (!Array.isArray(this.laminas)) {
+      this.laminas = [];
+      return;
+    }
+    this.laminas.sort((a, b) => (Number(a.manualPosition) || 9999) - (Number(b.manualPosition) || 9999));
+    this.ensureLaminaPositions();
+  }
+
+  applyMetaOrderToLaminas(list, meta) {
+    if (!Array.isArray(list) || !meta || !Array.isArray(meta.order) || meta.order.length === 0) {
+      return list;
+    }
+    const orderMap = new Map();
+    meta.order.forEach((id, idx) => orderMap.set(String(id), idx + 1));
+    list.forEach((l, idx) => {
+      const mappedPos = orderMap.get(String(l.id));
+      if (mappedPos !== undefined) {
+        l.manualPosition = mappedPos;
+      } else if (!l.manualPosition) {
+        l.manualPosition = meta.order.length + idx + 1;
+      }
+    });
+    list.sort((a, b) => (Number(a.manualPosition) || 9999) - (Number(b.manualPosition) || 9999));
+    return list;
+  }
+
+  loadLaminas(fromStorageEvent = false) {
+    let loadedFromLocal = false;
+    let localMeta = null;
+
+    try {
+      const rawMeta = localStorage.getItem(STORAGE_KEYS.LAMINAS_META);
+      if (rawMeta) {
+        localMeta = JSON.parse(rawMeta);
+      }
+    } catch (e) {}
+
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.LAMINAS);
-      if (raw) {
-        this.laminas = JSON.parse(raw);
-        if (Array.isArray(this.laminas)) {
+      if (raw !== null) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.laminas = parsed;
           this.laminas.forEach(l => l.description = '');
+          loadedFromLocal = true;
+          this.hasCustomLocalLaminas = true;
         }
-      } else {
-        this.laminas = JSON.parse(JSON.stringify(DEFAULT_LAMINAS));
       }
     } catch (e) {
-      this.laminas = JSON.parse(JSON.stringify(DEFAULT_LAMINAS));
+      console.warn("Erro ao ler laminas do localStorage:", e);
     }
-    this.ensureLaminaPositions();
-    this.saveLaminas();
+
+    if (!loadedFromLocal) {
+      this.laminas = JSON.parse(JSON.stringify(DEFAULT_LAMINAS));
+      this.hasCustomLocalLaminas = false;
+    }
+
+    if (localMeta && Array.isArray(localMeta.order)) {
+      this.applyMetaOrderToLaminas(this.laminas, localMeta);
+    }
+    this.sortLaminasByPosition();
+
+    // Persist initial default state only if nothing was stored yet
+    if (!loadedFromLocal && !fromStorageEvent) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(this.laminas));
+      } catch (e) {}
+    }
+
+    // Also restore from high-capacity IndexedDB (which never suffers from 5MB localStorage quota truncation)
+    this.laminasReadyPromise = this.restoreLaminasFromIDB(localMeta);
+  }
+
+  async restoreLaminasFromIDB(localMeta = null) {
+    try {
+      const idbPayload = await CatalogoStorageDB.get(STORAGE_KEYS.LAMINAS);
+      if (!idbPayload || !Array.isArray(idbPayload.laminas)) return;
+
+      const idbLaminas = idbPayload.laminas;
+      const idbSavedAt = Number(idbPayload.savedAt) || 0;
+      const localSavedAt = Number(localMeta?.savedAt) || 0;
+      const idbImageMap = new Map();
+      idbLaminas.forEach(l => {
+        if (l && l.id && l.imageUrl) {
+          idbImageMap.set(String(l.id), l.imageUrl);
+        }
+      });
+
+      const hasMissingLocalImages = Array.isArray(this.laminas) && this.laminas.some(l => !l.imageUrl && idbImageMap.has(String(l.id)));
+
+      // Use IndexedDB snapshot if it is newer, or has more encartes (when localStorage hit QuotaExceededError),
+      // or if localStorage had fallen back to DEFAULT_LAMINAS
+      const shouldRestoreFullFromIDB =
+        !this.hasCustomLocalLaminas ||
+        idbSavedAt >= localSavedAt ||
+        idbLaminas.length > this.laminas.length;
+
+      if (shouldRestoreFullFromIDB) {
+        this.laminas = idbLaminas.map(l => ({ ...l, description: '' }));
+        if (localMeta && localSavedAt >= idbSavedAt && Array.isArray(localMeta.order)) {
+          this.applyMetaOrderToLaminas(this.laminas, localMeta);
+        }
+        this.sortLaminasByPosition();
+        this.hasCustomLocalLaminas = true;
+        this.notify('idb_restored');
+      } else if (hasMissingLocalImages) {
+        this.laminas.forEach(l => {
+          if (!l.imageUrl && idbImageMap.has(String(l.id))) {
+            l.imageUrl = idbImageMap.get(String(l.id));
+          }
+        });
+        this.sortLaminasByPosition();
+        this.notify('idb_restored');
+      }
+    } catch (e) {
+      console.warn("Erro ao restaurar encartes do IndexedDB:", e);
+    }
   }
 
   getLaminas() {
     if (!Array.isArray(this.laminas)) return [];
-    return [...this.laminas].sort((a, b) => (a.manualPosition || 9999) - (b.manualPosition || 9999));
+    return [...this.laminas].sort((a, b) => (Number(a.manualPosition) || 9999) - (Number(b.manualPosition) || 9999));
+  }
+
+  persistLaminasLocally() {
+    this.ensureLaminaPositions();
+    const savedAt = Date.now();
+    const meta = {
+      savedAt,
+      count: this.laminas.length,
+      order: this.laminas.map(l => l.id)
+    };
+
+    // 1. Save full data into IndexedDB (unlimited capacity, never loses flyers or positions)
+    const snapshot = JSON.parse(JSON.stringify(this.laminas));
+    CatalogoStorageDB.set(STORAGE_KEYS.LAMINAS, {
+      savedAt,
+      laminas: snapshot
+    });
+
+    // 2. Save to localStorage: never leave a stale/truncated array if QuotaExceededError occurs
+    try {
+      const fullJson = JSON.stringify(this.laminas);
+      localStorage.setItem(STORAGE_KEYS.LAMINAS, fullJson);
+      localStorage.setItem(STORAGE_KEYS.LAMINAS_META, JSON.stringify(meta));
+    } catch (e) {
+      console.warn("Limite do localStorage atingido ao salvar encartes; salvando índice completo de posições no localStorage e imagens no IndexedDB...", e);
+      try {
+        // Free stale/heavy LAMINAS entry first so localStorage never keeps an outdated 13-item list
+        localStorage.removeItem(STORAGE_KEYS.LAMINAS);
+        // Build a compact list with all items and their exact positions (fitting images up to 600KB budget)
+        let usedChars = 0;
+        const compactList = this.laminas.map(l => {
+          const imgLen = (l.imageUrl || '').length;
+          if (usedChars + imgLen < 600000) {
+            usedChars += imgLen;
+            return l;
+          }
+          return { ...l, imageUrl: '' };
+        });
+        localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(compactList));
+        localStorage.setItem(STORAGE_KEYS.LAMINAS_META, JSON.stringify(meta));
+      } catch (e2) {
+        try {
+          const minimalList = this.laminas.map(l => ({ ...l, imageUrl: '' }));
+          localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(minimalList));
+          localStorage.setItem(STORAGE_KEYS.LAMINAS_META, JSON.stringify(meta));
+        } catch (e3) {}
+      }
+
+      if (typeof ImageUtils !== 'undefined' && ImageUtils.optimizeAllLaminas) {
+        ImageUtils.optimizeAllLaminas(this.laminas).then(() => {
+          CatalogoStorageDB.set(STORAGE_KEYS.LAMINAS, {
+            savedAt: Date.now(),
+            laminas: JSON.parse(JSON.stringify(this.laminas))
+          });
+          try {
+            localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(this.laminas));
+          } catch (e4) {}
+        });
+      }
+    }
   }
 
   saveLaminas(source = 'laminas_updated') {
-    try {
-      localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(this.laminas));
-    } catch (e) {
-      console.warn("Erro ao salvar laminas:", e);
-    }
+    this.hasCustomLocalLaminas = true;
+    this.persistLaminasLocally();
     this.notify(source);
   }
 
   setAllLaminas(laminas, source = 'cloud') {
     if (!Array.isArray(laminas)) return;
-    this.laminas = laminas;
-    this.ensureLaminaPositions();
-    try {
-      localStorage.setItem(STORAGE_KEYS.LAMINAS, JSON.stringify(this.laminas));
-    } catch (e) {
-      console.warn("Erro ao salvar laminas recebidas:", e);
-    }
+    this.laminas = laminas.map(l => ({ ...l, description: '' }));
+    this.sortLaminasByPosition();
+    this.hasCustomLocalLaminas = true;
+    this.persistLaminasLocally();
     this.notify(source);
   }
 
   addLamina(lamina) {
-    if (!this.laminas) this.laminas = [];
-    this.laminas.push(lamina);
+    if (!Array.isArray(this.laminas)) this.laminas = [];
+    this.sortLaminasByPosition();
+    this.laminas.push({
+      ...lamina,
+      manualPosition: this.laminas.length + 1
+    });
     this.ensureLaminaPositions();
-    this.saveLaminas();
+    this.saveLaminas('laminas_updated');
+  }
+
+  addLaminas(laminasArray) {
+    if (!Array.isArray(laminasArray) || laminasArray.length === 0) return;
+    if (!Array.isArray(this.laminas)) this.laminas = [];
+    this.sortLaminasByPosition();
+    laminasArray.forEach((lamina) => {
+      this.laminas.push({
+        ...lamina,
+        manualPosition: this.laminas.length + 1
+      });
+    });
+    this.ensureLaminaPositions();
+    this.saveLaminas('laminas_updated');
   }
 
   deleteLamina(id) {
-    if (!this.laminas) return;
+    if (!Array.isArray(this.laminas)) return;
+    this.sortLaminasByPosition();
     this.laminas = this.laminas.filter(l => l.id !== id);
     this.ensureLaminaPositions();
-    this.saveLaminas();
+    this.saveLaminas('laminas_updated');
   }
 
   deleteAllLaminas() {
     this.laminas = [];
-    this.saveLaminas();
+    this.saveLaminas('laminas_updated');
   }
 
   reorderLamina(id, newPosition) {
-    if (!Array.isArray(this.laminas)) return;
+    if (!Array.isArray(this.laminas) || this.laminas.length <= 1) return false;
+    this.sortLaminasByPosition();
     const index = this.laminas.findIndex(l => l.id === id);
-    if (index === -1) return;
-    const targetIndex = Math.max(0, Math.min(this.laminas.length - 1, newPosition - 1));
+    if (index === -1) return false;
+
+    const parsedPos = parseInt(newPosition, 10);
+    if (isNaN(parsedPos)) return false;
+
+    const targetIndex = Math.max(0, Math.min(this.laminas.length - 1, parsedPos - 1));
+    if (index === targetIndex) return false;
+
     const [item] = this.laminas.splice(index, 1);
     this.laminas.splice(targetIndex, 0, item);
     this.ensureLaminaPositions();
-    this.saveLaminas();
+    this.saveLaminas('laminas_updated');
+    return true;
   }
 
   moveLamina(id, direction) {
-    if (!Array.isArray(this.laminas)) return;
+    if (!Array.isArray(this.laminas) || this.laminas.length <= 1) return false;
+    this.sortLaminasByPosition();
     const index = this.laminas.findIndex(l => l.id === id);
-    if (index === -1) return;
+    if (index === -1) return false;
+
     const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= this.laminas.length) return;
+    if (targetIndex < 0 || targetIndex >= this.laminas.length) return false;
+
     const temp = this.laminas[index];
     this.laminas[index] = this.laminas[targetIndex];
     this.laminas[targetIndex] = temp;
     this.ensureLaminaPositions();
-    this.saveLaminas();
+    this.saveLaminas('laminas_updated');
+    return true;
   }
 
   // ==========================================
